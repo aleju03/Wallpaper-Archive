@@ -250,16 +250,17 @@ fastify.get('/api/duplicates', async (request, reply) => {
     const startTime = Date.now();
     console.log('🔍 DUPLICATES REQUEST START');
     
-    const { threshold = 10 } = request.query;
+    const { threshold = 10, force = false } = request.query;
     
     // Check if we can use cached results first (before expensive DB query)
     const cacheAge = duplicateCache.lastComputed ? Date.now() - duplicateCache.lastComputed : Infinity;
-    console.log(`⏰ Cache age: ${Math.round(cacheAge/1000)}s, threshold: ${threshold}, cached threshold: ${duplicateCache.threshold}`);
+    console.log(`⏰ Cache age: ${Math.round(cacheAge/1000)}s, threshold: ${threshold}, cached threshold: ${duplicateCache.threshold}, force: ${force}`);
     
-    // Use cache if it's less than 5 minutes old and same threshold
+    // Use cache if it's less than 5 minutes old and same threshold, unless force refresh is requested
     if (duplicateCache.results && 
         duplicateCache.threshold === parseInt(threshold) &&
-        cacheAge < 5 * 60 * 1000) {
+        cacheAge < 5 * 60 * 1000 &&
+        force !== 'true') {
       console.log('✅ Using cached duplicate results (fast path)');
       
       const urlStartTime = Date.now();

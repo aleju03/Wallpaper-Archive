@@ -168,12 +168,12 @@ function Duplicates() {
     setDuplicateGroups([])
   }
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
     try {
       setLoading(true)
       await Promise.all([
         fetchHashStatus(),
-        fetchDuplicates()
+        fetchDuplicates(forceRefresh)
       ])
       setError(null)
     } catch (err) {
@@ -198,10 +198,11 @@ function Duplicates() {
     }
   }
 
-  const fetchDuplicates = async () => {
+  const fetchDuplicates = async (forceRefresh = false) => {
     try {
       // Fetch all duplicates without threshold filtering (let server decide minimum threshold)
-      const response = await axios.get(`${API_BASE}/api/duplicates?threshold=1`)
+      const url = `${API_BASE}/api/duplicates?threshold=1${forceRefresh ? '&force=true' : ''}`
+      const response = await axios.get(url)
       const data = response.data
       setAllDuplicateGroups(data.duplicateGroups || [])
       
@@ -416,7 +417,7 @@ function Duplicates() {
               <button
                 onClick={() => {
                   clearCache()
-                  fetchData()
+                  fetchData(true) // Force refresh from server
                 }}
                 disabled={loading}
                 style={{
