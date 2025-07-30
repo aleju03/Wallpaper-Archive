@@ -45,6 +45,10 @@ function Duplicates() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(5) // 5 groups per page
+  
+  // Multi-select state
+  const [selectedWallpapers, setSelectedWallpapers] = useState(new Set())
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
 
   useEffect(() => {
     // Load cached data synchronously first, then fetch fresh data if needed
@@ -264,6 +268,80 @@ function Duplicates() {
       alert('Error deleting wallpaper: ' + err.message)
     }
   }
+  
+  const deleteWallpaperNoConfirm = async (id, deleteFile = false) => {
+    try {
+      const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
+      const response = await axios.delete(url)
+      
+      if (response.data.success) {
+        // Remove the deleted wallpaper from both all groups and filtered groups
+        const updatedAllGroups = allDuplicateGroups.map(group => 
+          group.filter(wallpaper => wallpaper.id !== id)
+        ).filter(group => group.length > 1) // Remove groups with only one item
+        
+        const updatedFilteredGroups = duplicateGroups.map(group => 
+          group.filter(wallpaper => wallpaper.id !== id)
+        ).filter(group => group.length > 1)
+        
+        setAllDuplicateGroups(updatedAllGroups)
+        setDuplicateGroups(updatedFilteredGroups)
+        
+        // Remove from selected items
+        setSelectedWallpapers(prev => {
+          const newSelected = new Set(prev)
+          newSelected.delete(id)
+          return newSelected
+        })
+        
+        // Update cache with new data
+        saveCacheData({ duplicateGroups: updatedAllGroups })
+      } else {
+        console.error('Failed to delete wallpaper:', response.data.error)
+      }
+    } catch (err) {
+      console.error('Error deleting wallpaper:', err.message)
+    }
+  }
+  
+  const bulkDeleteWallpapers = async (deleteFiles = false) => {
+    const selectedIds = Array.from(selectedWallpapers)
+    if (selectedIds.length === 0) return
+    
+    const deletePromises = selectedIds.map(id => deleteWallpaperNoConfirm(id, deleteFiles))
+    await Promise.all(deletePromises)
+    
+    // Clear selection after bulk delete
+    setSelectedWallpapers(new Set())
+  }
+  
+  const toggleWallpaperSelection = (id) => {
+    setSelectedWallpapers(prev => {
+      const newSelected = new Set(prev)
+      if (newSelected.has(id)) {
+        newSelected.delete(id)
+      } else {
+        newSelected.add(id)
+      }
+      return newSelected
+    })
+  }
+  
+  const selectAllInGroup = (group) => {
+    setSelectedWallpapers(prev => {
+      const newSelected = new Set(prev)
+      group.forEach(wallpaper => newSelected.add(wallpaper.id))
+      return newSelected
+    })
+  }
+  
+  const deselectAllInGroup = (group) => {
+    setSelectedWallpapers(prev => {
+      const newSelected = new Set(prev)
+      group.forEach(wallpaper => newSelected.delete(wallpaper.id))
+      return newSelected
+    })
+  }
 
   const handleThresholdChange = (newThreshold) => {
     setThreshold(newThreshold)
@@ -467,6 +545,11 @@ function Duplicates() {
             <div className="results-summary">
               <AlertTriangle size={20} color="#f39c12" />
               <span>Found {duplicateGroups.length} duplicate groups with {duplicateGroups.reduce((sum, group) => sum + group.length, 0)} total images</span>
+              {selectedWallpapers.size > 0 && (
+                <span style={{ marginLeft: '16px', color: '#3498db', fontWeight: 'bold' }}>
+                  ({selectedWallpapers.size} selected)
+                </span>
+              )}
               {totalPages > 1 && (
                 <span style={{ marginLeft: '16px', color: '#666' }}>
                   (Page {currentPage} of {totalPages})
@@ -474,40 +557,159 @@ function Duplicates() {
               )}
             </div>
             
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="pagination">
+            {/* Multi-select and Pagination Controls */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={currentPage === 1}
+                  onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #333333',
+                    background: isMultiSelectMode ? '#ffffff' : '#000000',
+                    color: isMultiSelectMode ? '#000000' : '#ffffff',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontFamily: 'inherit'
+                  }}
                 >
-                  previous
+                  {isMultiSelectMode ? 'exit select' : 'multi select'}
                 </button>
                 
-                <span style={{ margin: '0 16px', fontSize: '11px', color: '#888888' }}>
-                  page {currentPage} of {totalPages}
-                </span>
-                
-                <button
-                  onClick={() => goToPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  next
-                </button>
+                {selectedWallpapers.size > 0 && (
+                  <>
+                    <button
+                      onClick={() => bulkDeleteWallpapers(false)}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #e74c3c',
+                        background: '#e74c3c',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontFamily: 'inherit'
+                      }}
+                    >
+                      delete {selectedWallpapers.size} from db
+                    </button>
+                    
+                    <button
+                      onClick={() => bulkDeleteWallpapers(true)}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #8e44ad',
+                        background: '#8e44ad',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontFamily: 'inherit'
+                      }}
+                    >
+                      delete {selectedWallpapers.size} files
+                    </button>
+                    
+                    <button
+                      onClick={() => setSelectedWallpapers(new Set())}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #333333',
+                        background: '#000000',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontFamily: 'inherit'
+                      }}
+                    >
+                      clear selection
+                    </button>
+                  </>
+                )}
               </div>
-            )}
+              
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    previous
+                  </button>
+                  
+                  <span style={{ margin: '0 16px', fontSize: '11px', color: '#888888' }}>
+                    page {currentPage} of {totalPages}
+                  </span>
+                  
+                  <button
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    next
+                  </button>
+                </div>
+              )}
+            </div>
 
-            {currentGroups.map((group, groupIndex) => (
-              <div key={startIndex + groupIndex} className="duplicate-group">
-                <h4>Duplicate Group {startIndex + groupIndex + 1} ({group.length} images)</h4>
+            {currentGroups.map((group, groupIndex) => {
+              const groupSelected = group.every(w => selectedWallpapers.has(w.id))
+              const groupPartiallySelected = group.some(w => selectedWallpapers.has(w.id)) && !groupSelected
+              
+              return (
+                <div key={startIndex + groupIndex} className="duplicate-group">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h4 style={{ margin: 0 }}>Duplicate Group {startIndex + groupIndex + 1} ({group.length} images)</h4>
+                    {isMultiSelectMode && (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          onClick={() => groupSelected ? deselectAllInGroup(group) : selectAllInGroup(group)}
+                          style={{
+                            padding: '4px 8px',
+                            border: '1px solid #333333',
+                            background: groupSelected ? '#ffffff' : (groupPartiallySelected ? '#666666' : '#000000'),
+                            color: groupSelected ? '#000000' : '#ffffff',
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            fontFamily: 'inherit'
+                          }}
+                        >
+                          {groupSelected ? 'deselect all' : (groupPartiallySelected ? 'select all' : 'select all')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 <div className="image-grid">
                   {group.map((wallpaper, imageIndex) => (
-                    <div key={wallpaper.id} className="image-card">
+                    <div key={wallpaper.id} className="image-card" style={{
+                      border: selectedWallpapers.has(wallpaper.id) ? '2px solid #3498db' : '1px solid #333',
+                      position: 'relative'
+                    }}>
+                      {isMultiSelectMode && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '8px',
+                          left: '8px',
+                          zIndex: 10,
+                          background: 'rgba(0, 0, 0, 0.8)',
+                          borderRadius: '3px',
+                          padding: '4px'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedWallpapers.has(wallpaper.id)}
+                            onChange={() => toggleWallpaperSelection(wallpaper.id)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </div>
+                      )}
                       <div className="image-container">
                         <img
                           src={`${API_BASE}${wallpaper.thumbnail_url}`}
                           alt={wallpaper.filename}
-                          onClick={() => setSelectedImage(`${API_BASE}${wallpaper.image_url}`)}
+                          onClick={() => {
+                            if (isMultiSelectMode) {
+                              toggleWallpaperSelection(wallpaper.id)
+                            } else {
+                              setSelectedImage(`${API_BASE}${wallpaper.image_url}`)
+                            }
+                          }}
                           style={{ cursor: 'pointer' }}
                         />
                         {wallpaper.similarity_percentage && (
@@ -527,35 +729,59 @@ function Duplicates() {
                         </div>
                         
                         <div className="actions">
-                          <button
-                            onClick={() => setSelectedImage(`${API_BASE}${wallpaper.image_url}`)}
-                            className="action-btn view"
-                            title="View full size"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            onClick={() => deleteWallpaper(wallpaper.id, false)}
-                            className="action-btn delete"
-                            title="Delete from database"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => deleteWallpaper(wallpaper.id, true)}
-                            className="action-btn delete-file"
-                            title="Delete file and database entry"
-                          >
-                            <Trash2 size={16} />
-                            File
-                          </button>
+                          {!isMultiSelectMode && (
+                            <>
+                              <button
+                                onClick={() => setSelectedImage(`${API_BASE}${wallpaper.image_url}`)}
+                                className="action-btn view"
+                                title="View full size"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button
+                                onClick={() => deleteWallpaper(wallpaper.id, false)}
+                                className="action-btn delete"
+                                title="Delete from database"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => deleteWallpaper(wallpaper.id, true)}
+                                className="action-btn delete-file"
+                                title="Delete file and database entry"
+                              >
+                                <Trash2 size={16} />
+                                File
+                              </button>
+                            </>
+                          )}
+                          {isMultiSelectMode && (
+                            <>
+                              <button
+                                onClick={() => deleteWallpaperNoConfirm(wallpaper.id, false)}
+                                className="action-btn delete"
+                                title="Delete from database (no confirmation)"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => deleteWallpaperNoConfirm(wallpaper.id, true)}
+                                className="action-btn delete-file"
+                                title="Delete file (no confirmation)"
+                              >
+                                <Trash2 size={16} />
+                                File
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            ))}
+            )
+            })}
             
             {/* Bottom Pagination Controls */}
             {totalPages > 1 && (
