@@ -1,4 +1,9 @@
-const fastify = require('fastify')({ logger: true });
+const fastify = require('fastify')({ 
+  logger: {
+    level: 'warn'
+  },
+  disableRequestLogging: true
+});
 const path = require('path');
 const fs = require('fs').promises;
 const sharp = require('sharp');

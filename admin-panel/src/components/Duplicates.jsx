@@ -49,16 +49,22 @@ function Duplicates() {
   // Multi-select state
   const [selectedWallpapers, setSelectedWallpapers] = useState(new Set())
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
+  const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
 
   useEffect(() => {
     // Load cached data synchronously first, then fetch fresh data if needed
     loadCachedDataSync()
   }, [])
   
-  // Filter groups when threshold changes
+  // Filter groups when threshold changes (reset page)
   useEffect(() => {
-    filterGroupsByThreshold()
-  }, [threshold, allDuplicateGroups])
+    filterGroupsByThreshold(true)
+  }, [threshold])
+  
+  // Filter groups when data changes (preserve page)
+  useEffect(() => {
+    filterGroupsByThreshold(false)
+  }, [allDuplicateGroups])
 
   const loadCachedDataSync = () => {
     try {
@@ -105,15 +111,15 @@ function Duplicates() {
         }
       }
       
-      // No valid cache, fetch fresh data
-      fetchData()
+      // No valid cache - don't fetch automatically, let user decide
+      console.log('No valid cache found - waiting for manual action')
     } catch (error) {
       console.error('Error loading cached data:', error)
       setError('Failed to load duplicate data')
     }
   }
   
-  const filterGroupsByThreshold = () => {
+  const filterGroupsByThreshold = (resetPage = false) => {
     if (allDuplicateGroups.length === 0) return
     
     // Filter groups based on similarity threshold
@@ -126,7 +132,17 @@ function Duplicates() {
     }).filter(group => group.length > 1) // Only keep groups with more than 1 image
     
     setDuplicateGroups(filteredGroups)
-    setCurrentPage(1) // Reset to first page when filtering
+    
+    // Only reset to page 1 when explicitly requested (threshold changes)
+    if (resetPage) {
+      setCurrentPage(1)
+    } else {
+      // Ensure we're not on a page that no longer exists after filtering
+      const newTotalPages = Math.ceil(filteredGroups.length / itemsPerPage)
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages)
+      }
+    }
   }
 
 
@@ -204,8 +220,8 @@ function Duplicates() {
 
   const fetchDuplicates = async (forceRefresh = false) => {
     try {
-      // Fetch all duplicates without threshold filtering (let server decide minimum threshold)
-      const url = `${API_BASE}/api/duplicates?threshold=1${forceRefresh ? '&force=true' : ''}`
+      // Fetch all duplicates with a high threshold to get everything, then filter client-side
+      const url = `${API_BASE}/api/duplicates?threshold=20${forceRefresh ? '&force=true' : ''}`
       const response = await axios.get(url)
       const data = response.data
       setAllDuplicateGroups(data.duplicateGroups || [])
@@ -224,49 +240,60 @@ function Duplicates() {
       
       if (response.data.success) {
         await fetchData() // Refresh data after generation
-        alert(response.data.message)
       } else {
-        alert('Failed to generate hashes: ' + response.data.error)
+        console.error('Failed to generate hashes:', response.data.error)
       }
     } catch (err) {
-      alert('Error generating hashes: ' + err.message)
+      console.error('Error generating hashes:', err.message)
     } finally {
       setGenerating(false)
     }
   }
 
-  const deleteWallpaper = async (id, deleteFile = false) => {
-    if (!confirm('Are you sure you want to delete this wallpaper? This action cannot be undone.')) {
-      return
-    }
+  const showConfirmModal = (title, message, onConfirm, confirmText = 'Delete', isDangerous = true) => {
+    setConfirmModal({ show: true, title, message, onConfirm, confirmText, isDangerous })
+  }
 
-    try {
-      const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
-      const response = await axios.delete(url)
-      
-      if (response.data.success) {
-        // Remove the deleted wallpaper from both all groups and filtered groups
-        const updatedAllGroups = allDuplicateGroups.map(group => 
-          group.filter(wallpaper => wallpaper.id !== id)
-        ).filter(group => group.length > 1) // Remove groups with only one item
-        
-        const updatedFilteredGroups = duplicateGroups.map(group => 
-          group.filter(wallpaper => wallpaper.id !== id)
-        ).filter(group => group.length > 1)
-        
-        setAllDuplicateGroups(updatedAllGroups)
-        setDuplicateGroups(updatedFilteredGroups)
-        
-        // Update cache with new data
-        saveCacheData({ duplicateGroups: updatedAllGroups })
-        
-        alert('Wallpaper deleted successfully')
-      } else {
-        alert('Failed to delete wallpaper: ' + response.data.error)
+  const hideConfirmModal = () => {
+    setConfirmModal({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
+  }
+
+  const deleteWallpaper = async (id, deleteFile = false) => {
+    const action = deleteFile ? 'delete the file and database entry' : 'delete from database'
+    const title = deleteFile ? 'Delete File & Database Entry' : 'Delete from Database'
+    
+    showConfirmModal(
+      title,
+      `Are you sure you want to ${action}? This action cannot be undone.`,
+      async () => {
+        try {
+          const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
+          const response = await axios.delete(url)
+          
+          if (response.data.success) {
+            // Remove the deleted wallpaper from both all groups and filtered groups
+            const updatedAllGroups = allDuplicateGroups.map(group => 
+              group.filter(wallpaper => wallpaper.id !== id)
+            ).filter(group => group.length > 1) // Remove groups with only one item
+            
+            const updatedFilteredGroups = duplicateGroups.map(group => 
+              group.filter(wallpaper => wallpaper.id !== id)
+            ).filter(group => group.length > 1)
+            
+            setAllDuplicateGroups(updatedAllGroups)
+            setDuplicateGroups(updatedFilteredGroups)
+            
+            // Update cache with new data
+            saveCacheData({ duplicateGroups: updatedAllGroups })
+          } else {
+            console.error('Failed to delete wallpaper:', response.data.error)
+          }
+        } catch (err) {
+          console.error('Error deleting wallpaper:', err.message)
+        }
+        hideConfirmModal()
       }
-    } catch (err) {
-      alert('Error deleting wallpaper: ' + err.message)
-    }
+    )
   }
   
   const deleteWallpaperNoConfirm = async (id, deleteFile = false) => {
@@ -676,7 +703,7 @@ function Duplicates() {
                     )}
                   </div>
                 <div className="image-grid">
-                  {group.map((wallpaper, imageIndex) => (
+                  {group.map((wallpaper) => (
                     <div key={wallpaper.id} className="image-card" style={{
                       border: selectedWallpapers.has(wallpaper.id) ? '2px solid #3498db' : '1px solid #333',
                       position: 'relative'
@@ -834,6 +861,34 @@ function Duplicates() {
             >
               ×
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="confirm-modal-overlay" onClick={hideConfirmModal}>
+          <div className="confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="confirm-modal-header">
+              <h3>{confirmModal.title}</h3>
+            </div>
+            <div className="confirm-modal-body">
+              <p>{confirmModal.message}</p>
+            </div>
+            <div className="confirm-modal-actions">
+              <button 
+                className="confirm-modal-btn cancel"
+                onClick={hideConfirmModal}
+              >
+                Cancel
+              </button>
+              <button 
+                className={`confirm-modal-btn confirm ${confirmModal.isDangerous ? 'dangerous' : ''}`}
+                onClick={confirmModal.onConfirm}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
           </div>
         </div>
       )}
