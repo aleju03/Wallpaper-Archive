@@ -3,6 +3,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const sharp = require('sharp');
 const Database = require('./database');
+const OsuLocalProvider = require('./osu-provider');
 
 class WallpaperDownloader {
   constructor() {
@@ -169,6 +170,7 @@ class WallpaperDownloader {
     
     console.log('Starting wallpaper download from all providers...');
     
+    // Process GitHub providers
     for (const provider of this.providers) {
       console.log(`\n--- Processing provider: ${provider.name} ---`);
       
@@ -183,11 +185,24 @@ class WallpaperDownloader {
       }
     }
 
+    // Process Osu! local backgrounds
+    console.log('\n--- Processing Osu! Local Backgrounds ---');
+    const osuProvider = new OsuLocalProvider();
+    await osuProvider.processAllBackgrounds();
+
     const stats = await this.db.getStats();
     console.log('\n--- Download Complete ---');
     console.log(`Total wallpapers: ${stats.total}`);
     console.log(`Providers: ${stats.providers}`);
     console.log(`Folders: ${stats.folders}`);
+  }
+
+  async downloadOsuOnly() {
+    await this.init();
+    
+    console.log('Processing Osu! Local Backgrounds only...');
+    const osuProvider = new OsuLocalProvider();
+    await osuProvider.processAllBackgrounds();
   }
 }
 
