@@ -3,12 +3,24 @@ const path = require('path');
 const fs = require('fs').promises;
 const sharp = require('sharp');
 const Database = require('./database');
+const { generatePerceptualHash, findDuplicateGroups } = require('./image-hash');
 
 const db = new Database();
 
+// Cache for duplicate detection results
+let duplicateCache = {
+  lastComputed: null,
+  results: null,
+  wallpaperCount: 0
+};
+
+// Invalidate cache on startup to use hybrid algorithm
+duplicateCache.lastComputed = null;
+
 fastify.register(require('@fastify/cors'), {
   origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 });
 
 fastify.register(require('@fastify/static'), {
@@ -186,6 +198,204 @@ fastify.get('/api/providers', async (request, reply) => {
       success: true,
       providers,
       folders
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Generate perceptual hashes for images that don't have them
+fastify.post('/api/duplicates/generate-hashes', async (request, reply) => {
+  try {
+    const wallpapers = await db.getAllWallpapersWithoutHashes();
+    let processed = 0;
+    let errors = 0;
+    
+    console.log(`Starting hash generation for ${wallpapers.length} wallpapers...`);
+    
+    for (const wallpaper of wallpapers) {
+      try {
+        if (wallpaper.local_path && await fs.access(wallpaper.local_path).then(() => true).catch(() => false)) {
+          const hash = await generatePerceptualHash(wallpaper.local_path);
+          await db.updatePerceptualHash(wallpaper.id, hash);
+          processed++;
+          
+          if (processed % 10 === 0) {
+            console.log(`Processed ${processed}/${wallpapers.length} hashes...`);
+          }
+        } else {
+          console.log(`File not found: ${wallpaper.local_path}`);
+          errors++;
+        }
+      } catch (error) {
+        console.error(`Error processing ${wallpaper.filename}:`, error);
+        errors++;
+      }
+    }
+    
+    return {
+      success: true,
+      message: `Hash generation complete. Processed: ${processed}, Errors: ${errors}`
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Find duplicate wallpapers
+fastify.get('/api/duplicates', async (request, reply) => {
+  try {
+    const startTime = Date.now();
+    console.log('🔍 DUPLICATES REQUEST START');
+    
+    const { threshold = 10 } = request.query;
+    
+    // Check if we can use cached results first (before expensive DB query)
+    const cacheAge = duplicateCache.lastComputed ? Date.now() - duplicateCache.lastComputed : Infinity;
+    console.log(`⏰ Cache age: ${Math.round(cacheAge/1000)}s, threshold: ${threshold}, cached threshold: ${duplicateCache.threshold}`);
+    
+    // Use cache if it's less than 5 minutes old and same threshold
+    if (duplicateCache.results && 
+        duplicateCache.threshold === parseInt(threshold) &&
+        cacheAge < 5 * 60 * 1000) {
+      console.log('✅ Using cached duplicate results (fast path)');
+      
+      const urlStartTime = Date.now();
+      // Add image URLs to cached results
+      const enhancedGroups = duplicateCache.results.map(group => 
+        group.map(wallpaper => ({
+          ...wallpaper,
+          image_url: `/images/${path.basename(wallpaper.local_path)}`,
+          thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
+        }))
+      );
+      console.log(`🔗 URL processing took: ${Date.now() - urlStartTime}ms`);
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`⚡ FAST PATH TOTAL TIME: ${totalTime}ms`);
+      
+      return {
+        success: true,
+        duplicateGroups: enhancedGroups,
+        totalGroups: enhancedGroups.length,
+        totalDuplicates: enhancedGroups.reduce((sum, group) => sum + group.length, 0)
+      };
+    }
+    
+    // Only fetch all wallpapers if cache is invalid
+    console.log('❌ Cache miss - fetching wallpapers and computing duplicates...');
+    
+    const dbStartTime = Date.now();
+    const wallpapers = await db.getAllWallpapersWithHashes();
+    console.log(`📊 DB fetch took: ${Date.now() - dbStartTime}ms for ${wallpapers.length} wallpapers`);
+    
+    if (wallpapers.length === 0) {
+      return {
+        success: true,
+        message: 'No wallpapers with hashes found. Generate hashes first.',
+        duplicateGroups: []
+      };
+    }
+    
+    const computeStartTime = Date.now();
+    console.log(`🧮 Computing duplicates for ${wallpapers.length} wallpapers with threshold ${threshold}...`);
+    const duplicateGroups = findDuplicateGroups(wallpapers, parseInt(threshold));
+    console.log(`🧮 Duplicate computation took: ${Date.now() - computeStartTime}ms`);
+    
+    // Update cache
+    duplicateCache = {
+      lastComputed: Date.now(),
+      results: duplicateGroups,
+      wallpaperCount: wallpapers.length,
+      threshold: parseInt(threshold)
+    };
+    
+    const urlStartTime = Date.now();
+    // Add image URLs to each wallpaper in the groups
+    const enhancedGroups = duplicateGroups.map(group => 
+      group.map(wallpaper => ({
+        ...wallpaper,
+        image_url: `/images/${path.basename(wallpaper.local_path)}`,
+        thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
+      }))
+    );
+    console.log(`🔗 URL processing took: ${Date.now() - urlStartTime}ms`);
+    
+    const totalTime = Date.now() - startTime;
+    console.log(`🐌 SLOW PATH TOTAL TIME: ${totalTime}ms`);
+    
+    return {
+      success: true,
+      duplicateGroups: enhancedGroups,
+      totalGroups: enhancedGroups.length,
+      totalDuplicates: enhancedGroups.reduce((sum, group) => sum + group.length, 0)
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Delete a wallpaper (for removing duplicates)
+fastify.delete('/api/wallpapers/:id', async (request, reply) => {
+  try {
+    const wallpaper = await db.getWallpaperById(request.params.id);
+    
+    if (!wallpaper) {
+      reply.code(404);
+      return { success: false, error: 'Wallpaper not found' };
+    }
+    
+    // Delete the database record
+    await db.deleteWallpaper(request.params.id);
+    
+    // Invalidate duplicate cache since data changed
+    duplicateCache.lastComputed = null;
+    
+    // Optionally delete the physical file
+    if (request.query.deleteFile === 'true' && wallpaper.local_path) {
+      try {
+        await fs.unlink(wallpaper.local_path);
+        
+        // Also try to delete the thumbnail
+        const thumbnailPath = path.join(__dirname, 'thumbnails', 
+          path.basename(wallpaper.local_path, path.extname(wallpaper.local_path)) + '.jpg');
+        await fs.unlink(thumbnailPath).catch(() => {}); // Ignore if thumbnail doesn't exist
+      } catch (fileError) {
+        console.error('Error deleting file:', fileError);
+        // Continue anyway - database record is already deleted
+      }
+    }
+    
+    return {
+      success: true,
+      message: 'Wallpaper deleted successfully'
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Get hash generation status
+fastify.get('/api/duplicates/status', async (request, reply) => {
+  try {
+    const [withHashes, withoutHashes, total] = await Promise.all([
+      db.getAllWallpapersWithHashes(),
+      db.getAllWallpapersWithoutHashes(),
+      db.getWallpapersCount()
+    ]);
+    
+    return {
+      success: true,
+      status: {
+        total: total,
+        withHashes: withHashes.length,
+        withoutHashes: withoutHashes.length,
+        percentage: total > 0 ? Math.round((withHashes.length / total) * 100) : 0
+      }
     };
   } catch (error) {
     reply.code(500);

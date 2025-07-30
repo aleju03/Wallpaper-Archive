@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Search, BarChart3, Images, Settings, Download, Database } from 'lucide-react'
+import { Search, BarChart3, Images, Settings, Download, Database, Copy } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import Gallery from './components/Gallery'
 import Statistics from './components/Statistics'
+import Duplicates from './components/Duplicates'
 import './App.css'
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
   const navigation = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'gallery', name: 'Gallery', icon: Images },
+    { id: 'duplicates', name: 'Duplicates', icon: Copy },
     { id: 'statistics', name: 'Statistics', icon: Database },
   ]
 
@@ -20,6 +22,8 @@ function App() {
         return <Dashboard />
       case 'gallery':
         return <Gallery />
+      case 'duplicates':
+        return <Duplicates />
       case 'statistics':
         return <Statistics />
       default:

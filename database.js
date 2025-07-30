@@ -20,12 +20,14 @@ class Database {
         local_path TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         tags TEXT,
+        perceptual_hash TEXT,
         UNIQUE(provider, folder, filename)
       );
 
       CREATE INDEX IF NOT EXISTS idx_provider ON wallpapers(provider);
       CREATE INDEX IF NOT EXISTS idx_folder ON wallpapers(folder);
       CREATE INDEX IF NOT EXISTS idx_filename ON wallpapers(filename);
+      CREATE INDEX IF NOT EXISTS idx_perceptual_hash ON wallpapers(perceptual_hash);
     `;
 
     this.db.exec(schema, (err) => {
@@ -38,11 +40,25 @@ class Database {
   }
 
   async insertWallpaper(wallpaper) {
+    // Auto-generate hash if image file exists and no hash provided
+    if (!wallpaper.perceptual_hash && wallpaper.local_path) {
+      try {
+        const fs = require('fs').promises;
+        await fs.access(wallpaper.local_path);
+        const { generatePerceptualHash } = require('./image-hash');
+        wallpaper.perceptual_hash = await generatePerceptualHash(wallpaper.local_path);
+        console.log(`Generated hash for new image: ${wallpaper.filename}`);
+      } catch (error) {
+        console.log(`Could not generate hash for ${wallpaper.filename}:`, error.message);
+        wallpaper.perceptual_hash = null;
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const sql = `
         INSERT OR REPLACE INTO wallpapers 
-        (filename, provider, folder, file_size, dimensions, download_url, local_path, tags)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (filename, provider, folder, file_size, dimensions, download_url, local_path, tags, perceptual_hash)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       this.db.run(sql, [
@@ -53,7 +69,8 @@ class Database {
         wallpaper.dimensions,
         wallpaper.download_url,
         wallpaper.local_path,
-        wallpaper.tags
+        wallpaper.tags,
+        wallpaper.perceptual_hash
       ], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
@@ -154,6 +171,42 @@ class Database {
       this.db.get(sql, (err, row) => {
         if (err) reject(err);
         else resolve(row);
+      });
+    });
+  }
+
+  async updatePerceptualHash(id, hash) {
+    return new Promise((resolve, reject) => {
+      this.db.run('UPDATE wallpapers SET perceptual_hash = ? WHERE id = ?', [hash, id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    });
+  }
+
+  async getAllWallpapersWithoutHashes() {
+    return new Promise((resolve, reject) => {
+      this.db.all('SELECT * FROM wallpapers WHERE perceptual_hash IS NULL OR perceptual_hash = ""', (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  }
+
+  async getAllWallpapersWithHashes() {
+    return new Promise((resolve, reject) => {
+      this.db.all('SELECT * FROM wallpapers WHERE perceptual_hash IS NOT NULL AND perceptual_hash != ""', (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  }
+
+  async deleteWallpaper(id) {
+    return new Promise((resolve, reject) => {
+      this.db.run('DELETE FROM wallpapers WHERE id = ?', [id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
       });
     });
   }
