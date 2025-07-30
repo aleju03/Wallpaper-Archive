@@ -36,7 +36,10 @@ function Gallery() {
   const fetchProviders = async () => {
     try {
       const response = await axios.get(`${API_BASE}/api/providers`)
-      setProviders(response.data.providers || [])
+      // Handle both old format (strings) and new format (objects)
+      const providersData = response.data.providers || []
+      const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
+      setProviders(providerNames)
       setFolders(response.data.folders || [])
     } catch (err) {
       console.error('Failed to fetch providers:', err)

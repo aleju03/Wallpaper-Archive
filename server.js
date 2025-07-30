@@ -141,8 +141,46 @@ fastify.get('/thumbnails/:filename', async (request, reply) => {
 fastify.get('/api/providers', async (request, reply) => {
   try {
     const wallpapers = await db.getWallpapers();
-    const providers = [...new Set(wallpapers.map(w => w.provider))];
     const folders = [...new Set(wallpapers.map(w => w.folder).filter(Boolean))];
+    
+    // Group wallpapers by provider and calculate stats
+    const providerStats = {};
+    wallpapers.forEach(wallpaper => {
+      if (!providerStats[wallpaper.provider]) {
+        providerStats[wallpaper.provider] = {
+          name: wallpaper.provider,
+          count: 0,
+          lastUpdated: null
+        };
+      }
+      providerStats[wallpaper.provider].count++;
+      
+      // Track the most recent wallpaper date for this provider
+      const wallpaperDate = new Date(wallpaper.created_at || wallpaper.downloaded_at);
+      if (!providerStats[wallpaper.provider].lastUpdated || 
+          wallpaperDate > providerStats[wallpaper.provider].lastUpdated) {
+        providerStats[wallpaper.provider].lastUpdated = wallpaperDate;
+      }
+    });
+    
+    // Convert to array and add status based on recent activity
+    const providers = Object.values(providerStats).map(provider => {
+      const daysSinceUpdate = provider.lastUpdated ? 
+        Math.floor((new Date() - provider.lastUpdated) / (1000 * 60 * 60 * 24)) : null;
+      
+      let status = 'unknown';
+      if (daysSinceUpdate !== null) {
+        if (daysSinceUpdate <= 1) status = 'active';
+        else if (daysSinceUpdate <= 7) status = 'recent';
+        else status = 'stale';
+      }
+      
+      return {
+        ...provider,
+        status,
+        daysSinceUpdate
+      };
+    });
     
     return {
       success: true,

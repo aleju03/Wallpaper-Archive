@@ -72,28 +72,57 @@ function Dashboard() {
 
       <div className="recent-activity">
         <div className="stat-card">
-          <h3>Active Providers</h3>
+          <h3>Provider Status</h3>
           <div style={{ marginTop: '16px' }}>
-            {providers.map((provider, index) => (
-              <div key={index} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '8px 0',
-                borderBottom: index < providers.length - 1 ? '1px solid #eee' : 'none'
-              }}>
-                <span style={{ fontSize: '14px', fontWeight: '500' }}>{provider}</span>
-                <span style={{ 
-                  fontSize: '12px', 
-                  color: '#27ae60',
-                  background: '#d5f4e6',
-                  padding: '2px 8px',
-                  borderRadius: '12px'
+            {providers.map((provider, index) => {
+              const getStatusColor = (status) => {
+                switch(status) {
+                  case 'active': return { color: '#27ae60', bg: '#d5f4e6' };
+                  case 'recent': return { color: '#f39c12', bg: '#fef9e7' };
+                  case 'stale': return { color: '#e74c3c', bg: '#fdebea' };
+                  default: return { color: '#95a5a6', bg: '#ecf0f1' };
+                }
+              };
+              
+              const statusColors = getStatusColor(provider.status);
+              const getStatusText = (status, daysSinceUpdate) => {
+                switch(status) {
+                  case 'active': return `${provider.count} wallpapers • Updated today`;
+                  case 'recent': return `${provider.count} wallpapers • ${daysSinceUpdate}d ago`;
+                  case 'stale': return `${provider.count} wallpapers • ${daysSinceUpdate}d ago`;
+                  default: return `${provider.count} wallpapers • Unknown`;
+                }
+              };
+              
+              return (
+                <div key={index} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '12px 0',
+                  borderBottom: index < providers.length - 1 ? '1px solid #eee' : 'none'
                 }}>
-                  Active
-                </span>
-              </div>
-            ))}
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>
+                      {provider.name}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {getStatusText(provider.status, provider.daysSinceUpdate)}
+                    </div>
+                  </div>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    color: statusColors.color,
+                    background: statusColors.bg,
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    textTransform: 'capitalize'
+                  }}>
+                    {provider.status}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
