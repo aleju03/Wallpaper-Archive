@@ -23,7 +23,7 @@ function Dashboard() {
         axios.get(`${API_BASE}/api/providers`)
       ])
       
-      setStats(statsResponse.data.stats)
+      setStats(statsResponse.data)
       setProviders(providersResponse.data.providers)
       setError(null)
     } catch (err) {
@@ -47,7 +47,7 @@ function Dashboard() {
       <div className="stats-grid">
         <div className="stat-card">
           <h3>Total Wallpapers</h3>
-          <div className="value">{stats?.total?.toLocaleString() || '0'}</div>
+          <div className="value">{stats?.total_wallpapers?.toLocaleString() || '0'}</div>
           <div className="change">Across all providers</div>
         </div>
         
@@ -65,8 +65,8 @@ function Dashboard() {
 
         <div className="stat-card">
           <h3>Database Size</h3>
-          <div className="value">{((stats?.total || 0) * 2.5).toFixed(1)}MB</div>
-          <div className="change">Estimated</div>
+          <div className="value">{((stats?.total_size || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB</div>
+          <div className="change">Total file size</div>
         </div>
       </div>
 

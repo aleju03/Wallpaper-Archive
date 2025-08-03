@@ -23,7 +23,7 @@ let duplicateCache = {
 duplicateCache.lastComputed = null;
 
 fastify.register(require('@fastify/cors'), {
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: ['*'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 });
@@ -67,29 +67,36 @@ fastify.get('/', async (request, reply) => {
 
 fastify.get('/api/wallpapers', async (request, reply) => {
   try {
-    const { provider, folder, search, limit, offset } = request.query;
+    const { provider, folder, search, limit = 50, page = 1 } = request.query;
     
     const filters = {};
     if (provider) filters.provider = provider;
     if (folder) filters.folder = folder;
     if (search) filters.search = search;
-    if (limit) filters.limit = parseInt(limit);
-    if (offset) filters.offset = parseInt(offset);
+    filters.limit = parseInt(limit);
+    filters.offset = (parseInt(page) - 1) * parseInt(limit);
 
     const [wallpapers, total] = await Promise.all([
       db.getWallpapers(filters),
       db.getWallpapersCount(filters)
     ]);
     
+    const currentPage = parseInt(page);
+    const totalPages = Math.ceil(total / parseInt(limit));
+    const hasNextPage = currentPage < totalPages;
+    
     return {
-      success: true,
-      count: wallpapers.length,
-      total: total,
       wallpapers: wallpapers.map(w => ({
         ...w,
+        filename: path.basename(w.local_path),
         image_url: `/images/${path.basename(w.local_path)}`,
         thumbnail_url: `/thumbnails/${path.basename(w.local_path, path.extname(w.local_path))}.jpg`
-      }))
+      })),
+      total: total,
+      page: currentPage,
+      limit: parseInt(limit),
+      hasNextPage: hasNextPage,
+      totalPages: totalPages
     };
   } catch (error) {
     reply.code(500);
@@ -123,7 +130,54 @@ fastify.get('/api/wallpapers/:id', async (request, reply) => {
 fastify.get('/api/stats', async (request, reply) => {
   try {
     const stats = await db.getStats();
-    return { success: true, stats };
+    
+    // Get all wallpapers to calculate additional stats
+    const wallpapers = await db.getWallpapers();
+    
+    // Calculate providers and folders
+    const providers = {};
+    const folders = {};
+    const dimensions = {};
+    const file_types = {};
+    let total_size = 0;
+    
+    wallpapers.forEach(w => {
+      // Providers
+      providers[w.provider] = (providers[w.provider] || 0) + 1;
+      
+      // Folders
+      if (w.folder) {
+        folders[w.folder] = (folders[w.folder] || 0) + 1;
+      }
+      
+      // Dimensions
+      if (w.dimensions) {
+        dimensions[w.dimensions] = (dimensions[w.dimensions] || 0) + 1;
+      }
+      
+      // File types (from filename extension)
+      if (w.local_path) {
+        const ext = path.extname(w.local_path).toLowerCase().replace('.', '');
+        if (ext) {
+          file_types[ext] = (file_types[ext] || 0) + 1;
+        }
+      }
+      
+      // Total size
+      if (w.file_size) {
+        total_size += parseInt(w.file_size) || 0;
+      }
+    });
+    
+    return {
+      total_wallpapers: wallpapers.length,
+      total_size,
+      providers,
+      folders,
+      dimensions,
+      file_types,
+      ...stats
+    };
   } catch (error) {
     reply.code(500);
     return { success: false, error: error.message };
