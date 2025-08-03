@@ -103,6 +103,11 @@ class Database {
         params.push(`%${filters.search}%`, `%${filters.search}%`);
       }
 
+      if (filters.resolution) {
+        sql += ' AND dimensions = ?';
+        params.push(filters.resolution);
+      }
+
       sql += ' ORDER BY created_at DESC';
 
       if (filters.limit) {
@@ -142,6 +147,11 @@ class Database {
         params.push(`%${filters.search}%`, `%${filters.search}%`);
       }
 
+      if (filters.resolution) {
+        sql += ' AND dimensions = ?';
+        params.push(filters.resolution);
+      }
+
       this.db.get(sql, params, (err, row) => {
         if (err) reject(err);
         else resolve(row.count);
@@ -171,6 +181,23 @@ class Database {
       this.db.get(sql, (err, row) => {
         if (err) reject(err);
         else resolve(row);
+      });
+    });
+  }
+
+  async getUniqueResolutions() {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT dimensions, COUNT(*) as count 
+        FROM wallpapers 
+        WHERE dimensions IS NOT NULL 
+        GROUP BY dimensions 
+        ORDER BY count DESC, dimensions ASC
+      `;
+      
+      this.db.all(sql, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
       });
     });
   }

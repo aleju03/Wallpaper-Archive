@@ -1,6 +1,6 @@
 import { Heart } from 'lucide-react'
 
-function Favorites({ onWallpaperClick }) {
+function Favorites() {
   return (
     <div className="browse">
       <div className="browse-controls">

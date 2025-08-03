@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import axios from 'axios'
 
 const API_BASE = 'http://localhost:3000'
@@ -7,31 +7,22 @@ const API_BASE = 'http://localhost:3000'
 function Browse({ onWallpaperClick }) {
   const [wallpapers, setWallpapers] = useState([])
   const [providers, setProviders] = useState([])
-  const [folders, setFolders] = useState([])
+  const [resolutions, setResolutions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProvider, setSelectedProvider] = useState('')
-  const [selectedFolder, setSelectedFolder] = useState('')
+  const [selectedResolution, setSelectedResolution] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const itemsPerPage = 24
 
-  useEffect(() => {
-    fetchProviders()
-    fetchWallpapers()
-  }, [])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, selectedProvider, selectedFolder])
-
-  useEffect(() => {
-    fetchWallpapers()
-  }, [currentPage, searchQuery, selectedProvider, selectedFolder])
+  // Custom dropdown state
+  const [resolutionDropdownOpen, setResolutionDropdownOpen] = useState(false)
+  const [resolutionSearch, setResolutionSearch] = useState('')
 
   const fetchProviders = async () => {
     try {
@@ -39,20 +30,30 @@ function Browse({ onWallpaperClick }) {
       const providersData = response.data.providers || []
       const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
       setProviders(providerNames)
-      setFolders(response.data.folders || [])
     } catch (err) {
       console.error('Failed to fetch providers:', err)
     }
   }
 
-  const fetchWallpapers = async () => {
+  const fetchResolutions = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/resolutions`)
+      setResolutions(response.data.resolutions || [])
+    } catch (err) {
+      console.error('Failed to fetch resolutions:', err)
+      // Fallback to empty array if API not available yet
+      setResolutions([])
+    }
+  }
+
+  const fetchWallpapers = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
       
       if (searchQuery) params.append('search', searchQuery)
       if (selectedProvider) params.append('provider', selectedProvider)
-      if (selectedFolder) params.append('folder', selectedFolder)
+      if (selectedResolution) params.append('resolution', selectedResolution)
       params.append('limit', itemsPerPage.toString())
       params.append('page', currentPage.toString())
       
@@ -67,7 +68,35 @@ function Browse({ onWallpaperClick }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution])
+
+  useEffect(() => {
+    fetchProviders()
+    fetchResolutions()
+    fetchWallpapers()
+  }, [fetchWallpapers])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, selectedProvider, selectedResolution])
+
+  useEffect(() => {
+    fetchWallpapers()
+  }, [currentPage, searchQuery, selectedProvider, selectedResolution, fetchWallpapers])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.resolution-dropdown-container')) {
+        setResolutionDropdownOpen(false)
+      }
+    }
+
+    if (resolutionDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [resolutionDropdownOpen])
 
   const formatFileSize = (bytes) => {
     if (!bytes) return 'Unknown'
@@ -78,6 +107,43 @@ function Browse({ onWallpaperClick }) {
   const handleWallpaperClick = (wallpaper) => {
     onWallpaperClick(wallpaper)
   }
+
+
+  // Get filtered and limited resolutions for the custom dropdown
+  const getFilteredResolutions = () => {
+    let filtered = resolutions
+
+    // Filter by search query
+    if (resolutionSearch) {
+      filtered = filtered.filter(res => 
+        res.dimensions.toLowerCase().includes(resolutionSearch.toLowerCase())
+      )
+    }
+
+    // If no search, show only the most popular ones (top 15)
+    if (!resolutionSearch) {
+      filtered = filtered.slice(0, 15)
+    } else {
+      // If searching, limit to top 20 results
+      filtered = filtered.slice(0, 20)
+    }
+
+    return filtered
+  }
+
+  const handleResolutionSelect = (resolution) => {
+    setSelectedResolution(resolution)
+    setResolutionDropdownOpen(false)
+    setResolutionSearch('')
+  }
+
+  const getSelectedResolutionDisplay = () => {
+    if (!selectedResolution) return 'all resolutions'
+    const res = resolutions.find(r => r.dimensions === selectedResolution)
+    return res ? `${res.dimensions} (${res.count.toLocaleString()})` : selectedResolution
+  }
+
+
 
   return (
     <div className="browse">
@@ -105,6 +171,55 @@ function Browse({ onWallpaperClick }) {
               ))}
             </select>
             
+            <div className="resolution-dropdown-container">
+              <button
+                className="resolution-dropdown-trigger"
+                onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
+              >
+                <span>{getSelectedResolutionDisplay()}</span>
+                <ChevronDown size={14} className={`dropdown-arrow ${resolutionDropdownOpen ? 'open' : ''}`} />
+              </button>
+              
+              {resolutionDropdownOpen && (
+                <div className="resolution-dropdown-menu">
+                  <div className="resolution-search">
+                    <Search size={14} className="search-icon" />
+                    <input
+                      type="text"
+                      placeholder="search resolutions..."
+                      value={resolutionSearch}
+                      onChange={(e) => setResolutionSearch(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div className="resolution-options">
+                    <div 
+                      className={`resolution-option ${selectedResolution === '' ? 'selected' : ''}`}
+                      onClick={() => handleResolutionSelect('')}
+                    >
+                      all resolutions
+                    </div>
+                    
+                    {getFilteredResolutions().map(resolution => (
+                      <div
+                        key={resolution.dimensions}
+                        className={`resolution-option ${selectedResolution === resolution.dimensions ? 'selected' : ''}`}
+                        onClick={() => handleResolutionSelect(resolution.dimensions)}
+                      >
+                        {resolution.dimensions} ({resolution.count.toLocaleString()})
+                      </div>
+                    ))}
+                    
+                    {!resolutionSearch && (
+                      <div className="resolution-option-hint">
+                        type to search all {resolutions.length} resolutions...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div className="results-info">
               {totalCount.toLocaleString()} wallpapers found
@@ -146,6 +261,7 @@ function Browse({ onWallpaperClick }) {
                   <div className="wallpaper-title">{wallpaper.filename}</div>
                   <div className="wallpaper-meta">
                     <span className="wallpaper-provider">{wallpaper.provider}</span>
+                    <span className="wallpaper-resolution">{wallpaper.dimensions || 'unknown'}</span>
                     <span className="wallpaper-size">{formatFileSize(wallpaper.file_size)}</span>
                   </div>
                 </div>

@@ -13,16 +13,14 @@ body {
 
 #root {
   width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
 }
 
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
-  overflow: hidden;
 }
 
 /* Header */
@@ -90,19 +88,13 @@ body {
 
 /* Main Content */
 .main-content {
-  flex: 1;
   background: #000000;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 /* Browse Component */
 .browse {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
 }
 
 .browse-controls {
@@ -170,16 +162,145 @@ body {
   border-color: #ffffff;
 }
 
+.filter-select optgroup {
+  background: #111111;
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+}
+
+.filter-select option {
+  background: #000000;
+  color: #ffffff;
+  padding: 4px 8px;
+}
+
+/* Custom Resolution Dropdown */
+.resolution-dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.resolution-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid #333333;
+  background: #000000;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 200px;
+  transition: all 0.1s;
+}
+
+.resolution-dropdown-trigger:hover {
+  border-color: #ffffff;
+  background: #111111;
+}
+
+.dropdown-arrow {
+  transition: transform 0.2s;
+  margin-left: 8px;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+.resolution-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #000000;
+  border: 1px solid #ffffff;
+  border-top: none;
+  max-height: 300px;
+  overflow: hidden;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.resolution-search {
+  position: relative;
+  padding: 8px;
+  border-bottom: 1px solid #333333;
+}
+
+.resolution-search input {
+  width: 100%;
+  padding: 8px 8px 8px 32px;
+  border: 1px solid #333333;
+  background: #111111;
+  color: #ffffff;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+}
+
+.resolution-search input:focus {
+  border-color: #ffffff;
+}
+
+.resolution-search input::placeholder {
+  color: #666666;
+}
+
+.resolution-search .search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666666;
+}
+
+.resolution-options {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.resolution-option {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.resolution-option:hover {
+  background: #111111;
+}
+
+.resolution-option.selected {
+  background: #ffffff;
+  color: #000000;
+}
+
+.resolution-option-hint {
+  padding: 8px 12px;
+  font-size: 10px;
+  color: #666666;
+  font-style: italic;
+  text-align: center;
+  border-top: 1px solid #333333;
+  background: #111111;
+}
+
 .results-info {
   font-size: 11px;
   color: #888888;
   margin-left: auto;
 }
 
+
 /* Wallpaper Grid */
 .wallpaper-grid-container {
-  flex: 1;
-  overflow-y: auto;
   padding: 20px;
 }
 
@@ -250,10 +371,21 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .wallpaper-provider {
   color: #888888;
+}
+
+.wallpaper-resolution {
+  color: #ffffff;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-size: 9px;
 }
 
 .wallpaper-size {
@@ -477,11 +609,8 @@ body {
   will-change: transform, border-color;
 }
 
-/* Smooth scrolling for containers */
-.wallpaper-grid-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
+/* Smooth scrolling for page */
+html {
   scroll-behavior: smooth;
 }
 

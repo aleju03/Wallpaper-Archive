@@ -65,14 +65,25 @@ fastify.get('/', async (request, reply) => {
   };
 });
 
+fastify.get('/api/resolutions', async (request, reply) => {
+  try {
+    const resolutions = await db.getUniqueResolutions();
+    return { resolutions };
+  } catch (error) {
+    console.error('Error fetching resolutions:', error);
+    return reply.status(500).send({ error: 'Failed to fetch resolutions' });
+  }
+});
+
 fastify.get('/api/wallpapers', async (request, reply) => {
   try {
-    const { provider, folder, search, limit = 50, page = 1 } = request.query;
+    const { provider, folder, search, resolution, limit = 50, page = 1 } = request.query;
     
     const filters = {};
     if (provider) filters.provider = provider;
     if (folder) filters.folder = folder;
     if (search) filters.search = search;
+    if (resolution) filters.resolution = resolution;
     filters.limit = parseInt(limit);
     filters.offset = (parseInt(page) - 1) * parseInt(limit);
 
