@@ -1,8 +1,19 @@
 import { X, Download } from 'lucide-react'
-
-const API_BASE = 'http://localhost:3000'
+import { API_BASE } from '../config'
+import { useEffect } from 'react'
 
 function WallpaperModal({ wallpaper, onClose }) {
+  useEffect(() => {
+    if (wallpaper) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [wallpaper]);
+
   if (!wallpaper) return null
 
   const formatFileSize = (bytes) => {

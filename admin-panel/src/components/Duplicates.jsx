@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Copy, Trash2, Eye, RefreshCw, Settings, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 import axios from 'axios'
+import { API_BASE } from '../config'
 
 // Simple path utility functions
 const path = {
@@ -19,8 +20,6 @@ const path = {
     return lastDot > 0 ? name.slice(lastDot) : ''
   }
 }
-
-const API_BASE = 'http://localhost:3000'
 
 const CACHE_KEY = 'wallpaper_duplicates_cache'
 const STATUS_CACHE_KEY = 'wallpaper_hash_status_cache'

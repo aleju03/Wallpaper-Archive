@@ -106,4 +106,4 @@ The downloader supports multiple wallpaper sources:
 - **Admin Panel**: http://localhost:5173
 - **User Frontend**: http://localhost:5174
 
-**Always assume the server is already running so you don't have to start it.**
+**Always assume the server is already running so you don't have to start it. Never restart or start the server, if needed, instead tell the user to do it themselves**

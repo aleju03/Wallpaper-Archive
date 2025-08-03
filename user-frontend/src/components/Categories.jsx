@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Folder, Image } from 'lucide-react'
 import axios from 'axios'
-
-const API_BASE = 'http://localhost:3000'
+import { API_BASE } from '../config'
 
 function Categories({ onWallpaperClick }) {
   const [providers, setProviders] = useState([])

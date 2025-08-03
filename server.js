@@ -474,6 +474,81 @@ fastify.get('/api/duplicates/status', async (request, reply) => {
   }
 });
 
+// Arena endpoints
+fastify.get('/api/arena/battle', async (request, reply) => {
+  try {
+    const wallpapers = await db.getRandomWallpaperPair();
+    
+    if (wallpapers.length < 2) {
+      reply.code(400);
+      return { success: false, error: 'Not enough wallpapers for battle' };
+    }
+
+    // Add image and thumbnail URLs
+    const wallpapersWithUrls = wallpapers.map(wallpaper => ({
+      ...wallpaper,
+      image_url: `/images/${wallpaper.filename}`,
+      thumbnail_url: `/thumbnails/${wallpaper.filename.replace(/\.[^/.]+$/, '.jpg')}`
+    }));
+
+    return {
+      success: true,
+      wallpapers: wallpapersWithUrls
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+fastify.post('/api/arena/vote', async (request, reply) => {
+  try {
+    const { winnerId, loserId } = request.body;
+    
+    if (!winnerId || !loserId) {
+      reply.code(400);
+      return { success: false, error: 'Winner and loser IDs are required' };
+    }
+
+    if (winnerId === loserId) {
+      reply.code(400);
+      return { success: false, error: 'Winner and loser cannot be the same' };
+    }
+
+    const result = await db.updateArenaResults(parseInt(winnerId), parseInt(loserId));
+    
+    return {
+      success: true,
+      result: result
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+fastify.get('/api/arena/leaderboard', async (request, reply) => {
+  try {
+    const limit = parseInt(request.query.limit) || 50;
+    const leaderboard = await db.getLeaderboard(limit);
+    
+    // Add image and thumbnail URLs
+    const leaderboardWithUrls = leaderboard.map(wallpaper => ({
+      ...wallpaper,
+      image_url: `/images/${wallpaper.filename}`,
+      thumbnail_url: `/thumbnails/${wallpaper.filename.replace(/\.[^/.]+$/, '.jpg')}`
+    }));
+
+    return {
+      success: true,
+      leaderboard: leaderboardWithUrls
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
 const start = async () => {
   try {
     await fs.mkdir('./thumbnails', { recursive: true });

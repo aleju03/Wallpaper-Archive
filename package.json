@@ -13,6 +13,7 @@
     "dev:frontend": "concurrently \"npm run dev:admin\" \"npm run dev:user\"",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:admin\" \"npm run dev:user\"",
     "dev:admin-only": "concurrently \"npm run dev:backend\" \"npm run dev:admin\"",
+
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, PieChart, TrendingUp } from 'lucide-react'
 import axios from 'axios'
-
-const API_BASE = 'http://localhost:3000'
+import { API_BASE } from '../config'
 
 function Statistics() {
   const [wallpapers, setWallpapers] = useState([])

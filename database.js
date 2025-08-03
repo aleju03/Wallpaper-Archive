@@ -8,7 +8,8 @@ class Database {
   }
 
   init() {
-    const schema = `
+    // First create the basic table structure
+    const basicSchema = `
       CREATE TABLE IF NOT EXISTS wallpapers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         filename TEXT NOT NULL,
@@ -30,11 +31,43 @@ class Database {
       CREATE INDEX IF NOT EXISTS idx_perceptual_hash ON wallpapers(perceptual_hash);
     `;
 
-    this.db.exec(schema, (err) => {
+    this.db.exec(basicSchema, (err) => {
       if (err) {
         console.error('Error creating database schema:', err);
       } else {
         console.log('Database initialized successfully');
+        // Run migrations for existing databases
+        this.runMigrations();
+      }
+    });
+  }
+
+  runMigrations() {
+    // Add ELO columns if they don't exist (one by one to handle errors gracefully)
+    this.db.run('ALTER TABLE wallpapers ADD COLUMN elo_rating INTEGER DEFAULT 1000', (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.error('Error adding elo_rating column:', err.message);
+      }
+    });
+
+    this.db.run('ALTER TABLE wallpapers ADD COLUMN battles_won INTEGER DEFAULT 0', (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.error('Error adding battles_won column:', err.message);
+      }
+    });
+
+    this.db.run('ALTER TABLE wallpapers ADD COLUMN battles_lost INTEGER DEFAULT 0', (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.error('Error adding battles_lost column:', err.message);
+      } else {
+        // After all columns are added, create the index
+        this.db.run('CREATE INDEX IF NOT EXISTS idx_elo_rating ON wallpapers(elo_rating)', (indexErr) => {
+          if (indexErr) {
+            console.error('Error creating ELO index:', indexErr.message);
+          } else {
+            console.log('ELO migration completed successfully');
+          }
+        });
       }
     });
   }
@@ -234,6 +267,106 @@ class Database {
       this.db.run('DELETE FROM wallpapers WHERE id = ?', [id], function(err) {
         if (err) reject(err);
         else resolve(this.changes);
+      });
+    });
+  }
+
+  // Arena-specific methods
+  async getRandomWallpaperPair() {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM wallpapers 
+        WHERE local_path IS NOT NULL AND local_path != ''
+        ORDER BY RANDOM() 
+        LIMIT 2
+      `;
+      
+      this.db.all(sql, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  }
+
+  async updateArenaResults(winnerId, loserId) {
+    return new Promise((resolve, reject) => {
+      // Get current ELO ratings
+      const getEloSql = 'SELECT id, COALESCE(elo_rating, 1000) as elo_rating FROM wallpapers WHERE id IN (?, ?)';
+      
+      this.db.all(getEloSql, [winnerId, loserId], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        const winner = rows.find(r => r.id === winnerId);
+        const loser = rows.find(r => r.id === loserId);
+
+        if (!winner || !loser) {
+          reject(new Error('Wallpapers not found'));
+          return;
+        }
+
+        // Calculate new ELO ratings
+        const K = 32; // ELO constant
+        const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo_rating - winner.elo_rating) / 400));
+        const expectedLoser = 1 - expectedWinner;
+
+        const newWinnerElo = Math.round(winner.elo_rating + K * (1 - expectedWinner));
+        const newLoserElo = Math.round(loser.elo_rating + K * (0 - expectedLoser));
+
+        // Update both wallpapers
+        const updateSql = `
+          UPDATE wallpapers 
+          SET elo_rating = ?, battles_won = COALESCE(battles_won, 0) + ?, battles_lost = COALESCE(battles_lost, 0) + ?
+          WHERE id = ?
+        `;
+
+        this.db.run(updateSql, [newWinnerElo, 1, 0, winnerId], (err1) => {
+          if (err1) {
+            reject(err1);
+            return;
+          }
+
+          this.db.run(updateSql, [newLoserElo, 0, 1, loserId], (err2) => {
+            if (err2) {
+              reject(err2);
+              return;
+            }
+
+            resolve({
+              winner: { id: winnerId, oldElo: winner.elo_rating, newElo: newWinnerElo },
+              loser: { id: loserId, oldElo: loser.elo_rating, newElo: newLoserElo }
+            });
+          });
+        });
+      });
+    });
+  }
+
+  async getLeaderboard(limit = 50) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          id, filename, provider, dimensions, 
+          COALESCE(elo_rating, 1000) as elo_rating, 
+          COALESCE(battles_won, 0) as battles_won, 
+          COALESCE(battles_lost, 0) as battles_lost, 
+          (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)) as total_battles,
+          CASE 
+            WHEN (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)) > 0 
+            THEN ROUND((COALESCE(battles_won, 0) * 100.0) / (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)), 1) 
+            ELSE 0 
+          END as win_rate
+        FROM wallpapers
+        WHERE local_path IS NOT NULL AND local_path != ''
+        ORDER BY COALESCE(elo_rating, 1000) DESC, total_battles DESC
+        LIMIT ?
+      `;
+      
+      this.db.all(sql, [limit], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
       });
     });
   }
