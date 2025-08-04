@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Zap, Crown, Swords } from 'lucide-react'
+import { Trophy, Zap, Crown, Swords, Eye, X, Download } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config'
 
@@ -10,6 +10,7 @@ function Arena() {
   const [battleCount, setBattleCount] = useState(0)
   const [battleStartTime, setBattleStartTime] = useState(null)
   const [imagesLoaded, setImagesLoaded] = useState({ left: false, right: false })
+  const [previewWallpaper, setPreviewWallpaper] = useState(null)
 
   const fetchBattle = async () => {
     try {
@@ -57,6 +58,27 @@ function Arena() {
   useEffect(() => {
     fetchBattle()
   }, [])
+
+  useEffect(() => {
+    if (previewWallpaper) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [previewWallpaper]);
+
+  const handlePreview = (wallpaper, event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setPreviewWallpaper(wallpaper)
+  }
+
+  const closePreview = () => {
+    setPreviewWallpaper(null)
+  }
 
 
   if (loading) {
@@ -152,6 +174,14 @@ function Arena() {
                 </span>
               )}
             </div>
+            <button 
+              className="preview-btn"
+              onClick={(e) => handlePreview(battlePair[0], e)}
+              title="Preview image"
+            >
+              <Eye size={14} />
+              preview
+            </button>
           </div>
 
           {!voting && imagesLoaded.left && imagesLoaded.right && (
@@ -223,6 +253,14 @@ function Arena() {
                 </span>
               )}
             </div>
+            <button 
+              className="preview-btn"
+              onClick={(e) => handlePreview(battlePair[1], e)}
+              title="Preview image"
+            >
+              <Eye size={14} />
+              preview
+            </button>
           </div>
 
           {!voting && imagesLoaded.left && imagesLoaded.right && (
@@ -248,6 +286,55 @@ function Arena() {
           skip battle
         </button>
       </div>
+
+      {previewWallpaper && (
+        <div className="modal-overlay" onClick={closePreview}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{previewWallpaper.filename}</div>
+              <button className="modal-close" onClick={closePreview}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-image-container">
+                <img
+                  src={`${API_BASE}${previewWallpaper.image_url}`}
+                  alt={previewWallpaper.filename}
+                  className="modal-image"
+                  onError={e => {
+                    e.target.src = `${API_BASE}${previewWallpaper.thumbnail_url}`
+                  }}
+                />
+              </div>
+              <div className="modal-sidebar">
+                <div className="wallpaper-info">
+                  <h3>details</h3>
+                  <p><strong>provider:</strong> {previewWallpaper.provider}</p>
+                  <p><strong>dimensions:</strong> {previewWallpaper.dimensions || 'unknown'}</p>
+                  <p><strong>elo rating:</strong> {previewWallpaper.elo_rating}</p>
+                  <p><strong>battles:</strong> {previewWallpaper.total_battles || (previewWallpaper.battles_won + previewWallpaper.battles_lost)}</p>
+                  <p><strong>record:</strong> {previewWallpaper.battles_won}W - {previewWallpaper.battles_lost}L</p>
+                  {(previewWallpaper.battles_won + previewWallpaper.battles_lost) > 0 && (
+                    <p><strong>win rate:</strong> {Math.round((previewWallpaper.battles_won / (previewWallpaper.battles_won + previewWallpaper.battles_lost)) * 100)}%</p>
+                  )}
+                </div>
+                <div className="download-section">
+                  <a
+                    className="download-btn"
+                    href={`${API_BASE}${previewWallpaper.image_url}`}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Download size={16} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

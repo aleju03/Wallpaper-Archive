@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config'
 
@@ -17,6 +17,14 @@ function Browse({ onWallpaperClick }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
+  const [gridColumns, setGridColumns] = useState(() => {
+    // Set default based on screen size
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth <= 360) return 2
+      if (window.innerWidth <= 768) return 3
+    }
+    return 4
+  }) // 2, 3, or 4 columns
   const itemsPerPage = 24
 
   // Custom dropdown state
@@ -83,6 +91,21 @@ function Browse({ onWallpaperClick }) {
     fetchWallpapers()
   }, [currentPage, searchQuery, selectedProvider, selectedResolution, fetchWallpapers])
 
+  // Handle responsive grid adjustments
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth
+      if (width <= 360 && gridColumns > 2) {
+        setGridColumns(2)
+      } else if (width <= 768 && gridColumns > 3) {
+        setGridColumns(3)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [gridColumns])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -140,6 +163,24 @@ function Browse({ onWallpaperClick }) {
     if (!selectedResolution) return 'all resolutions'
     const res = resolutions.find(r => r.dimensions === selectedResolution)
     return res ? `${res.dimensions} (${res.count.toLocaleString()})` : selectedResolution
+  }
+
+  const getGridClass = () => {
+    switch (gridColumns) {
+      case 2: return 'wallpaper-grid-2'
+      case 3: return 'wallpaper-grid-3'
+      case 4: return 'wallpaper-grid-4'
+      default: return 'wallpaper-grid'
+    }
+  }
+
+  const getGridIcon = (columns) => {
+    switch (columns) {
+      case 2: return <Grid2X2 size={14} />
+      case 3: return <Grid3X3 size={14} />
+      case 4: return <AlignJustify size={14} />
+      default: return <Grid3X3 size={14} />
+    }
   }
 
 
@@ -220,6 +261,30 @@ function Browse({ onWallpaperClick }) {
               )}
             </div>
             
+            <div className="grid-controls">
+              <button
+                className={`grid-control-btn ${gridColumns === 2 ? 'active' : ''}`}
+                onClick={() => setGridColumns(2)}
+                title="2 columns"
+              >
+                {getGridIcon(2)}
+              </button>
+              <button
+                className={`grid-control-btn ${gridColumns === 3 ? 'active' : ''}`}
+                onClick={() => setGridColumns(3)}
+                title="3 columns"  
+              >
+                {getGridIcon(3)}
+              </button>
+              <button
+                className={`grid-control-btn ${gridColumns === 4 ? 'active' : ''}`}
+                onClick={() => setGridColumns(4)}
+                title="4 columns"
+              >
+                {getGridIcon(4)}
+              </button>
+            </div>
+
             <div className="results-info">
               {totalCount.toLocaleString()} wallpapers found
             </div>
@@ -233,7 +298,7 @@ function Browse({ onWallpaperClick }) {
         {error && <div className="error">{error}</div>}
 
         {!loading && !error && (
-          <div className="wallpaper-grid">
+          <div className={getGridClass()}>
             {wallpapers.map((wallpaper) => (
               <div 
                 key={wallpaper.id} 
