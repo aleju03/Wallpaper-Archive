@@ -487,8 +487,8 @@ fastify.get('/api/arena/battle', async (request, reply) => {
     // Add image and thumbnail URLs
     const wallpapersWithUrls = wallpapers.map(wallpaper => ({
       ...wallpaper,
-      image_url: `/images/${wallpaper.filename}`,
-      thumbnail_url: `/thumbnails/${wallpaper.filename.replace(/\.[^/.]+$/, '.jpg')}`
+      image_url: `/images/${path.basename(wallpaper.local_path)}`,
+      thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
     }));
 
     return {
@@ -537,8 +537,8 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
     // Add image and thumbnail URLs
     const leaderboardWithUrls = leaderboard.map(wallpaper => ({
       ...wallpaper,
-      image_url: `/images/${wallpaper.filename}`,
-      thumbnail_url: `/thumbnails/${wallpaper.filename.replace(/\.[^/.]+$/, '.jpg')}`
+      image_url: `/images/${path.basename(wallpaper.local_path)}`,
+      thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
     }));
 
     return {

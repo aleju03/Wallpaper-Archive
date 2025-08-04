@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config'
 
@@ -18,10 +18,19 @@ function Gallery() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const itemsPerPage = 20
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, wallpaper: null })
+  const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
 
   useEffect(() => {
     fetchProviders()
     fetchWallpapers()
+    
+    // Add click listener to close context menu
+    const handleClickOutside = () => setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
   useEffect(() => {
@@ -54,7 +63,7 @@ function Gallery() {
       if (selectedProvider) params.append('provider', selectedProvider)
       if (selectedFolder) params.append('folder', selectedFolder)
       params.append('limit', itemsPerPage.toString())
-      params.append('offset', ((currentPage - 1) * itemsPerPage).toString())
+      params.append('page', currentPage.toString())
       
       const response = await axios.get(`${API_BASE}/api/wallpapers?${params}`)
       setWallpapers(response.data.wallpapers || [])
@@ -82,6 +91,50 @@ function Gallery() {
     if (wallpaper.folder) tags.push(wallpaper.folder)
     if (wallpaper.dimensions) tags.push(wallpaper.dimensions)
     return tags
+  }
+
+  const showConfirmModal = (title, message, onConfirm, confirmText = 'Delete', isDangerous = true) => {
+    setConfirmModal({ show: true, title, message, onConfirm, confirmText, isDangerous })
+  }
+
+  const hideConfirmModal = () => {
+    setConfirmModal({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
+  }
+
+  const deleteWallpaper = async (wallpaper, deleteFile = false) => {
+    const action = deleteFile ? 'delete the file and database entry' : 'delete from database'
+    const title = deleteFile ? 'Delete File & Database Entry' : 'Delete from Database'
+    
+    showConfirmModal(
+      title,
+      `Are you sure you want to ${action} for "${wallpaper.filename}"? This action cannot be undone.`,
+      async () => {
+        try {
+          const url = `${API_BASE}/api/wallpapers/${wallpaper.id}${deleteFile ? '?deleteFile=true' : ''}`
+          const response = await axios.delete(url)
+          
+          if (response.data.success) {
+            // Refresh the wallpapers list
+            fetchWallpapers()
+          } else {
+            console.error('Failed to delete wallpaper:', response.data.error)
+          }
+        } catch (err) {
+          console.error('Error deleting wallpaper:', err.message)
+        }
+        hideConfirmModal()
+      }
+    )
+  }
+
+  const handleRightClick = (e, wallpaper) => {
+    e.preventDefault()
+    setContextMenu({
+      show: true,
+      x: e.pageX,
+      y: e.pageY,
+      wallpaper
+    })
   }
 
   return (
@@ -134,7 +187,11 @@ function Gallery() {
         <>
           <div className="wallpaper-grid">
             {wallpapers.map((wallpaper) => (
-              <div key={wallpaper.id} className="wallpaper-card">
+              <div 
+                key={wallpaper.id} 
+                className="wallpaper-card"
+                onContextMenu={(e) => handleRightClick(e, wallpaper)}
+              >
                 <img
                   src={`${API_BASE}${wallpaper.thumbnail_url}`}
                   alt={wallpaper.filename}
@@ -228,6 +285,145 @@ function Gallery() {
             </div>
           )}
         </>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu.show && (
+        <div 
+          className="context-menu"
+          style={{
+            position: 'absolute',
+            left: contextMenu.x,
+            top: contextMenu.y,
+            background: '#1a1a1a',
+            border: '1px solid #333333',
+            borderRadius: '4px',
+            padding: '4px 0',
+            zIndex: 1000,
+            minWidth: '180px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              deleteWallpaper(contextMenu.wallpaper, false)
+              setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
+            }}
+            style={{
+              width: '100%',
+              padding: '8px 16px',
+              background: 'none',
+              border: 'none',
+              color: '#ffffff',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={(e) => e.target.style.background = '#333333'}
+            onMouseLeave={(e) => e.target.style.background = 'none'}
+          >
+            <Trash2 size={14} />
+            Delete from Database
+          </button>
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              deleteWallpaper(contextMenu.wallpaper, true)
+              setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
+            }}
+            style={{
+              width: '100%',
+              padding: '8px 16px',
+              background: 'none',
+              border: 'none',
+              color: '#e74c3c',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={(e) => e.target.style.background = '#333333'}
+            onMouseLeave={(e) => e.target.style.background = 'none'}
+          >
+            <Trash2 size={14} />
+            Delete File & Database Entry
+          </button>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="confirm-modal-overlay" onClick={hideConfirmModal} style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}>
+          <div className="confirm-modal" onClick={e => e.stopPropagation()} style={{
+            background: '#1a1a1a',
+            border: '1px solid #333333',
+            borderRadius: '6px',
+            padding: '24px',
+            minWidth: '400px',
+            maxWidth: '500px'
+          }}>
+            <div className="confirm-modal-header" style={{ marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>{confirmModal.title}</h3>
+            </div>
+            <div className="confirm-modal-body" style={{ marginBottom: '24px' }}>
+              <p style={{ margin: 0, color: '#cccccc', fontSize: '12px', lineHeight: '1.4' }}>{confirmModal.message}</p>
+            </div>
+            <div className="confirm-modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                className="confirm-modal-btn cancel"
+                onClick={hideConfirmModal}
+                style={{
+                  padding: '8px 16px',
+                  background: '#333333',
+                  color: '#ffffff',
+                  border: '1px solid #555555',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontFamily: 'inherit'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className={`confirm-modal-btn confirm ${confirmModal.isDangerous ? 'dangerous' : ''}`}
+                onClick={confirmModal.onConfirm}
+                style={{
+                  padding: '8px 16px',
+                  background: confirmModal.isDangerous ? '#e74c3c' : '#3498db',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontFamily: 'inherit'
+                }}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -108,8 +108,11 @@ function Arena() {
               src={`${API_BASE}${battlePair[0].image_url}`}
               alt={battlePair[0].filename}
               className="battle-image"
+              loading="eager"
               onError={(e) => {
-                e.target.src = `${API_BASE}${battlePair[0].thumbnail_url}`
+                // Hide broken images instead of using low-quality thumbnails
+                e.target.style.display = 'none'
+                console.warn(`Failed to load image: ${e.target.src}`)
               }}
             />
             
@@ -163,8 +166,11 @@ function Arena() {
               src={`${API_BASE}${battlePair[1].image_url}`}
               alt={battlePair[1].filename}
               className="battle-image"
+              loading="eager"
               onError={(e) => {
-                e.target.src = `${API_BASE}${battlePair[1].thumbnail_url}`
+                // Hide broken images instead of using low-quality thumbnails
+                e.target.style.display = 'none'
+                console.warn(`Failed to load image: ${e.target.src}`)
               }}
             />
             
