@@ -73,10 +73,9 @@ function WallpaperModal({ wallpaper, onClose }) {
             </div>
             
             <div className="download-section">
-              <h3>download</h3>
               <button className="download-btn" onClick={handleDownload}>
                 <Download size={16} />
-                download original
+                download
               </button>
             </div>
           </div>
