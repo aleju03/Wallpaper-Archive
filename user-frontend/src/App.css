@@ -1189,6 +1189,7 @@ html {
   gap: 8px;
   flex: 1;
   justify-content: space-between;
+  margin-bottom: 24px;
 }
 
 .wallpaper-name {
@@ -1298,7 +1299,7 @@ html {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 4px 8px;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid #555555;
   color: #cccccc;
@@ -1307,8 +1308,8 @@ html {
   transition: all 0.2s;
   text-transform: lowercase;
   font-family: inherit;
-  margin-top: 8px;
-  min-height: 32px;
+  margin-top: 0px;
+  min-height: 24px;
   width: 100%;
   position: relative;
   z-index: 10;
@@ -1830,10 +1831,10 @@ html {
   }
   
   .preview-btn {
-    padding: 8px 12px;
+    padding: 4px 8px;
     font-size: 10px;
-    margin-top: 8px;
-    min-height: 40px;
+    margin-top: 0px;
+    min-height: 24px;
     border-width: 2px;
   }
   
