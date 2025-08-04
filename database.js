@@ -288,7 +288,7 @@ class Database {
     });
   }
 
-  async updateArenaResults(winnerId, loserId) {
+  async updateArenaResults(winnerId, loserId, voteTimeMs = null) {
     return new Promise((resolve, reject) => {
       // Get current ELO ratings
       const getEloSql = 'SELECT id, COALESCE(elo_rating, 1000) as elo_rating FROM wallpapers WHERE id IN (?, ?)';
@@ -307,8 +307,25 @@ class Database {
           return;
         }
 
-        // Calculate new ELO ratings
-        const K = 32; // ELO constant
+        // Calculate dynamic K-factor based on vote time
+        let K = 32; // Base ELO constant
+        
+        if (voteTimeMs !== null) {
+          // Time-based K-factor adjustment:
+          // - Very fast votes (< 1s): K * 1.5 (clear preference)
+          // - Fast votes (1-3s): K * 1.2  
+          // - Normal votes (3-10s): K * 1.0
+          // - Slow votes (> 10s): K * 0.8 (uncertain decision)
+          if (voteTimeMs < 1000) {
+            K = Math.round(K * 1.5); // Very decisive
+          } else if (voteTimeMs < 3000) {
+            K = Math.round(K * 1.2); // Decisive
+          } else if (voteTimeMs > 10000) {
+            K = Math.round(K * 0.8); // Uncertain
+          }
+          // 3-10s range keeps default K value
+        }
+        
         const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo_rating - winner.elo_rating) / 400));
         const expectedLoser = 1 - expectedWinner;
 
@@ -344,8 +361,12 @@ class Database {
     });
   }
 
-  async getLeaderboard(limit = 50) {
+  async getLeaderboard(limit = 50, getBottom = false) {
     return new Promise((resolve, reject) => {
+      const orderBy = getBottom 
+        ? 'ORDER BY COALESCE(elo_rating, 1000) ASC, total_battles ASC'
+        : 'ORDER BY COALESCE(elo_rating, 1000) DESC, total_battles DESC';
+        
       const sql = `
         SELECT 
           id, filename, provider, dimensions, 
@@ -360,13 +381,42 @@ class Database {
           END as win_rate
         FROM wallpapers
         WHERE local_path IS NOT NULL AND local_path != ''
-        ORDER BY COALESCE(elo_rating, 1000) DESC, total_battles DESC
+        ${orderBy}
         LIMIT ?
       `;
       
       this.db.all(sql, [limit], (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
+      });
+    });
+  }
+
+  async getTotalWallpaperCount() {
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT COUNT(*) as count FROM wallpapers WHERE local_path IS NOT NULL AND local_path != ""';
+      
+      this.db.get(sql, (err, row) => {
+        if (err) reject(err);
+        else resolve(row.count);
+      });
+    });
+  }
+
+  async resetArenaStats() {
+    return new Promise((resolve, reject) => {
+      const resetSql = `
+        UPDATE wallpapers 
+        SET elo_rating = 1000, battles_won = 0, battles_lost = 0
+        WHERE 1=1
+      `;
+      
+      this.db.run(resetSql, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes);
+        }
       });
     });
   }

@@ -8,6 +8,7 @@ function Arena() {
   const [loading, setLoading] = useState(true)
   const [voting, setVoting] = useState(false)
   const [battleCount, setBattleCount] = useState(0)
+  const [battleStartTime, setBattleStartTime] = useState(null)
 
   const fetchBattle = async () => {
     try {
@@ -16,6 +17,7 @@ function Arena() {
       
       if (response.data.success) {
         setBattlePair(response.data.wallpapers)
+        setBattleStartTime(Date.now())
       }
     } catch (error) {
       console.error('Failed to fetch battle:', error)
@@ -27,9 +29,14 @@ function Arena() {
   const handleVote = async (winnerId, loserId) => {
     try {
       setVoting(true)
+      
+      // Calculate voting time
+      const voteTimeMs = battleStartTime ? Date.now() - battleStartTime : null
+      
       const response = await axios.post(`${API_BASE}/api/arena/vote`, {
         winnerId,
-        loserId
+        loserId,
+        voteTimeMs
       })
       if (response.data.success) {
         setBattleCount(prev => prev + 1)

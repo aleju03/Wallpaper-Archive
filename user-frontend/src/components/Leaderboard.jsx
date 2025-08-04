@@ -9,14 +9,17 @@ function Leaderboard() {
   const [error, setError] = useState(null)
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
   const [showBottom, setShowBottom] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = async (bottom = false) => {
     try {
       setLoading(true)
-      const response = await axios.get(`${API_BASE}/api/arena/leaderboard`)
+      const params = bottom ? '?bottom=true' : ''
+      const response = await axios.get(`${API_BASE}/api/arena/leaderboard${params}`)
       
       if (response.data.success) {
         setLeaderboard(response.data.leaderboard)
+        setTotalCount(response.data.totalCount)
         setError(null)
       } else {
         setError('Failed to load leaderboard')
@@ -74,7 +77,7 @@ function Leaderboard() {
     setSelectedWallpaper(null)
   }
 
-  const currentItems = showBottom ? leaderboard.slice(-50).reverse() : leaderboard.slice(0, 50)
+  const currentItems = leaderboard
 
   if (loading) {
     return (
@@ -106,17 +109,23 @@ function Leaderboard() {
           <div className="leaderboard-header-actions">
             <button 
               className={`toggle-btn nav-button ${!showBottom ? 'active' : ''}`}
-              onClick={() => setShowBottom(false)}
+              onClick={() => {
+                setShowBottom(false)
+                fetchLeaderboard(false)
+              }}
             >
               TOP 50
             </button>
             <button 
               className={`toggle-btn nav-button ${showBottom ? 'active' : ''}`}
-              onClick={() => setShowBottom(true)}
+              onClick={() => {
+                setShowBottom(true)
+                fetchLeaderboard(true)
+              }}
             >
               BOTTOM 50
             </button>
-            <button onClick={fetchLeaderboard} className="refresh-button compact" title="Refresh leaderboard">
+            <button onClick={() => fetchLeaderboard(showBottom)} className="refresh-button compact" title="Refresh leaderboard">
               <RefreshCw size={16} />
             </button>
           </div>
@@ -131,7 +140,7 @@ function Leaderboard() {
       ) : (
         <div className="leaderboard-list">
           {currentItems.map((wallpaper, index) => {
-            const rank = showBottom ? leaderboard.length - 49 + index : index + 1
+            const rank = showBottom ? (totalCount - leaderboard.length + index + 1) : (index + 1)
             
             return (
               <div 

@@ -503,7 +503,7 @@ fastify.get('/api/arena/battle', async (request, reply) => {
 
 fastify.post('/api/arena/vote', async (request, reply) => {
   try {
-    const { winnerId, loserId } = request.body;
+    const { winnerId, loserId, voteTimeMs } = request.body;
     
     if (!winnerId || !loserId) {
       reply.code(400);
@@ -515,7 +515,7 @@ fastify.post('/api/arena/vote', async (request, reply) => {
       return { success: false, error: 'Winner and loser cannot be the same' };
     }
 
-    const result = await db.updateArenaResults(parseInt(winnerId), parseInt(loserId));
+    const result = await db.updateArenaResults(parseInt(winnerId), parseInt(loserId), voteTimeMs);
     
     return {
       success: true,
@@ -530,7 +530,9 @@ fastify.post('/api/arena/vote', async (request, reply) => {
 fastify.get('/api/arena/leaderboard', async (request, reply) => {
   try {
     const limit = parseInt(request.query.limit) || 50;
-    const leaderboard = await db.getLeaderboard(limit);
+    const getBottom = request.query.bottom === 'true';
+    const leaderboard = await db.getLeaderboard(limit, getBottom);
+    const totalCount = await db.getTotalWallpaperCount();
     
     // Add image and thumbnail URLs
     const leaderboardWithUrls = leaderboard.map(wallpaper => ({
@@ -541,7 +543,22 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
 
     return {
       success: true,
-      leaderboard: leaderboardWithUrls
+      leaderboard: leaderboardWithUrls,
+      totalCount
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+fastify.post('/api/arena/reset', async (request, reply) => {
+  try {
+    const rowsAffected = await db.resetArenaStats();
+    
+    return {
+      success: true,
+      message: `Reset ELO ratings and battle stats for ${rowsAffected} wallpapers`
     };
   } catch (error) {
     reply.code(500);
