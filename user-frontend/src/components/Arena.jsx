@@ -184,12 +184,6 @@ function Arena() {
             </button>
           </div>
 
-          {!voting && imagesLoaded.left && imagesLoaded.right && (
-            <div className="click-hint">
-              click to choose
-            </div>
-          )}
-          
           {!imagesLoaded.left && !voting && (
             <div className="loading-hint">
               loading...
@@ -263,12 +257,6 @@ function Arena() {
             </button>
           </div>
 
-          {!voting && imagesLoaded.left && imagesLoaded.right && (
-            <div className="click-hint">
-              click to choose
-            </div>
-          )}
-          
           {!imagesLoaded.right && !voting && (
             <div className="loading-hint">
               loading...

@@ -91,20 +91,17 @@ function Browse({ onWallpaperClick }) {
     fetchWallpapers()
   }, [currentPage, searchQuery, selectedProvider, selectedResolution, fetchWallpapers])
 
-  // Handle responsive grid adjustments
+  // Handle responsive grid adjustments - only set initial value, don't override user choices
   useEffect(() => {
     const handleResize = () => {
+      // Only adjust on initial load or significant size changes, don't override user preference
       const width = window.innerWidth
-      if (width <= 360 && gridColumns > 2) {
-        setGridColumns(2)
-      } else if (width <= 768 && gridColumns > 3) {
-        setGridColumns(3)
-      }
+      // Remove automatic overrides - let users choose their preferred grid
     }
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [gridColumns])
+  }, [])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -265,6 +262,10 @@ function Browse({ onWallpaperClick }) {
               <button
                 className={`grid-control-btn ${gridColumns === 2 ? 'active' : ''}`}
                 onClick={() => setGridColumns(2)}
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  setGridColumns(2)
+                }}
                 title="2 columns"
               >
                 {getGridIcon(2)}
@@ -272,6 +273,10 @@ function Browse({ onWallpaperClick }) {
               <button
                 className={`grid-control-btn ${gridColumns === 3 ? 'active' : ''}`}
                 onClick={() => setGridColumns(3)}
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  setGridColumns(3)
+                }}
                 title="3 columns"  
               >
                 {getGridIcon(3)}
@@ -279,6 +284,10 @@ function Browse({ onWallpaperClick }) {
               <button
                 className={`grid-control-btn ${gridColumns === 4 ? 'active' : ''}`}
                 onClick={() => setGridColumns(4)}
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  setGridColumns(4)
+                }}
                 title="4 columns"
               >
                 {getGridIcon(4)}

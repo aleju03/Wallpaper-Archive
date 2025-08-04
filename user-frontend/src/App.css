@@ -787,24 +787,27 @@ html {
     overflow-y: auto;
   }
   
+  .wallpaper-grid,
+  .wallpaper-grid-2,
+  .wallpaper-grid-3,
+  .wallpaper-grid-4 {
+    gap: 12px;
+  }
+  
   .wallpaper-grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
   }
   
   .wallpaper-grid-2 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr) !important;
   }
   
   .wallpaper-grid-3 {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr) !important;
   }
   
   .wallpaper-grid-4 {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(4, 1fr) !important;
   }
   
   .filters {
@@ -817,10 +820,6 @@ html {
     justify-content: center;
     order: -1;
     margin-bottom: 8px;
-  }
-  
-  .grid-controls .grid-control-btn:nth-child(4) {
-    display: none;
   }
   
   .results-info {
@@ -840,24 +839,27 @@ html {
 }
 
 @media (max-width: 600px) {
+  .wallpaper-grid,
+  .wallpaper-grid-2,
+  .wallpaper-grid-3,
+  .wallpaper-grid-4 {
+    gap: 10px;
+  }
+  
   .wallpaper-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px;
   }
   
   .wallpaper-grid-2 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr) !important;
   }
   
   .wallpaper-grid-3 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(3, 1fr) !important;
   }
   
   .wallpaper-grid-4 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(4, 1fr) !important;
   }
 }
 
@@ -870,24 +872,27 @@ html {
     padding: 16px 12px;
   }
   
+  .wallpaper-grid,
+  .wallpaper-grid-2,
+  .wallpaper-grid-3,
+  .wallpaper-grid-4 {
+    gap: 8px;
+  }
+  
   .wallpaper-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 8px;
   }
   
   .wallpaper-grid-2 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(2, 1fr) !important;
   }
   
   .wallpaper-grid-3 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr) !important;
   }
   
   .wallpaper-grid-4 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(4, 1fr) !important;
   }
   
   .modal-overlay {
@@ -922,29 +927,27 @@ html {
 }
 
 @media (max-width: 360px) {
+  .wallpaper-grid,
+  .wallpaper-grid-2,
+  .wallpaper-grid-3,
+  .wallpaper-grid-4 {
+    gap: 6px;
+  }
+  
   .wallpaper-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 6px;
   }
   
   .wallpaper-grid-2 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    grid-template-columns: repeat(2, 1fr) !important;
   }
   
   .wallpaper-grid-3 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    grid-template-columns: repeat(3, 1fr) !important;
   }
   
   .wallpaper-grid-4 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-  }
-  
-  .grid-controls .grid-control-btn:nth-child(3),
-  .grid-controls .grid-control-btn:nth-child(4) {
-    display: none;
+    grid-template-columns: repeat(4, 1fr) !important;
   }
   
   .wallpaper-overlay {
