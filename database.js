@@ -369,7 +369,7 @@ class Database {
         
       const sql = `
         SELECT 
-          id, filename, provider, dimensions, 
+          id, filename, provider, dimensions, local_path,
           COALESCE(elo_rating, 1000) as elo_rating, 
           COALESCE(battles_won, 0) as battles_won, 
           COALESCE(battles_lost, 0) as battles_lost, 
@@ -380,14 +380,17 @@ class Database {
             ELSE 0 
           END as win_rate
         FROM wallpapers
-        WHERE local_path IS NOT NULL AND local_path != ''
+        WHERE local_path IS NOT NULL AND local_path != ""
         ${orderBy}
         LIMIT ?
       `;
       
       this.db.all(sql, [limit], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
       });
     });
   }

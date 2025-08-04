@@ -9,10 +9,12 @@ function Arena() {
   const [voting, setVoting] = useState(false)
   const [battleCount, setBattleCount] = useState(0)
   const [battleStartTime, setBattleStartTime] = useState(null)
+  const [imagesLoaded, setImagesLoaded] = useState({ left: false, right: false })
 
   const fetchBattle = async () => {
     try {
       setLoading(true)
+      setImagesLoaded({ left: false, right: false })
       const response = await axios.get(`${API_BASE}/api/arena/battle`)
       
       if (response.data.success) {
@@ -100,19 +102,26 @@ function Arena() {
       <div className="battle-arena">
         <div 
           key={battlePair[0].id} 
-          className={`battle-card ${voting ? 'voting' : ''}`}
-          onClick={() => !voting && handleVote(battlePair[0].id, battlePair[1].id)}
+          className={`battle-card ${voting ? 'voting' : ''} ${!imagesLoaded.left ? 'loading-image' : ''}`}
+          onClick={() => !voting && imagesLoaded.left && imagesLoaded.right && handleVote(battlePair[0].id, battlePair[1].id)}
         >
           <div className="battle-image-container">
+            {!imagesLoaded.left && (
+              <div className="image-loading-indicator">
+                <div className="loading-pulse"></div>
+              </div>
+            )}
             <img
               src={`${API_BASE}${battlePair[0].image_url}`}
               alt={battlePair[0].filename}
               className="battle-image"
               loading="eager"
+              onLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
               onError={(e) => {
                 // Hide broken images instead of using low-quality thumbnails
                 e.target.style.display = 'none'
                 console.warn(`Failed to load image: ${e.target.src}`)
+                setImagesLoaded(prev => ({ ...prev, left: true })) // Mark as "loaded" to prevent blocking
               }}
             />
             
@@ -145,9 +154,15 @@ function Arena() {
             </div>
           </div>
 
-          {!voting && (
+          {!voting && imagesLoaded.left && imagesLoaded.right && (
             <div className="click-hint">
               click to choose
+            </div>
+          )}
+          
+          {!imagesLoaded.left && !voting && (
+            <div className="loading-hint">
+              loading...
             </div>
           )}
         </div>
@@ -158,19 +173,26 @@ function Arena() {
         
         <div 
           key={battlePair[1].id} 
-          className={`battle-card ${voting ? 'voting' : ''}`}
-          onClick={() => !voting && handleVote(battlePair[1].id, battlePair[0].id)}
+          className={`battle-card ${voting ? 'voting' : ''} ${!imagesLoaded.right ? 'loading-image' : ''}`}
+          onClick={() => !voting && imagesLoaded.left && imagesLoaded.right && handleVote(battlePair[1].id, battlePair[0].id)}
         >
           <div className="battle-image-container">
+            {!imagesLoaded.right && (
+              <div className="image-loading-indicator">
+                <div className="loading-pulse"></div>
+              </div>
+            )}
             <img
               src={`${API_BASE}${battlePair[1].image_url}`}
               alt={battlePair[1].filename}
               className="battle-image"
               loading="eager"
+              onLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
               onError={(e) => {
                 // Hide broken images instead of using low-quality thumbnails
                 e.target.style.display = 'none'
                 console.warn(`Failed to load image: ${e.target.src}`)
+                setImagesLoaded(prev => ({ ...prev, right: true })) // Mark as "loaded" to prevent blocking
               }}
             />
             
@@ -203,9 +225,15 @@ function Arena() {
             </div>
           </div>
 
-          {!voting && (
+          {!voting && imagesLoaded.left && imagesLoaded.right && (
             <div className="click-hint">
               click to choose
+            </div>
+          )}
+          
+          {!imagesLoaded.right && !voting && (
+            <div className="loading-hint">
+              loading...
             </div>
           )}
         </div>

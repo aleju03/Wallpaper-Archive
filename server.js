@@ -484,7 +484,7 @@ fastify.get('/api/arena/battle', async (request, reply) => {
       return { success: false, error: 'Not enough wallpapers for battle' };
     }
 
-    // Add image and thumbnail URLs
+    // Add image and thumbnail URLs  
     const wallpapersWithUrls = wallpapers.map(wallpaper => ({
       ...wallpaper,
       image_url: `/images/${path.basename(wallpaper.local_path)}`,
@@ -533,6 +533,7 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
     const getBottom = request.query.bottom === 'true';
     const leaderboard = await db.getLeaderboard(limit, getBottom);
     const totalCount = await db.getTotalWallpaperCount();
+    
     
     // Add image and thumbnail URLs
     const leaderboardWithUrls = leaderboard.map(wallpaper => ({
