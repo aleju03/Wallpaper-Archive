@@ -8,7 +8,7 @@ const db = new Database();
 async function generateThumbnail(imagePath, thumbnailPath) {
   try {
     await sharp(imagePath)
-      .resize(300, 200, { fit: 'cover' })
+      .resize(600, 400, { fit: 'cover' })
       .jpeg({ quality: 80 })
       .toFile(thumbnailPath);
     return true;
