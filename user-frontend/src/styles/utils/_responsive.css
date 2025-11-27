@@ -184,12 +184,21 @@
   }
 
   /* Arena */
+  .arena {
+    padding: var(--spacing-md);
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+
   .battle-arena {
     grid-template-columns: 1fr;
     gap: var(--spacing-sm);
     position: relative;
     justify-items: center;
+    width: 100%;
     max-width: 100%;
+    margin: 0;
+    padding: 0;
   }
 
   .vs-divider {
@@ -213,9 +222,10 @@
 
   .battle-card {
     height: 38vh;
-    margin: 0;
+    margin: 0 auto;
     width: 100%;
     max-width: 100%;
+    box-sizing: border-box;
   }
 
   .battle-card:first-child {
