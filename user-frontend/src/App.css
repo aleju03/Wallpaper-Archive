@@ -1930,3 +1930,40 @@ html {
   justify-content: flex-end;
   margin: 16px 0 24px 0;
 }
+
+/* References Footer */
+.references {
+  padding: 20px;
+  text-align: center;
+  background: #000000;
+  border-top: 1px solid #333333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.references-label {
+  font-size: 10px;
+  color: #444;
+  text-transform: lowercase;
+}
+
+.provider-list {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.provider-link {
+  color: #666;
+  text-decoration: none;
+  font-size: 10px;
+  transition: color 0.2s ease;
+}
+
+.provider-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}

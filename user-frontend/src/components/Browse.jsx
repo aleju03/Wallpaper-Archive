@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config'
+import References from './References'
 
 function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -437,6 +438,8 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
           </button>
         </div>
       )}
+      
+      <References />
     </div>
   )
 }
