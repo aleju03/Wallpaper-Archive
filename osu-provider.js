@@ -228,7 +228,7 @@ class OsuLocalProvider {
       };
 
       await this.db.insertWallpaper(wallpaper);
-      console.log(`✓ Processed and saved ${newFilename}`);
+      console.log(` Processed and saved ${newFilename}`);
 
     } catch (error) {
       console.error(`Error processing ${imageInfo.hashName}:`, error);

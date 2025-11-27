@@ -86,7 +86,7 @@ function Duplicates() {
         const age = Date.now() - parseInt(cachedTime)
         
         if (age < CACHE_EXPIRY) {
-          console.log('📋 Loading cached duplicate results instantly')
+          console.log(' Loading cached duplicate results instantly')
           const data = JSON.parse(cached)
           
           // Add image URLs to cached data

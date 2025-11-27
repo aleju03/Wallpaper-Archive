@@ -36,11 +36,11 @@ async function updateDimensions() {
           );
         });
         
-        console.log(`✓ Updated ${wallpaper.filename}: ${dimensions}`);
+        console.log(` Updated ${wallpaper.filename}: ${dimensions}`);
         updated++;
         
       } catch (error) {
-        console.error(`✗ Error processing ${wallpaper.filename}:`, error.message);
+        console.error(` Error processing ${wallpaper.filename}:`, error.message);
         errors++;
       }
     }

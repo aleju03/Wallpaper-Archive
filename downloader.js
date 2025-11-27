@@ -159,7 +159,7 @@ class WallpaperDownloader {
       };
 
       await this.db.insertWallpaper(wallpaper);
-      console.log(`✓ Downloaded and saved ${file.name}`);
+      console.log(` Downloaded and saved ${file.name}`);
 
     } catch (error) {
       console.error(`Error downloading ${file.name}:`, error);

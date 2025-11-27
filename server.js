@@ -341,20 +341,20 @@ fastify.post('/api/duplicates/generate-hashes', async (request, reply) => {
 fastify.get('/api/duplicates', async (request, reply) => {
   try {
     const startTime = Date.now();
-    console.log('🔍 DUPLICATES REQUEST START');
+    console.log(' DUPLICATES REQUEST START');
     
     const { threshold = 10, force = false } = request.query;
     
     // Check if we can use cached results first (before expensive DB query)
     const cacheAge = duplicateCache.lastComputed ? Date.now() - duplicateCache.lastComputed : Infinity;
-    console.log(`⏰ Cache age: ${Math.round(cacheAge/1000)}s, threshold: ${threshold}, cached threshold: ${duplicateCache.threshold}, force: ${force}`);
+    console.log(` Cache age: ${Math.round(cacheAge/1000)}s, threshold: ${threshold}, cached threshold: ${duplicateCache.threshold}, force: ${force}`);
     
     // Use cache if it's less than 5 minutes old and same threshold, unless force refresh is requested
     if (duplicateCache.results && 
         duplicateCache.threshold === parseInt(threshold) &&
         cacheAge < 5 * 60 * 1000 &&
         force !== 'true') {
-      console.log('✅ Using cached duplicate results (fast path)');
+      console.log(' Using cached duplicate results (fast path)');
       
       const urlStartTime = Date.now();
       // Add image URLs to cached results
@@ -365,10 +365,10 @@ fastify.get('/api/duplicates', async (request, reply) => {
           thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
         }))
       );
-      console.log(`🔗 URL processing took: ${Date.now() - urlStartTime}ms`);
+      console.log(` URL processing took: ${Date.now() - urlStartTime}ms`);
       
       const totalTime = Date.now() - startTime;
-      console.log(`⚡ FAST PATH TOTAL TIME: ${totalTime}ms`);
+      console.log(` FAST PATH TOTAL TIME: ${totalTime}ms`);
       
       return {
         success: true,
@@ -379,11 +379,11 @@ fastify.get('/api/duplicates', async (request, reply) => {
     }
     
     // Only fetch all wallpapers if cache is invalid
-    console.log('❌ Cache miss - fetching wallpapers and computing duplicates...');
+    console.log(' Cache miss - fetching wallpapers and computing duplicates...');
     
     const dbStartTime = Date.now();
     const wallpapers = await db.getAllWallpapersWithHashes();
-    console.log(`📊 DB fetch took: ${Date.now() - dbStartTime}ms for ${wallpapers.length} wallpapers`);
+    console.log(` DB fetch took: ${Date.now() - dbStartTime}ms for ${wallpapers.length} wallpapers`);
     
     if (wallpapers.length === 0) {
       return {
@@ -394,9 +394,9 @@ fastify.get('/api/duplicates', async (request, reply) => {
     }
     
     const computeStartTime = Date.now();
-    console.log(`🧮 Computing duplicates for ${wallpapers.length} wallpapers with threshold ${threshold}...`);
+    console.log(` Computing duplicates for ${wallpapers.length} wallpapers with threshold ${threshold}...`);
     const duplicateGroups = findDuplicateGroups(wallpapers, parseInt(threshold));
-    console.log(`🧮 Duplicate computation took: ${Date.now() - computeStartTime}ms`);
+    console.log(` Duplicate computation took: ${Date.now() - computeStartTime}ms`);
     
     // Update cache
     duplicateCache = {
@@ -415,10 +415,10 @@ fastify.get('/api/duplicates', async (request, reply) => {
         thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
       }))
     );
-    console.log(`🔗 URL processing took: ${Date.now() - urlStartTime}ms`);
+    console.log(` URL processing took: ${Date.now() - urlStartTime}ms`);
     
     const totalTime = Date.now() - startTime;
-    console.log(`🐌 SLOW PATH TOTAL TIME: ${totalTime}ms`);
+    console.log(` SLOW PATH TOTAL TIME: ${totalTime}ms`);
     
     return {
       success: true,

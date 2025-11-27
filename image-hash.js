@@ -129,11 +129,11 @@ function findSimilarImages(targetHash, wallpapers, threshold = 10) {
  * @returns {Array} - Array of duplicate groups
  */
 function findDuplicateGroups(wallpapers, threshold = 10) {
-  console.log(`🚀 Starting hybrid duplicate detection for ${wallpapers.length} wallpapers...`);
+  console.log(` Starting hybrid duplicate detection for ${wallpapers.length} wallpapers...`);
   const startTime = Date.now();
   
   const validWallpapers = wallpapers.filter(w => w.perceptual_hash);
-  console.log(`📊 Processing ${validWallpapers.length} wallpapers with hashes...`);
+  console.log(` Processing ${validWallpapers.length} wallpapers with hashes...`);
   
   const duplicateGroups = [];
   const processed = new Set();
@@ -182,11 +182,11 @@ function findDuplicateGroups(wallpapers, threshold = 10) {
     }
     
     const chunkTime = Date.now() - chunkStartTime;
-    console.log(`📦 Processed chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(validWallpapers.length/CHUNK_SIZE)} in ${chunkTime}ms (${processedCount}/${validWallpapers.length} images)`);
+    console.log(` Processed chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(validWallpapers.length/CHUNK_SIZE)} in ${chunkTime}ms (${processedCount}/${validWallpapers.length} images)`);
   }
   
   const totalTime = Date.now() - startTime;
-  console.log(`✅ Hybrid duplicate detection completed in ${totalTime}ms (found ${duplicateGroups.length} groups)`);
+  console.log(` Hybrid duplicate detection completed in ${totalTime}ms (found ${duplicateGroups.length} groups)`);
   
   return duplicateGroups;
 }

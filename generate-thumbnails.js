@@ -24,9 +24,9 @@ async function generateAllThumbnails() {
     await fs.mkdir('./thumbnails', { recursive: true });
     
     // Get all wallpapers from database
-    console.log('🔍 Fetching wallpapers from database...');
+    console.log(' Fetching wallpapers from database...');
     const wallpapers = await db.getWallpapers();
-    console.log(`📊 Found ${wallpapers.length} wallpapers in database`);
+    console.log(` Found ${wallpapers.length} wallpapers in database`);
     
     let generated = 0;
     let skipped = 0;
@@ -37,7 +37,7 @@ async function generateAllThumbnails() {
       const progress = `[${i + 1}/${wallpapers.length}]`;
       
       if (!wallpaper.local_path) {
-        console.log(`${progress} ⚠️  No local path for: ${wallpaper.filename}`);
+        console.log(`${progress}   No local path for: ${wallpaper.filename}`);
         skipped++;
         continue;
       }
@@ -46,7 +46,7 @@ async function generateAllThumbnails() {
       try {
         await fs.access(wallpaper.local_path);
       } catch (error) {
-        console.log(`${progress} ❌ Original file not found: ${wallpaper.local_path}`);
+        console.log(`${progress}  Original file not found: ${wallpaper.local_path}`);
         errors++;
         continue;
       }
@@ -59,7 +59,7 @@ async function generateAllThumbnails() {
       // Check if thumbnail already exists
       try {
         await fs.access(thumbnailPath);
-        console.log(`${progress} ✅ Thumbnail exists: ${originalName}.jpg`);
+        console.log(`${progress}  Thumbnail exists: ${originalName}.jpg`);
         skipped++;
         continue;
       } catch (error) {
@@ -67,15 +67,15 @@ async function generateAllThumbnails() {
       }
       
       // Generate thumbnail
-      console.log(`${progress} 🔄 Generating: ${originalName}.jpg`);
+      console.log(`${progress}  Generating: ${originalName}.jpg`);
       const success = await generateThumbnail(wallpaper.local_path, thumbnailPath);
       
       if (success) {
         generated++;
-        console.log(`${progress} ✅ Generated: ${originalName}.jpg`);
+        console.log(`${progress}  Generated: ${originalName}.jpg`);
       } else {
         errors++;
-        console.log(`${progress} ❌ Failed: ${originalName}.jpg`);
+        console.log(`${progress}  Failed: ${originalName}.jpg`);
       }
       
       // Add small delay to prevent overwhelming the system
@@ -84,19 +84,19 @@ async function generateAllThumbnails() {
       }
     }
     
-    console.log('\\n📈 Summary:');
-    console.log(`✅ Generated: ${generated}`);
-    console.log(`⏭️  Skipped: ${skipped}`);
-    console.log(`❌ Errors: ${errors}`);
-    console.log(`📁 Total processed: ${wallpapers.length}`);
+    console.log('\\n Summary:');
+    console.log(` Generated: ${generated}`);
+    console.log(`  Skipped: ${skipped}`);
+    console.log(` Errors: ${errors}`);
+    console.log(` Total processed: ${wallpapers.length}`);
     
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    console.error(' Fatal error:', error);
   } finally {
     process.exit(0);
   }
 }
 
 // Run the script
-console.log('🚀 Starting thumbnail generation...');
+console.log(' Starting thumbnail generation...');
 generateAllThumbnails();
