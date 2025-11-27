@@ -1,5 +1,5 @@
-import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react'
-import { resolveAssetUrl } from '../config'
+import { X, Download, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
+import { resolveAssetUrl, API_BASE } from '../config'
 import { useEffect, useState } from 'react'
 
 function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }) {
@@ -40,13 +40,14 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     return mb > 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
   }
 
+  const handleViewFullscreen = () => {
+    window.open(resolveAssetUrl(wallpaper.image_url), '_blank')
+  }
+
   const handleDownload = () => {
-    const link = document.createElement('a')
-    link.href = resolveAssetUrl(wallpaper.image_url)
-    link.download = wallpaper.filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Use the server-side download proxy that sets Content-Disposition header
+    const downloadUrl = `${API_BASE}/api/download/${wallpaper.id}`
+    window.open(downloadUrl, '_blank')
   }
 
   const handleOverlayClick = (e) => {
@@ -103,9 +104,13 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
             </div>
             
             <div className="download-section">
+              <button className="download-btn fullscreen-btn" onClick={handleViewFullscreen}>
+                <Maximize2 size={16} />
+                view fullscreen
+              </button>
               <button className="download-btn" onClick={handleDownload}>
                 <Download size={16} />
-                download
+                direct download
               </button>
             </div>
           </div>

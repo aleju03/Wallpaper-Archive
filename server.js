@@ -180,6 +180,65 @@ fastify.get('/api/resolutions', async (request, reply) => {
   }
 });
 
+// Download proxy endpoint - forces browser to download the file
+fastify.get('/api/download/:id', async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const wallpaper = await db.getWallpaperById(id);
+    
+    if (!wallpaper) {
+      reply.code(404);
+      return { success: false, error: 'Wallpaper not found' };
+    }
+
+    const imageUrl = wallpaper.download_url;
+    const filename = wallpaper.filename;
+
+    // Use https/http module for more reliable fetching
+    const https = require('https');
+    const http = require('http');
+    const url = new URL(imageUrl);
+    const client = url.protocol === 'https:' ? https : http;
+
+    return new Promise((resolve, reject) => {
+      client.get(imageUrl, (response) => {
+        if (response.statusCode !== 200) {
+          reply.code(502);
+          resolve({ success: false, error: 'Failed to fetch image from source' });
+          return;
+        }
+
+        const chunks = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          const contentType = response.headers['content-type'] || 'application/octet-stream';
+
+          reply.header('Content-Type', contentType);
+          reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+          reply.header('Content-Length', buffer.length);
+          reply.header('Cache-Control', 'public, max-age=86400');
+          
+          resolve(reply.send(buffer));
+        });
+        response.on('error', (err) => {
+          console.error('Download stream error:', err);
+          reply.code(500);
+          resolve({ success: false, error: 'Download stream failed' });
+        });
+      }).on('error', (err) => {
+        console.error('Download request error:', err);
+        reply.code(500);
+        resolve({ success: false, error: 'Download request failed' });
+      });
+    });
+  } catch (error) {
+    console.error('Download proxy error:', error);
+    reply.code(500);
+    return { success: false, error: 'Download failed' };
+  }
+});
+
 fastify.get('/api/wallpapers', async (request, reply) => {
   try {
     const { provider, folder, search, resolution, limit = 50, page = 1 } = request.query;
