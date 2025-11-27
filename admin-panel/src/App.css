@@ -85,9 +85,6 @@ body {
   border-left: 4px solid #f39c12;
 }
 
-.duplicate-groups {
-  space-y: 20px;
-}
 
 .duplicate-group {
   background: #111;
