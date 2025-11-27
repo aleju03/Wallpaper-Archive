@@ -74,7 +74,7 @@ body {
   font-family: inherit;
 }
 
-.nav-button:hover {
+.nav-button:not(.active):hover {
   color: #ffffff;
   border-color: #ffffff;
   background: #111111;
@@ -1783,7 +1783,6 @@ html {
 }
 
 .toggle-btn {
-  @extend .nav-button;
   padding: 4px 12px;
   font-size: 12px;
   border-radius: 4px;
