@@ -17,6 +17,41 @@
   padding: var(--spacing-xl);
 }
 
+/* Modal Navigation Arrows */
+.modal-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary);
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  z-index: calc(var(--z-modal) + 1);
+  transition: background 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-nav:hover {
+  background: rgba(30, 30, 30, 0.9);
+  border-color: var(--color-text-primary);
+}
+
+.modal-nav:focus {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+.modal-nav-prev {
+  left: var(--spacing-lg);
+}
+
+.modal-nav-next {
+  right: var(--spacing-lg);
+}
+
 /* Modal Content */
 .modal-content {
   position: relative;

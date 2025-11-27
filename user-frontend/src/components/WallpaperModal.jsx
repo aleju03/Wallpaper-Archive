@@ -1,8 +1,8 @@
-import { X, Download } from 'lucide-react'
+import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import { resolveAssetUrl } from '../config'
 import { useEffect, useState } from 'react'
 
-function WallpaperModal({ wallpaper, onClose }) {
+function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }) {
   const [imageLoaded, setImageLoaded] = useState(false)
 
   useEffect(() => {
@@ -16,6 +16,21 @@ function WallpaperModal({ wallpaper, onClose }) {
       document.body.style.overflow = '';
     };
   }, [wallpaper]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft' && hasPrev) {
+        onPrev()
+      } else if (e.key === 'ArrowRight' && hasNext) {
+        onNext()
+      } else if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [hasPrev, hasNext, onPrev, onNext, onClose]);
 
   if (!wallpaper) return null
 
@@ -42,6 +57,16 @@ function WallpaperModal({ wallpaper, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
+      {hasPrev && (
+        <button className="modal-nav modal-nav-prev" onClick={onPrev} aria-label="Previous wallpaper">
+          <ChevronLeft size={32} />
+        </button>
+      )}
+      {hasNext && (
+        <button className="modal-nav modal-nav-next" onClick={onNext} aria-label="Next wallpaper">
+          <ChevronRight size={32} />
+        </button>
+      )}
       <div className="modal-content">
         <div className="modal-header">
           <div className="modal-title">wallpaper preview</div>

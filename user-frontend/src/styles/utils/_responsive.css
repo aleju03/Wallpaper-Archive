@@ -112,6 +112,15 @@
   }
 
   /* Modal */
+  .modal-nav {
+    padding: var(--spacing-md);
+  }
+
+  .modal-nav svg {
+    width: 24px;
+    height: 24px;
+  }
+
   .modal-content {
     flex-direction: column;
     max-width: 95vw;
@@ -371,6 +380,23 @@
 
   .modal-overlay {
     padding: var(--spacing-sm);
+  }
+
+  .modal-nav {
+    padding: var(--spacing-sm);
+  }
+
+  .modal-nav-prev {
+    left: var(--spacing-xs);
+  }
+
+  .modal-nav-next {
+    right: var(--spacing-xs);
+  }
+
+  .modal-nav svg {
+    width: 20px;
+    height: 20px;
   }
 
   .modal-sidebar {

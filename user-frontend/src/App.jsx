@@ -116,7 +116,21 @@ function App() {
       {selectedWallpaper && (
         <WallpaperModal 
           wallpaper={selectedWallpaper} 
-          onClose={() => setSelectedWallpaper(null)} 
+          onClose={() => setSelectedWallpaper(null)}
+          onPrev={() => {
+            const currentIndex = browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id)
+            if (currentIndex > 0) {
+              setSelectedWallpaper(browseState.wallpapers[currentIndex - 1])
+            }
+          }}
+          onNext={() => {
+            const currentIndex = browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id)
+            if (currentIndex < browseState.wallpapers.length - 1) {
+              setSelectedWallpaper(browseState.wallpapers[currentIndex + 1])
+            }
+          }}
+          hasPrev={browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id) > 0}
+          hasNext={browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id) < browseState.wallpapers.length - 1}
         />
       )}
     </div>
