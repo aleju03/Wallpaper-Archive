@@ -64,8 +64,49 @@
     align-items: stretch;
   }
 
+  .app-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+  }
+
+  .app-nav::-webkit-scrollbar {
+    display: none;
+  }
+
   .app-header {
     padding: var(--spacing-md) var(--spacing-lg);
+    overflow: hidden;
+  }
+
+  /* Filters - stack provider and resolution on same row */
+  .filters {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .filter-select,
+  .resolution-dropdown-container {
+    flex: 1 1 45%;
+    min-width: 140px;
+  }
+
+  .filter-select,
+  .resolution-dropdown-trigger {
+    width: 100%;
+  }
+
+  .grid-controls {
+    flex: 0 0 auto;
+  }
+
+  .results-info {
+    flex: 1 1 100%;
+    text-align: left;
+    margin-left: 0;
+    order: 3;
   }
 
   /* Modal */
@@ -73,10 +114,12 @@
     flex-direction: column;
     max-width: 95vw;
     max-height: 95vh;
+    overflow: hidden;
   }
 
   .modal-body {
     flex-direction: column;
+    overflow: hidden;
   }
 
   .modal-sidebar {
@@ -85,11 +128,23 @@
     border-top: 1px solid var(--color-border-primary);
     max-height: 40vh;
     overflow-y: auto;
+    flex-shrink: 0;
   }
 
   .modal-image-container {
-    aspect-ratio: 4 / 3;
-    min-height: 300px;
+    aspect-ratio: unset;
+    min-height: 200px;
+    max-height: 50vh;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .modal-image {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
   }
 
   /* Grid */
@@ -107,20 +162,6 @@
 
   .wallpaper-grid-4 {
     grid-template-columns: repeat(4, 1fr);
-  }
-
-  /* Filters */
-  .filters {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--spacing-sm);
-  }
-
-  .filter-select,
-  .resolution-dropdown-trigger {
-    width: auto;
-    min-width: 0;
-    flex: 1;
   }
 
   .grid-controls {

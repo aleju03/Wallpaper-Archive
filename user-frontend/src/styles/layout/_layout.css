@@ -6,10 +6,13 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Main Content */
 .main-content {
   background: var(--color-bg-primary);
+  overflow-x: hidden;
 }
