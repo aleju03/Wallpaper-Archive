@@ -1,4 +1,4 @@
-# Main Frontend Development Plan for Wallpaper Engine
+# Main Frontend Development Plan for Wallpaper Archive
 
 ## Overview
 Create a user-facing frontend that serves wallpapers to end users, following the same aesthetic as the admin panel with a dark, minimalistic design using SF Mono font.

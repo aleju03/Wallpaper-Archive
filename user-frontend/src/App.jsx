@@ -28,7 +28,7 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="header-title">
-            <h1>Wallpaper Engine</h1>
+            <h1>Wallpaper Archive</h1>
             <p>discover and download wallpapers</p>
           </div>
           

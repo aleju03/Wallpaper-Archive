@@ -35,7 +35,7 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h1>Wallpaper Engine</h1>
+          <h1>Wallpaper Archive</h1>
           <p>Admin Panel</p>
         </div>
         

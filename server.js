@@ -54,7 +54,7 @@ async function generateThumbnail(imagePath, thumbnailPath) {
 
 fastify.get('/', async (request, reply) => {
   return { 
-    message: 'Wallpaper Engine API',
+    message: 'Wallpaper Archive API',
     endpoints: {
       '/api/wallpapers': 'Get all wallpapers with optional filters',
       '/api/wallpapers/:id': 'Get specific wallpaper',
