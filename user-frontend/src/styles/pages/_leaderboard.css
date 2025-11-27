@@ -1,0 +1,204 @@
+/* ==========================================================================
+   Leaderboard Page Styles
+   ========================================================================== */
+
+.leaderboard {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xl);
+  max-width: var(--grid-max-width);
+  margin: 0 auto;
+  min-height: calc(100vh - 80px);
+}
+
+/* Leaderboard Header */
+.leaderboard-header {
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.leaderboard-header .header-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-align: center;
+}
+
+.leaderboard-header h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.leaderboard-header p {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+}
+
+.leaderboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-left: auto;
+}
+
+/* Leaderboard List */
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Leaderboard Item */
+.leaderboard-item {
+  display: grid;
+  grid-template-columns: auto 80px minmax(0, 1fr) auto;
+  gap: var(--spacing-lg);
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  padding: var(--spacing-lg);
+  transition: all var(--transition-normal) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.leaderboard-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.05;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.leaderboard-item > * {
+  position: relative;
+  z-index: 1;
+}
+
+.leaderboard-item:hover {
+  border-color: var(--color-border-secondary);
+  background: var(--color-bg-hover);
+}
+
+/* Top 3 Rank Styles */
+.leaderboard-item.rank-1 {
+  border-color: var(--color-accent-gold);
+  background: linear-gradient(135deg, var(--color-bg-secondary), #1a1a0f);
+}
+
+.leaderboard-item.rank-2 {
+  border-color: var(--color-accent-silver);
+  background: linear-gradient(135deg, var(--color-bg-secondary), var(--color-bg-hover));
+}
+
+.leaderboard-item.rank-3 {
+  border-color: var(--color-accent-bronze);
+  background: linear-gradient(135deg, var(--color-bg-secondary), #1a1511);
+}
+
+/* Rank Section */
+.rank-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 60px;
+}
+
+.rank-number {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rank-text {
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  min-width: 24px;
+}
+
+/* Rank Icons */
+.rank-icon.gold {
+  color: var(--color-accent-gold);
+}
+
+.rank-icon.silver {
+  color: var(--color-accent-silver);
+}
+
+.rank-icon.bronze {
+  color: var(--color-accent-bronze);
+}
+
+.rank-icon.default {
+  color: var(--color-text-muted);
+}
+
+/* Leaderboard Item Wallpaper Name */
+.leaderboard-item .wallpaper-name {
+  font-size: var(--font-size-md);
+  font-weight: bold;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Battle Stats */
+.battle-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-lg);
+  text-align: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: var(--font-size-md);
+  font-weight: bold;
+  color: var(--color-text-primary);
+}
+
+.stat-value.wins {
+  color: var(--color-accent-success);
+}
+
+.stat-value.losses {
+  color: var(--color-accent-error);
+}
+
+.stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Elo Rating */
+.elo-rating .stat-value {
+  color: var(--color-accent-gold);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}

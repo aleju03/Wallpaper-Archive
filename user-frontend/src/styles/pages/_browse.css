@@ -1,0 +1,22 @@
+/* ==========================================================================
+   Browse Page Styles
+   ========================================================================== */
+
+.browse {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Browse Controls */
+.browse-controls {
+  background: var(--color-bg-primary);
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border-primary);
+  flex-shrink: 0;
+}
+
+/* Search Section */
+.search-section {
+  max-width: var(--grid-max-width);
+  margin: 0 auto;
+}

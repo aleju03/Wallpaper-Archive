@@ -1,0 +1,99 @@
+/* ==========================================================================
+   Form Components
+   ========================================================================== */
+
+/* Search Bar */
+.search-bar {
+  position: relative;
+  margin-bottom: var(--spacing-lg);
+}
+
+.search-bar input {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 40px;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  font-family: inherit;
+  outline: none;
+}
+
+.search-bar input:focus {
+  border-color: var(--color-text-primary);
+}
+
+.search-bar input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+}
+
+/* Filter Select */
+.filter-select {
+  padding: var(--spacing-sm) 32px var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  outline: none;
+  width: 220px;
+  height: 34px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.filter-select:hover,
+.filter-select:focus {
+  border-color: var(--color-text-primary);
+}
+
+.filter-select optgroup {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-weight: bold;
+  font-size: var(--font-size-base);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.filter-select option {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+/* Filters Container */
+.filters {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Grid Controls */
+.grid-controls {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+/* Results Info */
+.results-info {
+  font-size: var(--font-size-base);
+  color: var(--color-text-tertiary);
+  margin-left: auto;
+}

@@ -1,0 +1,422 @@
+/* ==========================================================================
+   Responsive Styles
+   Organized by breakpoint from largest to smallest
+   ========================================================================== */
+
+/* ==========================================================================
+   Desktop Large (< 1400px)
+   ========================================================================== */
+@media (max-width: 1400px) {
+  :root {
+    --grid-max-width: 1200px;
+  }
+
+  .header-content,
+  .search-section {
+    max-width: 1200px;
+  }
+}
+
+/* ==========================================================================
+   Desktop Small (< 1200px)
+   ========================================================================== */
+@media (max-width: 1200px) {
+  :root {
+    --grid-gap: 16px;
+    --grid-max-width: 1000px;
+  }
+
+  .wallpaper-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+
+  .header-content,
+  .search-section {
+    max-width: 1000px;
+  }
+}
+
+/* ==========================================================================
+   Tablet Large (< 992px)
+   ========================================================================== */
+@media (max-width: 992px) {
+  .wallpaper-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+
+  .wallpaper-grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Tablet (< 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  :root {
+    --grid-gap: 12px;
+  }
+
+  /* Header */
+  .header-content {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: stretch;
+  }
+
+  .app-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  /* Modal */
+  .modal-content {
+    flex-direction: column;
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .modal-body {
+    flex-direction: column;
+  }
+
+  .modal-sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--color-border-primary);
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  .modal-image-container {
+    aspect-ratio: 4 / 3;
+    min-height: 300px;
+  }
+
+  /* Grid */
+  .wallpaper-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  .wallpaper-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wallpaper-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .wallpaper-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Filters */
+  .filters {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .filter-select,
+  .resolution-dropdown-trigger {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .grid-controls {
+    justify-content: center;
+    order: -1;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .results-info {
+    margin-left: 0;
+    text-align: center;
+    order: -1;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .browse-controls {
+    padding: var(--spacing-lg);
+  }
+
+  /* Arena */
+  .battle-arena {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+    position: relative;
+  }
+
+  .vs-divider {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    margin: 0;
+    width: 48px;
+    height: 48px;
+    background: var(--color-bg-primary);
+    border: 2px solid var(--color-border-primary);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .battle-card {
+    height: 38vh;
+    border: none;
+    margin: 0;
+    border-radius: var(--spacing-sm);
+  }
+
+  .battle-card:first-child {
+    order: 0;
+  }
+
+  .battle-card:last-child {
+    order: 2;
+  }
+
+  .battle-image-container {
+    height: 100%;
+    aspect-ratio: unset;
+    border-radius: var(--spacing-sm);
+  }
+
+  .battle-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.7) 50%, transparent);
+    padding: 40px var(--spacing-lg) var(--spacing-lg);
+    margin: 0;
+    justify-content: flex-end;
+    pointer-events: none;
+    border-radius: 0 0 var(--spacing-sm) var(--spacing-sm);
+  }
+
+  .wallpaper-name {
+    font-size: var(--font-size-lg);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .wallpaper-details {
+    color: var(--color-text-secondary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .preview-btn {
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(4px);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--color-text-primary);
+    width: fit-content;
+    margin-top: var(--spacing-sm);
+    padding: 6px var(--spacing-md);
+  }
+
+  /* Leaderboard */
+  .leaderboard-item {
+    grid-template-columns: auto minmax(160px, 180px) 1fr;
+    gap: var(--spacing-lg);
+    text-align: left;
+    padding: var(--spacing-xl) var(--spacing-lg);
+  }
+
+  .wallpaper-preview {
+    width: 160px;
+    height: 100px;
+  }
+
+  .battle-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+    text-align: center;
+  }
+
+  .stat-item {
+    gap: var(--spacing-xs);
+  }
+
+  .stat-value {
+    font-size: var(--font-size-base);
+  }
+
+  .stat-label {
+    font-size: 8px;
+  }
+}
+
+/* ==========================================================================
+   Mobile Large (< 600px)
+   ========================================================================== */
+@media (max-width: 600px) {
+  :root {
+    --grid-gap: 10px;
+  }
+
+  .wallpaper-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  .wallpaper-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wallpaper-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .wallpaper-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Mobile (< 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  :root {
+    --grid-gap: 8px;
+  }
+
+  .browse-controls {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .wallpaper-grid-container {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .wallpaper-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .wallpaper-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wallpaper-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .wallpaper-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .modal-overlay {
+    padding: var(--spacing-sm);
+  }
+
+  .modal-sidebar {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .app-header {
+    padding: var(--spacing-md);
+  }
+
+  .header-title h1 {
+    font-size: var(--font-size-lg);
+  }
+
+  .header-title p {
+    font-size: var(--font-size-sm);
+  }
+
+  .search-bar input {
+    padding: 10px 10px 10px 36px;
+    font-size: var(--font-size-md);
+  }
+
+  /* Arena & Leaderboard */
+  .arena,
+  .leaderboard {
+    padding: var(--spacing-md);
+  }
+
+  .battle-card {
+    margin: 0;
+  }
+
+  .vs-divider {
+    font-size: var(--font-size-xl);
+    margin-top: 0;
+  }
+
+  .preview-btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    margin-top: 0;
+    min-height: 24px;
+    border-width: 2px;
+  }
+
+  .leaderboard-item {
+    grid-template-columns: auto minmax(100px, 120px) 1fr;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .wallpaper-preview {
+    width: 100px;
+    height: 62px;
+  }
+
+  .rank-text {
+    font-size: var(--font-size-md);
+  }
+
+  .wallpaper-name {
+    font-size: var(--font-size-base);
+  }
+
+  .wallpaper-meta {
+    font-size: var(--font-size-xs);
+    gap: 6px;
+  }
+}
+
+/* ==========================================================================
+   Mobile Small (< 360px)
+   ========================================================================== */
+@media (max-width: 360px) {
+  :root {
+    --grid-gap: 6px;
+  }
+
+  .wallpaper-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .wallpaper-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wallpaper-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .wallpaper-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .wallpaper-overlay {
+    padding: var(--spacing-md);
+  }
+
+  .wallpaper-title {
+    font-size: var(--font-size-base);
+  }
+
+  .wallpaper-meta {
+    font-size: var(--font-size-xs);
+  }
+}

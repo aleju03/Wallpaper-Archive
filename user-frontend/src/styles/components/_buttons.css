@@ -1,0 +1,260 @@
+/* ==========================================================================
+   Button Components
+   ========================================================================== */
+
+/* Base Button */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: lowercase;
+}
+
+.btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-secondary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Navigation Button */
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: lowercase;
+  font-family: inherit;
+}
+
+.nav-button:not(.active):hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-secondary);
+}
+
+.nav-button.active {
+  color: var(--color-bg-primary);
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+/* Download Button */
+.download-btn {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-text-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  transition: all var(--transition-fast);
+}
+
+.download-btn:hover {
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
+}
+
+.download-btn:focus {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+/* Skip Battle Button */
+.skip-battle {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: none;
+  border: 1px solid var(--color-border-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-transform: lowercase;
+  font-family: inherit;
+}
+
+.skip-battle:hover:not(:disabled) {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+}
+
+.skip-battle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Preview Button */
+.preview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--color-border-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-transform: lowercase;
+  font-family: inherit;
+  margin-top: 0px;
+  min-height: 24px;
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+.preview-btn:hover {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+  background: rgba(17, 17, 17, 0.9);
+}
+
+.preview-btn:active {
+  transform: translateY(1px);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Refresh Button */
+.refresh-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: none;
+  border: 1px solid var(--color-border-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-transform: lowercase;
+  font-family: inherit;
+}
+
+.refresh-button:hover {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+}
+
+.refresh-button.compact {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-lg);
+  border-radius: var(--radius-md);
+  height: 28px;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-primary);
+  transition: all var(--transition-fast);
+}
+
+.refresh-button.compact:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+/* Toggle Button */
+.toggle-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-md);
+  border-radius: var(--radius-md);
+  height: 28px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  text-transform: lowercase;
+}
+
+.toggle-btn.active {
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+}
+
+.toggle-btn:not(.active):hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+/* Grid Control Button */
+.grid-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: var(--spacing-xs);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.grid-control-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-tertiary);
+}
+
+.grid-control-btn.active {
+  color: var(--color-bg-primary);
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+/* Empty State Button */
+.empty-state-button {
+  margin-top: var(--spacing-sm);
+  padding: 10px 20px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-text-disabled);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-transform: lowercase;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.empty-state-button:hover {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}

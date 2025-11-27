@@ -1,0 +1,58 @@
+/* ==========================================================================
+   Main CSS Entry Point
+   
+   This file imports all CSS partials in the correct cascade order.
+   
+   Structure:
+   1. Base - Variables, Reset, Scrollbar
+   2. Layout - App Layout, Header, Grid
+   3. Components - Buttons, Forms, Cards, Modal, etc.
+   4. Pages - Browse, Arena, Leaderboard, References
+   5. Utils - Animations, Accessibility, Responsive
+   ========================================================================== */
+
+/* ==========================================================================
+   1. BASE STYLES
+   Foundation styles that everything else builds upon
+   ========================================================================== */
+@import './base/_variables.css';
+@import './base/_reset.css';
+@import './base/_scrollbar.css';
+
+/* ==========================================================================
+   2. LAYOUT STYLES
+   Structural layout components
+   ========================================================================== */
+@import './layout/_layout.css';
+@import './layout/_header.css';
+@import './layout/_grid.css';
+
+/* ==========================================================================
+   3. COMPONENT STYLES
+   Reusable UI components
+   ========================================================================== */
+@import './components/_buttons.css';
+@import './components/_forms.css';
+@import './components/_cards.css';
+@import './components/_modal.css';
+@import './components/_pagination.css';
+@import './components/_skeleton.css';
+@import './components/_dropdown.css';
+
+/* ==========================================================================
+   4. PAGE STYLES
+   Page-specific styles
+   ========================================================================== */
+@import './pages/_browse.css';
+@import './pages/_arena.css';
+@import './pages/_leaderboard.css';
+@import './pages/_references.css';
+
+/* ==========================================================================
+   5. UTILITY STYLES
+   Animations, accessibility, and responsive overrides
+   These come last to properly override component styles
+   ========================================================================== */
+@import './utils/_animations.css';
+@import './utils/_accessibility.css';
+@import './utils/_responsive.css';

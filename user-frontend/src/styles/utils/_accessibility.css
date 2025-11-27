@@ -1,0 +1,29 @@
+/* ==========================================================================
+   Focus States & Accessibility
+   ========================================================================== */
+
+/* Focus States for Accessibility */
+.wallpaper-card:focus,
+.download-btn:focus,
+.modal-close:focus {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .loading {
+    animation: none;
+  }
+}
+
+/* Dark Mode Support (already optimized for dark mode) */
+@media (prefers-color-scheme: dark) {
+  /* Already optimized for dark mode - placeholder for future light mode support */
+}
