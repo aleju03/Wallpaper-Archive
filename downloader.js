@@ -186,10 +186,12 @@ class WallpaperDownloader {
       }
     }
 
-    // Process Osu! local backgrounds
-    console.log('\n--- Processing Osu! Local Backgrounds ---');
-    const osuProvider = new OsuLocalProvider();
-    await osuProvider.processAllBackgrounds();
+    // Process Osu! (lazer) local backgrounds (optional)
+    if (process.env.OSU_FILES_PATH) {
+      console.log('\n--- Processing Osu! Local Backgrounds ---');
+      const osuProvider = new OsuLocalProvider();
+      await osuProvider.processAllBackgrounds();
+    }
 
     const stats = await this.db.getStats();
     console.log('\n--- Download Complete ---');

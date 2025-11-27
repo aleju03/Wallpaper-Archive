@@ -2,13 +2,14 @@ const fs = require('fs').promises;
 const path = require('path');
 const sharp = require('sharp');
 const Database = require('./database');
+require('dotenv').config();
 
 class OsuLocalProvider {
   constructor() {
     this.db = new Database();
     this.downloadDir = './downloads';
     this.thumbnailDir = './thumbnails';
-    this.osuFilesPath = '/home/aleju/.local/share/osu/files';
+    this.osuFilesPath = process.env.OSU_FILES_PATH;
     this.providerName = 'Osu! Local Backgrounds';
     
     // Target wallpaper resolutions (width x height)
@@ -34,10 +35,19 @@ class OsuLocalProvider {
     await fs.mkdir(this.thumbnailDir, { recursive: true });
   }
 
+  async isOsuInstalled() {
+    try {
+      await fs.access(this.osuFilesPath);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   async scanOsuFiles() {
     console.log('Starting osu! files scan...');
     const imageFiles = [];
-    
+
     try {
       const hexDirs = await fs.readdir(this.osuFilesPath);
       
@@ -227,12 +237,23 @@ class OsuLocalProvider {
 
   async processAllBackgrounds() {
     await this.init();
-    
+
+    // Check if osu! is installed
+    const osuInstalled = await this.isOsuInstalled();
+
+    if (!osuInstalled) {
+      console.log('--- Osu! Local Backgrounds ---');
+      console.log(`Osu! installation not found at: ${this.osuFilesPath}`);
+      console.log('Skipping osu! backgrounds (this is optional).');
+      console.log('To enable: Set OSU_FILES_PATH in .env or install osu! at the default location.');
+      return;
+    }
+
     console.log('--- Processing Osu! Local Backgrounds ---');
     const imageFiles = await this.scanOsuFiles();
-    
+
     console.log(`Processing ${imageFiles.length} background images...`);
-    
+
     for (const imageInfo of imageFiles) {
       await this.processAndSaveWallpaper(imageInfo);
     }
@@ -240,7 +261,7 @@ class OsuLocalProvider {
     const stats = await this.db.getStats();
     console.log('\n--- Osu! Background Processing Complete ---');
     console.log(`Total wallpapers in database: ${stats.total}`);
-    
+
     // Get count of osu backgrounds
     const osuCount = await this.db.getWallpapersCount({ provider: this.providerName });
     console.log(`Osu! backgrounds added: ${osuCount}`);
