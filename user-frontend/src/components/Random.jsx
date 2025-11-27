@@ -9,18 +9,37 @@ function Random() {
 
   const fetchRandom = async () => {
     setLoading(true)
-    setImageLoading(true)
-    setWallpaper(null)
+    // Only show explicit image loading state if we don't have a wallpaper yet (first load)
+    // For subsequent loads, we'll keep the current image visible until the new one is ready
+    if (!wallpaper) setImageLoading(true)
+    
     try {
-      const res = await fetch(`${API_BASE}/api/wallpapers/random`)
+      const res = await fetch(`${API_BASE}/api/wallpapers/random?t=${Date.now()}`)
       const data = await res.json()
       if (data.success) {
-        setWallpaper(data.wallpaper)
+        const newWallpaper = data.wallpaper
+        
+        // Preload the new image to ensure text and image update simultaneously
+        if (newWallpaper.image_url) {
+          try {
+            const img = new Image()
+            img.src = resolveAssetUrl(newWallpaper.image_url)
+            await new Promise((resolve) => {
+              img.onload = resolve
+              img.onerror = resolve
+            })
+          } catch (e) {
+            console.error('Preload failed', e)
+          }
+        }
+        
+        setWallpaper(newWallpaper)
       }
     } catch (error) {
       console.error('Failed to fetch random wallpaper:', error)
     } finally {
       setLoading(false)
+      setImageLoading(false)
     }
   }
 
@@ -106,70 +125,68 @@ function Random() {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {loading && !wallpaper ? (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100%',
-            color: '#666'
-          }}>
-            <div style={{ animation: 'spin 1s linear infinite' }}>
-                <Loader size={32} />
-            </div>
-          </div>
-        ) : wallpaper ? (
-          <>
-            <div className="random-image-container" style={{
-              flex: 1,
-              position: 'relative',
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#111'
+        <div className="random-image-container" style={{
+          flex: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#111'
+        }}>
+           {(loading || imageLoading) && (
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#666',
+                zIndex: 10,
+                background: wallpaper ? 'rgba(0,0,0,0.3)' : 'transparent'
             }}>
-               {imageLoading && (
-                <div style={{
-                    position: 'absolute',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#666'
-                }}>
-                    <div style={{ animation: 'spin 1s linear infinite' }}>
-                        <Loader size={32} />
-                    </div>
+                <div style={{ animation: 'spin 1s linear infinite' }}>
+                    <Loader size={32} />
                 </div>
-               )}
-               <img
-                src={resolveAssetUrl(wallpaper.image_url)}
-                alt={wallpaper.filename}
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain',
-                  opacity: imageLoading ? 0 : 1,
-                  transition: 'opacity 0.3s ease'
-                }}
-                onLoad={() => setImageLoading(false)}
-                onError={(e) => {
-                    e.target.src = resolveAssetUrl(wallpaper.thumbnail_url)
-                    setImageLoading(false)
-                }}
-               />
             </div>
-            
-            <div className="random-info" style={{
-              padding: '20px',
-              borderTop: '1px solid #333',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '20px',
-              background: '#000'
+           )}
+           {wallpaper && (
+             <img
+              src={resolveAssetUrl(wallpaper.image_url)}
+              alt={wallpaper.filename}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                opacity: imageLoading ? 0 : 1,
+                transition: 'opacity 0.3s ease'
+              }}
+              onLoad={() => setImageLoading(false)}
+              onError={(e) => {
+                  e.target.src = resolveAssetUrl(wallpaper.thumbnail_url)
+                  setImageLoading(false)
+              }}
+             />
+           )}
+        </div>
+        
+        <div className="random-info" style={{
+          padding: '20px',
+          borderTop: '1px solid #333',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '20px',
+          background: '#000',
+          minHeight: '85px'
+        }}>
+          {wallpaper ? (
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                width: '100%'
             }}>
               <div style={{ flex: 1 }}>
                 <h2 style={{ 
@@ -221,12 +238,27 @@ function Random() {
                 Download
               </button>
             </div>
-          </>
-        ) : (
-           <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-             Failed to load wallpaper.
-           </div>
-        )}
+          ) : (
+            // Skeleton State - only for initial load
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div className="skeleton-loader" style={{ 
+                  width: '60%', 
+                  height: '20px', 
+                  marginBottom: '8px',
+                  borderRadius: '4px',
+                  background: '#2a2a2a'
+                }} />
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <div className="skeleton-loader" style={{ width: '80px', height: '14px', borderRadius: '2px', background: '#2a2a2a' }} />
+                  <div className="skeleton-loader" style={{ width: '60px', height: '14px', borderRadius: '2px', background: '#2a2a2a' }} />
+                  <div className="skeleton-loader" style={{ width: '70px', height: '14px', borderRadius: '2px', background: '#2a2a2a' }} />
+                </div>
+              </div>
+              <div className="skeleton-loader" style={{ width: '120px', height: '38px', borderRadius: '0px', background: '#2a2a2a' }} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -3,6 +3,9 @@ import { Copy, Trash2, Eye, RefreshCw, Settings, AlertTriangle, CheckCircle, Clo
 import axios from 'axios'
 import { API_BASE } from '../config'
 
+// Toggle duplicates feature; defaults off for serverless/Turso deployment
+const DUPLICATES_ENABLED = import.meta.env.VITE_ENABLE_DUPLICATES === 'true';
+
 // Simple path utility functions
 const path = {
   basename: (filePath, ext) => {
@@ -27,6 +30,17 @@ const CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
 const STATUS_CACHE_EXPIRY = 2 * 60 * 1000 // 2 minutes for status
 
 function Duplicates() {
+  if (!DUPLICATES_ENABLED) {
+    return (
+      <div style={{ padding: '20px', color: '#ccc', lineHeight: 1.6 }}>
+        <h3 style={{ marginBottom: '8px' }}>Duplicates disabled</h3>
+        <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
+          Duplicate detection relies on local file access and heavy hashing. It is turned off in the serverless/Turso + R2 setup.
+          To use it, run the admin panel against a local backend with files and set VITE_ENABLE_DUPLICATES=true.
+        </p>
+      </div>
+    )
+  }
   const [allDuplicateGroups, setAllDuplicateGroups] = useState([]) // Store all unfiltered data
   const [duplicateGroups, setDuplicateGroups] = useState([]) // Filtered data for display
   const [hashStatus, setHashStatus] = useState(null)

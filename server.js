@@ -5,6 +5,7 @@ const fastify = require('fastify')({
   disableRequestLogging: true
 });
 const path = require('path');
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const Database = require('./database');
 
 // Initialize database client
@@ -14,6 +15,12 @@ const db = new Database();
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10); // 1 minute
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || '120', 10); // 120 requests/ip/minute
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+const R2_ENDPOINT = process.env.R2_ENDPOINT || (R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : null);
+const R2_ENABLED = !!(R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME && R2_ENDPOINT);
 
 // Simple in-memory rate limiter (sufficient for small traffic/serverless; move to shared store if needed)
 const rateBuckets = new Map();
@@ -53,6 +60,40 @@ const normalizePagination = (limit, page, maxLimit = 100) => {
 
 const setCache = (reply, seconds = 300) => {
   reply.header('Cache-Control', `public, max-age=${seconds}, stale-while-revalidate=60`);
+};
+
+// R2 client (optional, only if credentials are provided)
+const r2Client = R2_ENABLED ? new S3Client({
+  region: 'auto',
+  endpoint: R2_ENDPOINT,
+  credentials: {
+    accessKeyId: R2_ACCESS_KEY_ID,
+    secretAccessKey: R2_SECRET_ACCESS_KEY
+  }
+}) : null;
+
+const getKeyFromUrl = (urlStr) => {
+  try {
+    const url = new URL(urlStr);
+    return url.pathname.replace(/^\//, '');
+  } catch {
+    return null;
+  }
+};
+
+const deleteFromR2 = async (keys = []) => {
+  if (!R2_ENABLED || !r2Client) return;
+  const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
+  for (const key of uniqueKeys) {
+    try {
+      await r2Client.send(new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key
+      }));
+    } catch (error) {
+      console.warn('R2 delete failed for key', key, error.message || error);
+    }
+  }
 };
 
 // Helper to build the expected thumbnail URL from the public download URL
@@ -172,7 +213,10 @@ fastify.get('/api/wallpapers/random', async (request, reply) => {
       return { success: false, error: 'No wallpapers found' };
     }
 
-    setCache(reply, 60);
+    // Prevent caching for random results
+    reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    reply.header('Pragma', 'no-cache');
+    reply.header('Expires', '0');
 
     return {
       success: true,
@@ -403,6 +447,37 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
       leaderboard: leaderboardWithUrls,
       totalCount
     };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Admin: delete wallpaper (optional R2 delete)
+fastify.delete('/api/wallpapers/:id', async (request, reply) => {
+  try {
+    const { deleteFile } = request.query;
+    const wallpaper = await db.getWallpaperById(request.params.id);
+
+    if (!wallpaper) {
+      reply.code(404);
+      return { success: false, error: 'Wallpaper not found' };
+    }
+
+    if (deleteFile === 'true') {
+      const mainKey = getKeyFromUrl(wallpaper.download_url);
+      const thumbUrl = buildThumbnailUrl(wallpaper.download_url);
+      const thumbKey = thumbUrl ? getKeyFromUrl(thumbUrl) : null;
+      await deleteFromR2([mainKey, thumbKey]);
+    }
+
+    const deleted = await db.deleteWallpaper(wallpaper.id);
+    if (!deleted) {
+      reply.code(500);
+      return { success: false, error: 'Failed to delete wallpaper' };
+    }
+
+    return { success: true, deleted: wallpaper.id, removedFromStorage: deleteFile === 'true' && R2_ENABLED };
   } catch (error) {
     reply.code(500);
     return { success: false, error: error.message };

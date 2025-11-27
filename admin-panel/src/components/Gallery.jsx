@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import axios from 'axios'
-import { API_BASE } from '../config'
+import { API_BASE, resolveAssetUrl } from '../config'
 
 function Gallery() {
   const [wallpapers, setWallpapers] = useState([])
@@ -193,7 +193,7 @@ function Gallery() {
                 onContextMenu={(e) => handleRightClick(e, wallpaper)}
               >
                 <img
-                  src={`${API_BASE}${wallpaper.thumbnail_url}`}
+                  src={resolveAssetUrl(wallpaper.thumbnail_url)}
                   alt={wallpaper.filename}
                   className="wallpaper-image"
                   loading="lazy"
@@ -209,7 +209,7 @@ function Gallery() {
                     // Try the original image as fallback first
                     if (!e.target.dataset.fallbackTried) {
                       e.target.dataset.fallbackTried = 'true'
-                      e.target.src = `${API_BASE}${wallpaper.image_url}`
+                      e.target.src = resolveAssetUrl(wallpaper.image_url)
                       return
                     }
                     

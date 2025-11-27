@@ -129,7 +129,7 @@ function Dashboard() {
           <h3>Quick Actions</h3>
           <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button 
-              onClick={() => window.open('http://localhost:3000/api/wallpapers?limit=10', '_blank')}
+              onClick={() => window.open(`${API_BASE}/api/wallpapers?limit=10`, '_blank')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -148,7 +148,7 @@ function Dashboard() {
             </button>
             
             <button 
-              onClick={() => window.open('http://localhost:3000', '_blank')}
+              onClick={() => window.open(`${API_BASE}/`, '_blank')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
