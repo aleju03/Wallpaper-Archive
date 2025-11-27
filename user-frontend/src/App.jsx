@@ -27,7 +27,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <div className="header-title">
+          <div className="header-title" onClick={() => setActiveTab('browse')} style={{ cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <img src="/logo.svg" alt="Logo" style={{ height: '2em', marginRight: '0.5em' }} />
               <h1>Wallpaper Archive</h1>
