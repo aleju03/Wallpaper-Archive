@@ -1,0 +1,201 @@
+/* ==========================================================================
+   Modal Styles
+   
+   Image preview modals and confirmation dialogs.
+   ========================================================================== */
+
+/* ==========================================================================
+   Image Modal (Full-screen preview)
+   ========================================================================== */
+
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+}
+
+.modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.modal-content img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.modal-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 24px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+/* ==========================================================================
+   Confirmation Modal
+   ========================================================================== */
+
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+}
+
+.confirm-modal {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  width: 90%;
+  max-width: 400px;
+  font-family: inherit;
+}
+
+.confirm-modal-header {
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  position: relative;
+}
+
+.confirm-modal-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-text-primary);
+}
+
+.confirm-modal-header h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.confirm-modal-body {
+  padding: var(--spacing-2xl) var(--spacing-xl);
+  background: var(--color-bg-primary);
+}
+
+.confirm-modal-body p {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+}
+
+.confirm-modal-btn {
+  padding: var(--spacing-md) var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  text-transform: lowercase;
+  min-width: 70px;
+}
+
+.confirm-modal-btn:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-hover);
+}
+
+.confirm-modal-btn.dangerous {
+  border-color: var(--color-accent-red);
+  color: var(--color-accent-red);
+}
+
+.confirm-modal-btn.dangerous:hover {
+  background: var(--color-accent-red);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent-red);
+}
+
+.confirm-modal-btn.cancel:hover {
+  background: var(--color-border);
+  border-color: var(--color-text-disabled);
+}
+
+/* ==========================================================================
+   Context Menu
+   ========================================================================== */
+
+.context-menu {
+  position: absolute;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: var(--spacing-xs) 0;
+  z-index: var(--z-dropdown);
+  min-width: 180px;
+  box-shadow: var(--shadow-md);
+}
+
+.context-menu-item {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.context-menu-item:hover {
+  background: var(--color-border);
+}
+
+.context-menu-item--danger {
+  color: var(--color-accent-red);
+}

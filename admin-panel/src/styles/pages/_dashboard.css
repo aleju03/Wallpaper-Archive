@@ -1,0 +1,16 @@
+/* ==========================================================================
+   Dashboard Page Styles
+   
+   Dashboard-specific layout and components.
+   ========================================================================== */
+
+.dashboard {
+  display: grid;
+  gap: var(--spacing-xl);
+}
+
+.recent-activity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-xl);
+}

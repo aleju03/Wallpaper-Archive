@@ -32,9 +32,9 @@ const STATUS_CACHE_EXPIRY = 2 * 60 * 1000 // 2 minutes for status
 function Duplicates() {
   if (!DUPLICATES_ENABLED) {
     return (
-      <div style={{ padding: '20px', color: '#ccc', lineHeight: 1.6 }}>
-        <h3 style={{ marginBottom: '8px' }}>Duplicates disabled</h3>
-        <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
+      <div className="duplicates-disabled">
+        <h3>Duplicates disabled</h3>
+        <p>
           Duplicate detection relies on local file access and heavy hashing. It is turned off in the serverless/Turso + R2 setup.
           To use it, run the admin panel against a local backend with files and set VITE_ENABLE_DUPLICATES=true.
         </p>
@@ -488,20 +488,8 @@ function Duplicates() {
                   <button 
                     onClick={generateHashes}
                     disabled={generating}
-                    className="generate-btn"
-                    style={{
-                      marginTop: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 16px',
-                      background: '#3498db',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: generating ? 'not-allowed' : 'pointer',
-                      opacity: generating ? 0.7 : 1
-                    }}
+                    className="btn btn--primary"
+                    style={{ marginTop: '12px' }}
                   >
                     {generating ? <Clock size={16} /> : <RefreshCw size={16} />}
                     {generating ? 'Generating...' : `Generate ${hashStatus.withoutHashes} missing hashes`}
@@ -531,32 +519,21 @@ function Duplicates() {
                 style={{ width: '100%', marginTop: '8px' }}
               />
             </div>
-            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="quick-actions">
               <button
                 onClick={() => {
                   clearCache()
                   fetchData(true) // Force refresh from server
                 }}
                 disabled={loading}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 16px',
-                  background: '#2ecc71',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1
-                }}
+                className="btn btn--success"
               >
                 <RefreshCw size={16} />
                 Force Refresh Duplicates
               </button>
               
               {lastFetched && (
-                <div style={{ fontSize: '10px', color: '#666', marginTop: '4px' }}>
+                <div className="status-text">
                   Last updated: {lastFetched.toLocaleTimeString()}
                   <br />
                   (Results cached for 30 minutes)
@@ -586,31 +563,23 @@ function Duplicates() {
               <AlertTriangle size={20} color="#f39c12" />
               <span>Found {duplicateGroups.length} duplicate groups with {duplicateGroups.reduce((sum, group) => sum + group.length, 0)} total images</span>
               {selectedWallpapers.size > 0 && (
-                <span style={{ marginLeft: '16px', color: '#3498db', fontWeight: 'bold' }}>
+                <span className="results-summary__selected">
                   ({selectedWallpapers.size} selected)
                 </span>
               )}
               {totalPages > 1 && (
-                <span style={{ marginLeft: '16px', color: '#666' }}>
+                <span className="results-summary__page">
                   (Page {currentPage} of {totalPages})
                 </span>
               )}
             </div>
             
             {/* Multi-select and Pagination Controls */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="multi-select-controls">
+              <div className="multi-select-actions">
                 <button
                   onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid #333333',
-                    background: isMultiSelectMode ? '#ffffff' : '#000000',
-                    color: isMultiSelectMode ? '#000000' : '#ffffff',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    fontFamily: 'inherit'
-                  }}
+                  className={`btn btn--sm ${isMultiSelectMode ? 'btn--active' : ''}`}
                 >
                   {isMultiSelectMode ? 'exit select' : 'multi select'}
                 </button>
@@ -619,45 +588,21 @@ function Duplicates() {
                   <>
                     <button
                       onClick={() => bulkDeleteWallpapers(false)}
-                      style={{
-                        padding: '6px 12px',
-                        border: '1px solid #e74c3c',
-                        background: '#e74c3c',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        fontFamily: 'inherit'
-                      }}
+                      className="btn btn--sm btn--danger"
                     >
                       delete {selectedWallpapers.size} from db
                     </button>
                     
                     <button
                       onClick={() => bulkDeleteWallpapers(true)}
-                      style={{
-                        padding: '6px 12px',
-                        border: '1px solid #8e44ad',
-                        background: '#8e44ad',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        fontFamily: 'inherit'
-                      }}
+                      className="btn btn--sm btn--warning"
                     >
                       delete {selectedWallpapers.size} files
                     </button>
                     
                     <button
                       onClick={() => setSelectedWallpapers(new Set())}
-                      style={{
-                        padding: '6px 12px',
-                        border: '1px solid #333333',
-                        background: '#000000',
-                        color: '#ffffff',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        fontFamily: 'inherit'
-                      }}
+                      className="btn btn--sm"
                     >
                       clear selection
                     </button>
@@ -674,7 +619,7 @@ function Duplicates() {
                     previous
                   </button>
                   
-                  <span style={{ margin: '0 16px', fontSize: '11px', color: '#888888' }}>
+                  <span className="pagination__info">
                     page {currentPage} of {totalPages}
                   </span>
                   
@@ -694,48 +639,29 @@ function Duplicates() {
               
               return (
                 <div key={startIndex + groupIndex} className="duplicate-group">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <h4 style={{ margin: 0 }}>Duplicate Group {startIndex + groupIndex + 1} ({group.length} images)</h4>
+                  <div className="duplicate-group__header">
+                    <h4>Duplicate Group {startIndex + groupIndex + 1} ({group.length} images)</h4>
                     {isMultiSelectMode && (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          onClick={() => groupSelected ? deselectAllInGroup(group) : selectAllInGroup(group)}
-                          style={{
-                            padding: '4px 8px',
-                            border: '1px solid #333333',
-                            background: groupSelected ? '#ffffff' : (groupPartiallySelected ? '#666666' : '#000000'),
-                            color: groupSelected ? '#000000' : '#ffffff',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            fontFamily: 'inherit'
-                          }}
-                        >
-                          {groupSelected ? 'deselect all' : (groupPartiallySelected ? 'select all' : 'select all')}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => groupSelected ? deselectAllInGroup(group) : selectAllInGroup(group)}
+                        className={`btn btn--sm ${groupSelected ? 'btn--active' : ''}`}
+                      >
+                        {groupSelected ? 'deselect all' : 'select all'}
+                      </button>
                     )}
                   </div>
                 <div className="image-grid">
                   {group.map((wallpaper) => (
-                    <div key={wallpaper.id} className="image-card" style={{
-                      border: selectedWallpapers.has(wallpaper.id) ? '2px solid #3498db' : '1px solid #333',
-                      position: 'relative'
-                    }}>
+                    <div 
+                      key={wallpaper.id} 
+                      className={`image-card ${selectedWallpapers.has(wallpaper.id) ? 'image-card--selected' : ''}`}
+                    >
                       {isMultiSelectMode && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '8px',
-                          left: '8px',
-                          zIndex: 10,
-                          background: 'rgba(0, 0, 0, 0.8)',
-                          borderRadius: '3px',
-                          padding: '4px'
-                        }}>
+                        <div className="image-card__checkbox">
                           <input
                             type="checkbox"
                             checked={selectedWallpapers.has(wallpaper.id)}
                             onChange={() => toggleWallpaperSelection(wallpaper.id)}
-                            style={{ cursor: 'pointer' }}
                           />
                         </div>
                       )}
@@ -750,7 +676,6 @@ function Duplicates() {
                               setSelectedImage(`${API_BASE}${wallpaper.image_url}`)
                             }
                           }}
-                          style={{ cursor: 'pointer' }}
                         />
                         {wallpaper.similarity_percentage && (
                           <div className="similarity-badge">
@@ -840,7 +765,7 @@ function Duplicates() {
                   previous
                 </button>
                 
-                <span style={{ margin: '0 16px', fontSize: '11px', color: '#888888' }}>
+                <span className="pagination__info">
                   {currentPage} of {totalPages} ({duplicateGroups.length} total groups)
                 </span>
                 

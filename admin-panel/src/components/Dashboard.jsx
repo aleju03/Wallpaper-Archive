@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Download, Database, Images, Folder } from 'lucide-react'
+import { Database, Images } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config'
 
@@ -72,95 +72,57 @@ function Dashboard() {
       <div className="recent-activity">
         <div className="stat-card">
           <h3>Provider Status</h3>
-          <div style={{ marginTop: '16px' }}>
+          <div>
             {providers.map((provider, index) => {
-              const getStatusColor = (status) => {
+              const getStatusBadgeClass = (status) => {
                 switch(status) {
-                  case 'active': return { color: '#27ae60', bg: '#d5f4e6' };
-                  case 'recent': return { color: '#f39c12', bg: '#fef9e7' };
-                  case 'stale': return { color: '#e74c3c', bg: '#fdebea' };
-                  default: return { color: '#95a5a6', bg: '#ecf0f1' };
+                  case 'active': return 'provider-item__badge--active'
+                  case 'recent': return 'provider-item__badge--recent'
+                  case 'stale': return 'provider-item__badge--stale'
+                  default: return ''
                 }
-              };
+              }
               
-              const statusColors = getStatusColor(provider.status);
               const getStatusText = (status, daysSinceUpdate) => {
                 switch(status) {
-                  case 'active': return `${provider.count} wallpapers • Updated today`;
-                  case 'recent': return `${provider.count} wallpapers • ${daysSinceUpdate}d ago`;
-                  case 'stale': return `${provider.count} wallpapers • ${daysSinceUpdate}d ago`;
-                  default: return `${provider.count} wallpapers • Unknown`;
+                  case 'active': return `${provider.count} wallpapers • Updated today`
+                  case 'recent': return `${provider.count} wallpapers • ${daysSinceUpdate}d ago`
+                  case 'stale': return `${provider.count} wallpapers • ${daysSinceUpdate}d ago`
+                  default: return `${provider.count} wallpapers • Unknown`
                 }
-              };
+              }
               
               return (
-                <div key={index} style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  padding: '12px 0',
-                  borderBottom: index < providers.length - 1 ? '1px solid #eee' : 'none'
-                }}>
+                <div key={index} className="provider-item">
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>
-                      {provider.name}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
+                    <div className="provider-item__name">{provider.name}</div>
+                    <div className="provider-item__status">
                       {getStatusText(provider.status, provider.daysSinceUpdate)}
                     </div>
                   </div>
-                  <span style={{ 
-                    fontSize: '12px', 
-                    color: statusColors.color,
-                    background: statusColors.bg,
-                    padding: '4px 8px',
-                    borderRadius: '12px',
-                    textTransform: 'capitalize'
-                  }}>
+                  <span className={`provider-item__badge ${getStatusBadgeClass(provider.status)}`}>
                     {provider.status}
                   </span>
                 </div>
-              );
+              )
             })}
           </div>
         </div>
 
         <div className="stat-card">
           <h3>Quick Actions</h3>
-          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="quick-actions">
             <button 
+              className="btn btn--primary"
               onClick={() => window.open(`${API_BASE}/api/wallpapers?limit=10`, '_blank')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px',
-                background: '#3498db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
             >
               <Database size={16} />
               View API Response
             </button>
             
             <button 
+              className="btn btn--success"
               onClick={() => window.open(`${API_BASE}/`, '_blank')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px',
-                background: '#2ecc71',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
             >
               <Images size={16} />
               Open API Docs

@@ -1,0 +1,114 @@
+/* ==========================================================================
+   Form Styles
+   
+   Input fields, selects, and form controls.
+   ========================================================================== */
+
+/* ==========================================================================
+   Search Box
+   ========================================================================== */
+
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: var(--spacing-md);
+  padding-left: 32px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: var(--color-border-hover);
+}
+
+.search-box input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-disabled);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Select / Dropdown
+   ========================================================================== */
+
+.filter-select {
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-border-hover);
+}
+
+/* ==========================================================================
+   Range Slider
+   ========================================================================== */
+
+input[type="range"] {
+  width: 100%;
+  margin-top: var(--spacing-md);
+  accent-color: var(--color-accent-blue);
+}
+
+/* ==========================================================================
+   Checkbox
+   ========================================================================== */
+
+input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-accent-blue);
+}
+
+/* ==========================================================================
+   Search Filters Container
+   ========================================================================== */
+
+.search-filters {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   Threshold Control
+   ========================================================================== */
+
+.threshold-control {
+  margin-top: var(--spacing-lg);
+}
+
+.threshold-control label {
+  display: block;
+  font-size: var(--font-size-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.threshold-help {
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-sm);
+  display: block;
+  margin-top: var(--spacing-xs);
+}

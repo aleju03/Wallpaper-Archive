@@ -173,7 +173,7 @@ function Gallery() {
             ))}
           </select>
           
-          <div style={{ fontSize: '11px', color: '#888888', marginLeft: 'auto', fontFamily: 'inherit' }}>
+          <div className="gallery-count">
             {totalCount} wallpapers found
           </div>
         </div>
@@ -292,16 +292,8 @@ function Gallery() {
         <div 
           className="context-menu"
           style={{
-            position: 'absolute',
             left: contextMenu.x,
-            top: contextMenu.y,
-            background: '#1a1a1a',
-            border: '1px solid #333333',
-            borderRadius: '4px',
-            padding: '4px 0',
-            zIndex: 1000,
-            minWidth: '180px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)'
+            top: contextMenu.y
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -311,48 +303,16 @@ function Gallery() {
               deleteWallpaper(contextMenu.wallpaper, false)
               setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
             }}
-            style={{
-              width: '100%',
-              padding: '8px 16px',
-              background: 'none',
-              border: 'none',
-              color: '#ffffff',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-            onMouseEnter={(e) => e.target.style.background = '#333333'}
-            onMouseLeave={(e) => e.target.style.background = 'none'}
           >
             <Trash2 size={14} />
             Delete from Database
           </button>
           <button
-            className="context-menu-item"
+            className="context-menu-item context-menu-item--danger"
             onClick={() => {
               deleteWallpaper(contextMenu.wallpaper, true)
               setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
             }}
-            style={{
-              width: '100%',
-              padding: '8px 16px',
-              background: 'none',
-              border: 'none',
-              color: '#e74c3c',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-            onMouseEnter={(e) => e.target.style.background = '#333333'}
-            onMouseLeave={(e) => e.target.style.background = 'none'}
           >
             <Trash2 size={14} />
             Delete File & Database Entry
@@ -362,62 +322,24 @@ function Gallery() {
 
       {/* Confirmation Modal */}
       {confirmModal.show && (
-        <div className="confirm-modal-overlay" onClick={hideConfirmModal} style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2000
-        }}>
-          <div className="confirm-modal" onClick={e => e.stopPropagation()} style={{
-            background: '#1a1a1a',
-            border: '1px solid #333333',
-            borderRadius: '6px',
-            padding: '24px',
-            minWidth: '400px',
-            maxWidth: '500px'
-          }}>
-            <div className="confirm-modal-header" style={{ marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>{confirmModal.title}</h3>
+        <div className="confirm-modal-overlay" onClick={hideConfirmModal}>
+          <div className="confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="confirm-modal-header">
+              <h3>{confirmModal.title}</h3>
             </div>
-            <div className="confirm-modal-body" style={{ marginBottom: '24px' }}>
-              <p style={{ margin: 0, color: '#cccccc', fontSize: '12px', lineHeight: '1.4' }}>{confirmModal.message}</p>
+            <div className="confirm-modal-body">
+              <p>{confirmModal.message}</p>
             </div>
-            <div className="confirm-modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <div className="confirm-modal-actions">
               <button 
                 className="confirm-modal-btn cancel"
                 onClick={hideConfirmModal}
-                style={{
-                  padding: '8px 16px',
-                  background: '#333333',
-                  color: '#ffffff',
-                  border: '1px solid #555555',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontFamily: 'inherit'
-                }}
               >
                 Cancel
               </button>
               <button 
-                className={`confirm-modal-btn confirm ${confirmModal.isDangerous ? 'dangerous' : ''}`}
+                className={`confirm-modal-btn ${confirmModal.isDangerous ? 'dangerous' : ''}`}
                 onClick={confirmModal.onConfirm}
-                style={{
-                  padding: '8px 16px',
-                  background: confirmModal.isDangerous ? '#e74c3c' : '#3498db',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontFamily: 'inherit'
-                }}
               >
                 {confirmModal.confirmText}
               </button>

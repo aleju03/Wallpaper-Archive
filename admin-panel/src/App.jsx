@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Search, BarChart3, Images, Settings, Download, Database, Copy } from 'lucide-react'
+import { BarChart3, Images, Database, Copy } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import Gallery from './components/Gallery'
 import Statistics from './components/Statistics'
 import Duplicates from './components/Duplicates'
-import './App.css'
+import './styles/index.css'
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -35,8 +35,8 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
-            <img src="/logo.svg" alt="Logo" style={{ height: '2em' }} />
+          <div className="sidebar-logo">
+            <img src="/logo.svg" alt="Logo" />
             <h1>Wallpaper Archive</h1>
           </div>
           <p>Admin Panel</p>

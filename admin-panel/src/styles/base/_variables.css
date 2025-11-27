@@ -1,0 +1,123 @@
+/* ==========================================================================
+   CSS Variables
+   
+   Design tokens and theming variables for the admin panel.
+   All colors, spacing, typography, and animation values live here.
+   ========================================================================== */
+
+:root {
+  /* ==========================================================================
+     Colors - Dark Theme
+     ========================================================================== */
+  
+  /* Background colors */
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #111111;
+  --color-bg-tertiary: #1a1a1a;
+  --color-bg-elevated: #222222;
+  
+  /* Border colors */
+  --color-border: #333333;
+  --color-border-hover: #ffffff;
+  --color-border-subtle: #222222;
+  
+  /* Text colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cccccc;
+  --color-text-muted: #888888;
+  --color-text-disabled: #666666;
+  
+  /* Accent colors */
+  --color-accent-blue: #3498db;
+  --color-accent-blue-hover: #2980b9;
+  --color-accent-green: #2ecc71;
+  --color-accent-green-hover: #27ae60;
+  --color-accent-red: #e74c3c;
+  --color-accent-red-hover: #c0392b;
+  --color-accent-orange: #f39c12;
+  --color-accent-orange-hover: #d68910;
+  --color-accent-purple: #8e44ad;
+  --color-accent-purple-hover: #732d91;
+  
+  /* Status colors */
+  --color-success: #27ae60;
+  --color-success-bg: #d5f4e6;
+  --color-warning: #f39c12;
+  --color-warning-bg: #fef9e7;
+  --color-error: #e74c3c;
+  --color-error-bg: #fdebea;
+  --color-info: #3498db;
+  --color-info-bg: #ebf5fb;
+  
+  /* ==========================================================================
+     Typography
+     ========================================================================== */
+  
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  
+  --font-size-xs: 9px;
+  --font-size-sm: 10px;
+  --font-size-base: 11px;
+  --font-size-md: 12px;
+  --font-size-lg: 14px;
+  --font-size-xl: 24px;
+  
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+  
+  --line-height-tight: 1.1;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.5;
+  
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 1px;
+  
+  /* ==========================================================================
+     Spacing
+     ========================================================================== */
+  
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 6px;
+  --spacing-md: 8px;
+  --spacing-lg: 12px;
+  --spacing-xl: 16px;
+  --spacing-2xl: 20px;
+  --spacing-3xl: 24px;
+  
+  /* ==========================================================================
+     Layout
+     ========================================================================== */
+  
+  --sidebar-width: 240px;
+  --sidebar-width-tablet: 200px;
+  
+  --card-image-height: 120px;
+  --card-border-radius: 0;
+  
+  /* ==========================================================================
+     Transitions
+     ========================================================================== */
+  
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  
+  /* ==========================================================================
+     Shadows
+     ========================================================================== */
+  
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+  
+  /* ==========================================================================
+     Z-Index Scale
+     ========================================================================== */
+  
+  --z-dropdown: 100;
+  --z-modal-backdrop: 1000;
+  --z-modal: 1100;
+  --z-tooltip: 1200;
+}

@@ -1,0 +1,274 @@
+/* ==========================================================================
+   Card Styles
+   
+   Stat cards, wallpaper cards, and image cards.
+   ========================================================================== */
+
+/* ==========================================================================
+   Stat Card (Dashboard)
+   ========================================================================== */
+
+.stat-card {
+  background: var(--color-bg-primary);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  position: relative;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-text-primary);
+}
+
+.stat-card h3 {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-md);
+  text-transform: uppercase;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--letter-spacing-wide);
+  font-family: inherit;
+}
+
+.stat-card .value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+  font-family: inherit;
+}
+
+.stat-card .change {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-family: inherit;
+}
+
+/* ==========================================================================
+   Wallpaper Card (Gallery)
+   ========================================================================== */
+
+.wallpaper-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+.wallpaper-card:hover {
+  border-color: var(--color-border-hover);
+}
+
+.wallpaper-image {
+  width: 100%;
+  height: var(--card-image-height);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+  filter: grayscale(30%);
+}
+
+.wallpaper-card:hover .wallpaper-image {
+  filter: grayscale(0%);
+}
+
+.wallpaper-info {
+  padding: var(--spacing-lg);
+}
+
+.wallpaper-info h4 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.wallpaper-meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+  font-family: inherit;
+}
+
+.wallpaper-tags {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xxs) var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  border: 1px solid var(--color-border);
+  font-family: inherit;
+}
+
+/* ==========================================================================
+   Image Card (Duplicates)
+   ========================================================================== */
+
+.image-card {
+  background: var(--color-bg-tertiary);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  transition: transform var(--transition-normal);
+}
+
+.image-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.image-card--selected {
+  border: 2px solid var(--color-accent-blue);
+}
+
+.image-container {
+  position: relative;
+  aspect-ratio: 16/10;
+  overflow: hidden;
+}
+
+.image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-normal);
+  cursor: pointer;
+}
+
+.image-container img:hover {
+  transform: scale(1.05);
+}
+
+.similarity-badge {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  background: rgba(52, 152, 219, 0.9);
+  color: var(--color-text-primary);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: 12px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.image-info {
+  padding: var(--spacing-lg);
+}
+
+.image-info h5 {
+  font-size: var(--font-size-md);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-info .metadata {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-lg);
+}
+
+.image-info .metadata div {
+  margin-bottom: var(--spacing-xxs);
+}
+
+.image-info .actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* ==========================================================================
+   Wallpaper Image Placeholder
+   ========================================================================== */
+
+.wallpaper-image-placeholder {
+  width: 100%;
+  height: var(--card-image-height);
+  background: var(--color-bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+/* ==========================================================================
+   Provider Status Item
+   ========================================================================== */
+
+.provider-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.provider-item:last-child {
+  border-bottom: none;
+}
+
+.provider-item__name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-xs);
+}
+
+.provider-item__status {
+  font-size: var(--font-size-md);
+  color: var(--color-text-disabled);
+}
+
+.provider-item__badge {
+  font-size: var(--font-size-md);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: 12px;
+  text-transform: capitalize;
+}
+
+.provider-item__badge--active {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.provider-item__badge--recent {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.provider-item__badge--stale {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+/* ==========================================================================
+   Quick Actions
+   ========================================================================== */
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}

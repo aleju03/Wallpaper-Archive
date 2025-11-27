@@ -1,0 +1,50 @@
+/* ==========================================================================
+   Pagination Styles
+   
+   Page navigation controls.
+   ========================================================================== */
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-3xl);
+}
+
+.pagination button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+}
+
+.pagination button:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-hover);
+}
+
+.pagination button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.pagination button:disabled:hover {
+  background: var(--color-bg-primary);
+  border-color: var(--color-border);
+}
+
+.pagination button.active {
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-text-primary);
+}
+
+.pagination__info {
+  margin: 0 var(--spacing-xl);
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+}

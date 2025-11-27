@@ -81,6 +81,19 @@ function Statistics() {
     return Object.entries(ranges).map(([range, count]) => ({ range, count }))
   }
 
+  const StatRow = ({ label, count, maxCount, color }) => (
+    <div className="stat-row">
+      <span className="stat-row__label">{label}</span>
+      <div className="stat-row__value">
+        <div 
+          className={`stat-bar stat-bar--${color}`}
+          style={{ width: `${(count / maxCount) * 100}px` }}
+        />
+        <span className="stat-row__count">{count}</span>
+      </div>
+    </div>
+  )
+
   if (loading) {
     return <div className="loading">Loading statistics...</div>
   }
@@ -93,6 +106,7 @@ function Statistics() {
   const folderStats = getFolderStats()
   const resolutionStats = getResolutionStats()
   const fileSizeStats = getFileSizeStats()
+  const maxFileSize = Math.max(...fileSizeStats.map(s => s.count))
 
   return (
     <div className="statistics">
@@ -103,28 +117,15 @@ function Statistics() {
             <BarChart3 size={16} style={{ display: 'inline', marginRight: '8px' }} />
             Wallpapers by Provider
           </h3>
-          <div style={{ marginTop: '16px' }}>
+          <div>
             {providerStats.map(({ provider, count }) => (
-              <div key={provider} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '8px 0',
-                borderBottom: '1px solid #eee'
-              }}>
-                <span style={{ fontSize: '14px' }}>{provider}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    width: `${(count / providerStats[0].count) * 100}px`,
-                    height: '6px',
-                    background: '#3498db',
-                    borderRadius: '3px'
-                  }} />
-                  <span style={{ fontSize: '14px', fontWeight: '600', minWidth: '40px' }}>
-                    {count}
-                  </span>
-                </div>
-              </div>
+              <StatRow 
+                key={provider}
+                label={provider}
+                count={count}
+                maxCount={providerStats[0].count}
+                color="blue"
+              />
             ))}
           </div>
         </div>
@@ -135,28 +136,15 @@ function Statistics() {
             <PieChart size={16} style={{ display: 'inline', marginRight: '8px' }} />
             Top Categories
           </h3>
-          <div style={{ marginTop: '16px' }}>
+          <div>
             {folderStats.map(({ folder, count }) => (
-              <div key={folder} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '8px 0',
-                borderBottom: '1px solid #eee'
-              }}>
-                <span style={{ fontSize: '14px' }}>{folder}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    width: `${(count / folderStats[0].count) * 80}px`,
-                    height: '6px',
-                    background: '#2ecc71',
-                    borderRadius: '3px'
-                  }} />
-                  <span style={{ fontSize: '14px', fontWeight: '600', minWidth: '40px' }}>
-                    {count}
-                  </span>
-                </div>
-              </div>
+              <StatRow 
+                key={folder}
+                label={folder}
+                count={count}
+                maxCount={folderStats[0].count}
+                color="green"
+              />
             ))}
           </div>
         </div>
@@ -167,28 +155,15 @@ function Statistics() {
             <TrendingUp size={16} style={{ display: 'inline', marginRight: '8px' }} />
             Common Resolutions
           </h3>
-          <div style={{ marginTop: '16px' }}>
+          <div>
             {resolutionStats.map(({ resolution, count }) => (
-              <div key={resolution} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '8px 0',
-                borderBottom: '1px solid #eee'
-              }}>
-                <span style={{ fontSize: '14px' }}>{resolution}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    width: `${(count / resolutionStats[0].count) * 60}px`,
-                    height: '6px',
-                    background: '#e74c3c',
-                    borderRadius: '3px'
-                  }} />
-                  <span style={{ fontSize: '14px', fontWeight: '600', minWidth: '40px' }}>
-                    {count}
-                  </span>
-                </div>
-              </div>
+              <StatRow 
+                key={resolution}
+                label={resolution}
+                count={count}
+                maxCount={resolutionStats[0].count}
+                color="red"
+              />
             ))}
           </div>
         </div>
@@ -196,68 +171,50 @@ function Statistics() {
         {/* File Size Distribution */}
         <div className="stat-card">
           <h3>File Size Distribution</h3>
-          <div style={{ marginTop: '16px' }}>
+          <div>
             {fileSizeStats.map(({ range, count }) => (
-              <div key={range} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '8px 0',
-                borderBottom: '1px solid #eee'
-              }}>
-                <span style={{ fontSize: '14px' }}>{range}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    width: `${(count / Math.max(...fileSizeStats.map(s => s.count))) * 60}px`,
-                    height: '6px',
-                    background: '#f39c12',
-                    borderRadius: '3px'
-                  }} />
-                  <span style={{ fontSize: '14px', fontWeight: '600', minWidth: '40px' }}>
-                    {count}
-                  </span>
-                </div>
-              </div>
+              <StatRow 
+                key={range}
+                label={range}
+                count={count}
+                maxCount={maxFileSize}
+                color="orange"
+              />
             ))}
           </div>
         </div>
       </div>
 
       {/* Summary Stats */}
-      <div className="stat-card" style={{ marginTop: '24px' }}>
+      <div className="stat-card">
         <h3>Collection Summary</h3>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: '24px',
-          marginTop: '16px'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#3498db' }}>
+        <div className="collection-summary">
+          <div className="summary-item">
+            <div className="summary-item__value summary-item__value--blue">
               {wallpapers.length}
             </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>Total Wallpapers</div>
+            <div className="summary-item__label">Total Wallpapers</div>
           </div>
           
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#2ecc71' }}>
+          <div className="summary-item">
+            <div className="summary-item__value summary-item__value--green">
               {new Set(wallpapers.map(w => w.provider)).size}
             </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>Providers</div>
+            <div className="summary-item__label">Providers</div>
           </div>
           
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#e74c3c' }}>
+          <div className="summary-item">
+            <div className="summary-item__value summary-item__value--red">
               {new Set(wallpapers.map(w => w.folder).filter(Boolean)).size}
             </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>Unique Folders</div>
+            <div className="summary-item__label">Unique Folders</div>
           </div>
           
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#f39c12' }}>
+          <div className="summary-item">
+            <div className="summary-item__value summary-item__value--orange">
               {((wallpapers.reduce((sum, w) => sum + (w.file_size || 0), 0)) / (1024 * 1024 * 1024)).toFixed(1)}GB
             </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>Total Size</div>
+            <div className="summary-item__label">Total Size</div>
           </div>
         </div>
       </div>

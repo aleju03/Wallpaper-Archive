@@ -1,0 +1,89 @@
+/* ==========================================================================
+   Statistics Page Styles
+   
+   Statistics charts and data visualization.
+   ========================================================================== */
+
+.statistics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.statistics .stats-grid {
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Stat Row (Bar chart style)
+   ========================================================================== */
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row__label {
+  font-size: var(--font-size-lg);
+}
+
+.stat-row__value {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.stat-row__count {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ==========================================================================
+   Collection Summary
+   ========================================================================== */
+
+.collection-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-3xl);
+  margin-top: var(--spacing-xl);
+}
+
+.summary-item {
+  text-align: center;
+}
+
+.summary-item__value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+.summary-item__value--blue {
+  color: var(--color-accent-blue);
+}
+
+.summary-item__value--green {
+  color: var(--color-accent-green);
+}
+
+.summary-item__value--red {
+  color: var(--color-accent-red);
+}
+
+.summary-item__value--orange {
+  color: var(--color-accent-orange);
+}
+
+.summary-item__label {
+  font-size: var(--font-size-md);
+  color: var(--color-text-disabled);
+}
