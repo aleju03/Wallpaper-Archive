@@ -73,7 +73,7 @@
 
 .wallpaper-meta {
   font-size: var(--font-size-sm);
-  color: #e0e0e0;
+  color: var(--color-text-muted);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -82,7 +82,7 @@
 }
 
 .wallpaper-provider {
-  color: #cccccc;
+  color: var(--color-text-tertiary);
 }
 
 .wallpaper-resolution {
@@ -325,7 +325,7 @@
 
 /* Info Component */
 .wallpaper-info {
-  background: var(--color-bg-primary);
+  background: transparent;
 }
 
 .wallpaper-info h3 {

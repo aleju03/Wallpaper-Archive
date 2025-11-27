@@ -83,17 +83,17 @@
 /* Light Mode */
 [data-theme="light"] {
   /* Colors - Background */
-  --color-bg-primary: #f5f5f5;
-  --color-bg-secondary: #e8e8e8;
-  --color-bg-tertiary: #d8d8d8;
-  --color-bg-hover: #ebebeb;
+  --color-bg-primary: #faf8f0;
+  --color-bg-secondary: #f0ece2;
+  --color-bg-tertiary: #e8e2d0;
+  --color-bg-hover: #f5f1e6;
 
   /* Colors - Text */
   --color-text-primary: #111111;
   --color-text-secondary: #333333;
-  --color-text-tertiary: #666666;
-  --color-text-muted: #888888;
-  --color-text-disabled: #aaaaaa;
+  --color-text-tertiary: #555555;
+  --color-text-muted: #666666;
+  --color-text-disabled: #999999;
 
   /* Colors - Border */
   --color-border-primary: #cccccc;
@@ -115,8 +115,8 @@
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
 
   /* Leaderboard gradients */
-  --leaderboard-gold-bg: #f5f0d8;
-  --leaderboard-bronze-bg: #f5ebe5;
+  --leaderboard-gold-bg: #f0e8c8;
+  --leaderboard-bronze-bg: #ede5d8;
 }
 
 /* Logo color invert for light mode */
