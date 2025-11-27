@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Images, Grid, Heart, Download, Swords, Trophy, Shuffle } from 'lucide-react'
+import { OverlayScrollbars } from 'overlayscrollbars'
 import Browse from './components/Browse'
 import Arena from './components/Arena'
 import Leaderboard from './components/Leaderboard'
@@ -10,6 +11,17 @@ import './App.css'
 function App() {
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
   const [activeTab, setActiveTab] = useState('browse')
+  
+  useEffect(() => {
+    const osInstance = OverlayScrollbars(document.body, {
+      scrollbars: {
+        theme: 'os-theme-custom',
+        autoHide: 'leave',
+        clickScroll: true,
+      }
+    });
+    return () => osInstance.destroy();
+  }, []);
   
   // Lifted state for Browse component to persist data between tab switches
   const [browseState, setBrowseState] = useState({
