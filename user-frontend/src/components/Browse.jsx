@@ -3,6 +3,49 @@ import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, Align
 import axios from 'axios'
 import { API_BASE } from '../config'
 
+function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  return (
+    <div 
+      className="wallpaper-card"
+      onClick={() => onClick(wallpaper)}
+    >
+      {!error ? (
+        <img
+          src={`${API_BASE}${wallpaper.thumbnail_url}`}
+          alt={wallpaper.filename}
+          className={`wallpaper-image ${imageLoaded ? 'loaded' : ''}`}
+          loading="lazy"
+          onLoad={() => setImageLoaded(true)}
+          onError={(e) => {
+            if (!e.target.dataset.fallbackTried) {
+              e.target.dataset.fallbackTried = 'true'
+              e.target.src = `${API_BASE}${wallpaper.image_url}`
+              return
+            }
+            setError(true)
+          }}
+        />
+      ) : (
+        <div className="wallpaper-image" style={{ background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '10px', opacity: 1 }}>
+          no preview
+        </div>
+      )}
+      
+      <div className="wallpaper-overlay">
+        <div className="wallpaper-title">{wallpaper.filename}</div>
+        <div className="wallpaper-meta">
+          <span className="wallpaper-provider">{wallpaper.provider}</span>
+          <span className="wallpaper-resolution">{wallpaper.dimensions || 'unknown'}</span>
+          <span className="wallpaper-size">{formatFileSize(wallpaper.file_size)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Browse({ onWallpaperClick }) {
   const [wallpapers, setWallpapers] = useState([])
   const [providers, setProviders] = useState([])
@@ -302,44 +345,26 @@ function Browse({ onWallpaperClick }) {
       </div>
 
       <div className="wallpaper-grid-container">
-        {loading && <div className="loading">loading wallpapers...</div>}
         
         {error && <div className="error">{error}</div>}
 
-        {!loading && !error && (
+        {!error && (
           <div className={getGridClass()}>
-            {wallpapers.map((wallpaper) => (
-              <div 
-                key={wallpaper.id} 
-                className="wallpaper-card"
-                onClick={() => handleWallpaperClick(wallpaper)}
-              >
-                <img
-                  src={`${API_BASE}${wallpaper.thumbnail_url}`}
-                  alt={wallpaper.filename}
-                  className="wallpaper-image"
-                  loading="lazy"
-                  onError={(e) => {
-                    if (!e.target.dataset.fallbackTried) {
-                      e.target.dataset.fallbackTried = 'true'
-                      e.target.src = `${API_BASE}${wallpaper.image_url}`
-                      return
-                    }
-                    e.target.style.display = 'none'
-                    e.target.parentNode.innerHTML += '<div class="wallpaper-image" style="background: #111; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px;">no preview</div>'
-                  }}
+            {loading ? (
+              // Render 24 skeleton cards while loading
+              Array.from({ length: itemsPerPage }).map((_, i) => (
+                <div key={i} className="skeleton-card" />
+              ))
+            ) : (
+              wallpapers.map((wallpaper) => (
+                <WallpaperCard 
+                  key={wallpaper.id}
+                  wallpaper={wallpaper}
+                  onClick={handleWallpaperClick}
+                  formatFileSize={formatFileSize}
                 />
-                
-                <div className="wallpaper-overlay">
-                  <div className="wallpaper-title">{wallpaper.filename}</div>
-                  <div className="wallpaper-meta">
-                    <span className="wallpaper-provider">{wallpaper.provider}</span>
-                    <span className="wallpaper-resolution">{wallpaper.dimensions || 'unknown'}</span>
-                    <span className="wallpaper-size">{formatFileSize(wallpaper.file_size)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>
