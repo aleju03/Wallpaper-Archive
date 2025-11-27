@@ -54,3 +54,18 @@
     transform: translateY(-60px) scale(1);
   }
 }
+
+/* View Transition for Theme Toggle */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  z-index: var(--z-tooltip);
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
