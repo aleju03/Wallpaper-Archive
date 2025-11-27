@@ -3,20 +3,9 @@
 <div align="center">
   <table>
     <tr>
-      <td width="50%" align="center">
-        <b>Browse Page</b><br>
-        <img src="https://github.com/user-attachments/assets/69bb5f6d-51c9-4d13-b753-4606f9d8cf11" width="100%">
-      </td>
-      <td width="50%" align="center">
-        <b>Gallery View</b><br>
-        <img src="https://github.com/user-attachments/assets/38babe57-b6ae-4d9e-bf2e-5b48e51b32c8" width="100%">
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" align="center">
-        <b>Mobile View</b><br>
-        <img src="https://github.com/user-attachments/assets/7f1d2c41-62b1-4671-83ef-73a9e394dc39" width="30%">
-      </td>
+      <td width="42%"><img src="https://github.com/user-attachments/assets/69bb5f6d-51c9-4d13-b753-4606f9d8cf11" width="100%"></td>
+      <td width="16%"><img src="https://github.com/user-attachments/assets/7f1d2c41-62b1-4671-83ef-73a9e394dc39" width="100%"></td>
+      <td width="42%"><img src="https://github.com/user-attachments/assets/38babe57-b6ae-4d9e-bf2e-5b48e51b32c8" width="100%"></td>
     </tr>
   </table>
 </div>
