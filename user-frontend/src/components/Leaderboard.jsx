@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, RefreshCw, Download } from 'lucide-react'
+import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, RefreshCw, Download, Swords, AlertCircle } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config'
 
-function Leaderboard() {
+function Leaderboard({ onNavigateToArena }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -111,9 +111,18 @@ function Leaderboard() {
 
   if (error) {
     return (
-      <div className="leaderboard error-container">
-        <p>{error}</p>
-        <button onClick={fetchLeaderboard}>retry</button>
+      <div className="leaderboard">
+        <div className="empty-state">
+          <AlertCircle size={48} className="empty-state-icon" />
+          <h3 className="empty-state-title">leaderboard unavailable</h3>
+          <p className="empty-state-description">
+            {error}. please check your connection and try again.
+          </p>
+          <button onClick={() => fetchLeaderboard(showBottom)} className="empty-state-button">
+            <RefreshCw size={16} />
+            retry
+          </button>
+        </div>
       </div>
     )
   }
@@ -158,9 +167,18 @@ function Leaderboard() {
           ))}
         </div>
       ) : leaderboard.length === 0 ? (
-        <div className="empty-leaderboard">
-          <p>no battles have been fought yet</p>
-          <p>start some arena battles to see the leaderboard!</p>
+        <div className="empty-state">
+          <Swords size={48} className="empty-state-icon" />
+          <h3 className="empty-state-title">arena empty</h3>
+          <p className="empty-state-description">
+            no battles have been fought yet. be the first to enter the arena and start ranking wallpapers!
+          </p>
+          {onNavigateToArena && (
+            <button onClick={onNavigateToArena} className="empty-state-button">
+              <Swords size={16} />
+              enter the arena
+            </button>
+          )}
         </div>
       ) : (
         <div className="leaderboard-list">

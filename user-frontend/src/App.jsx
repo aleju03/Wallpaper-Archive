@@ -37,7 +37,7 @@ function App() {
       case 'arena':
         return <Arena />
       case 'leaderboard':
-        return <Leaderboard />
+        return <Leaderboard onNavigateToArena={() => setActiveTab('arena')} />
       case 'random':
         return <Random />
       default:

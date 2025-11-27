@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Zap, Crown, Swords, Eye, X, Download } from 'lucide-react'
+import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config'
 
@@ -94,9 +94,19 @@ function Arena() {
 
   if (!battlePair || battlePair.length < 2) {
     return (
-      <div className="arena error-container">
-        <p>not enough wallpapers for battle</p>
-        <button onClick={fetchBattle}>try again</button>
+      <div className="arena">
+        <div className="empty-state">
+          <AlertCircle size={48} className="empty-state-icon" />
+          <h3 className="empty-state-title">not enough combatants</h3>
+          <p className="empty-state-description">
+            there aren't enough wallpapers in the collection to form a battle pair.
+            try downloading more wallpapers from the "browse" tab or check back later.
+          </p>
+          <button onClick={fetchBattle} className="empty-state-button">
+            <RefreshCw size={16} />
+            try again
+          </button>
+        </div>
       </div>
     )
   }
