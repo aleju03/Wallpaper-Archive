@@ -10,7 +10,7 @@
   </table>
 </div>
 
-Wallpaper gallery I built by scraping various GitHub wallpaper repositories (and the local osu backgrounds if wanted) to get a faster way to view and download some wallpapers for myself. Includes a backend for data handling, an admin panel for curation, and a frontend for browsing.
+Wallpaper gallery I built by scraping various GitHub wallpaper repositories (and the local osu backgrounds if wanted) to get a faster way to view and download some wallpapers for myself. Includes a backend for data handling, an admin panel for curation, and a frontend for browsing. Now hosted on Vercel for others to use.
 
 ## Features
 
@@ -20,8 +20,13 @@ The backend handles the heavy lifting like thumbnail generation, duplicate detec
 
 ## Architecture
 
-The system runs three things at once: a Node/Fastify backend on port 3000 with SQLite, and two React/Vite frontends (Admin on 5173, User on 5174).
+The system runs three things: a Node/Fastify backend deployed on Vercel, and two React/Vite frontends (Admin and User). Uses Turso for the database and Cloudflare R2 for image storage.
 
-## Usage
+## Branches
+
+- `main` - Production version deployed to Vercel (Turso + Cloudflare R2)
+- `local-version` - Self-hosted variant (local SQLite + local file storage)
+
+## Local Development
 
 Install dependencies with `npm install` and start everything with `npm run dev`.
