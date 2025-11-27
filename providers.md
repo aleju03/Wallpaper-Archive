@@ -30,4 +30,9 @@
    - Raw URL: `https://raw.githubusercontent.com/dixiedream/wallpapers/main`
    - Folders: `["1080p"]`
 
-Github token for API: REDACTED
+## Configuration
+
+GitHub API token is required for downloading. Set it in a `.env` file:
+```
+GITHUB_TOKEN=your_token_here
+```

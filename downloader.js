@@ -4,13 +4,14 @@ const path = require('path');
 const sharp = require('sharp');
 const Database = require('./database');
 const OsuLocalProvider = require('./osu-provider');
+require('dotenv').config();
 
 class WallpaperDownloader {
   constructor() {
     this.db = new Database();
     this.downloadDir = './downloads';
     this.thumbnailDir = './thumbnails';
-    this.token = 'REDACTED';
+    this.token = process.env.GITHUB_TOKEN;
     
     this.providers = [
       {
