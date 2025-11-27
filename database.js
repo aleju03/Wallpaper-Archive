@@ -288,6 +288,22 @@ class Database {
     });
   }
 
+  async getRandomWallpaper() {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM wallpapers 
+        WHERE local_path IS NOT NULL AND local_path != ''
+        ORDER BY RANDOM() 
+        LIMIT 1
+      `;
+      
+      this.db.get(sql, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  }
+
   async updateArenaResults(winnerId, loserId, voteTimeMs = null) {
     return new Promise((resolve, reject) => {
       // Get current ELO ratings

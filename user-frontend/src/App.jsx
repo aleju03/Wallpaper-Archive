@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Search, Images, Grid, Heart, Download, Swords, Trophy } from 'lucide-react'
+import { Search, Images, Grid, Heart, Download, Swords, Trophy, Shuffle } from 'lucide-react'
 import Browse from './components/Browse'
 import Arena from './components/Arena'
 import Leaderboard from './components/Leaderboard'
+import Random from './components/Random'
 import WallpaperModal from './components/WallpaperModal'
 import './App.css'
 
@@ -18,6 +19,8 @@ function App() {
         return <Arena />
       case 'leaderboard':
         return <Leaderboard />
+      case 'random':
+        return <Random />
       default:
         return <Browse onWallpaperClick={setSelectedWallpaper} />
     }
@@ -49,6 +52,13 @@ function App() {
             >
               <Swords size={16} />
               <span>arena</span>
+            </button>
+            <button 
+              className={`nav-button ${activeTab === 'random' ? 'active' : ''}`}
+              onClick={() => setActiveTab('random')}
+            >
+              <Shuffle size={16} />
+              <span>random</span>
             </button>
             <button 
               className={`nav-button ${activeTab === 'leaderboard' ? 'active' : ''}`}

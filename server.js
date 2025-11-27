@@ -115,6 +115,29 @@ fastify.get('/api/wallpapers', async (request, reply) => {
   }
 });
 
+fastify.get('/api/wallpapers/random', async (request, reply) => {
+  try {
+    const wallpaper = await db.getRandomWallpaper();
+    
+    if (!wallpaper) {
+      reply.code(404);
+      return { success: false, error: 'No wallpapers found' };
+    }
+
+    return {
+      success: true,
+      wallpaper: {
+        ...wallpaper,
+        image_url: `/images/${path.basename(wallpaper.local_path)}`,
+        thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
+      }
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
 fastify.get('/api/wallpapers/:id', async (request, reply) => {
   try {
     const wallpaper = await db.getWallpaperById(request.params.id);
