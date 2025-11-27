@@ -289,31 +289,61 @@
     padding: 6px var(--spacing-md);
   }
 
-  /* Leaderboard */
+  /* Leaderboard - Stacked mobile layout */
   .leaderboard-item {
-    grid-template-columns: auto minmax(160px, 180px) 1fr;
-    gap: var(--spacing-lg);
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: var(--spacing-md);
     text-align: left;
-    padding: var(--spacing-xl) var(--spacing-lg);
+    padding: var(--spacing-md);
   }
 
-  .wallpaper-preview {
-    width: 160px;
-    height: 100px;
+  /* Top row: Rank + Wallpaper Info side by side */
+  .leaderboard-item .rank-section {
+    grid-row: 1;
+    grid-column: 1;
+    position: absolute;
+    top: var(--spacing-md);
+    left: var(--spacing-md);
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.7);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
   }
 
-  .battle-stats {
-    grid-template-columns: repeat(2, 1fr);
+  .leaderboard-item .wallpaper-preview {
+    grid-row: 1;
+    grid-column: 1;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
+    border-radius: var(--radius-md);
+  }
+
+  .leaderboard-item .wallpaper-info {
+    grid-row: 2;
+    grid-column: 1;
+    padding: 0;
+  }
+
+  .leaderboard-item .battle-stats {
+    grid-row: 3;
+    grid-column: 1;
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--spacing-sm);
     text-align: center;
+    background: var(--color-bg-tertiary);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    margin: 0;
   }
 
   .stat-item {
-    gap: var(--spacing-xs);
+    gap: 2px;
   }
 
   .stat-value {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
   }
 
   .stat-label {
@@ -444,27 +474,30 @@
   }
 
   .leaderboard-item {
-    grid-template-columns: auto minmax(100px, 120px) 1fr;
-    gap: var(--spacing-md);
-    padding: var(--spacing-lg) var(--spacing-md);
+    padding: var(--spacing-sm);
   }
 
-  .wallpaper-preview {
-    width: 100px;
-    height: 62px;
+  .leaderboard-item .rank-section {
+    top: var(--spacing-sm);
+    left: var(--spacing-sm);
+  }
+
+  .leaderboard-item .battle-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-xs);
   }
 
   .rank-text {
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-sm);
   }
 
-  .wallpaper-name {
-    font-size: var(--font-size-base);
+  .leaderboard-item .wallpaper-name {
+    font-size: var(--font-size-sm);
   }
 
-  .wallpaper-meta {
+  .leaderboard-item .wallpaper-meta {
     font-size: var(--font-size-xs);
-    gap: 6px;
+    gap: 4px;
   }
 }
 
@@ -493,14 +526,77 @@
   }
 
   .wallpaper-overlay {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
   }
 
   .wallpaper-title {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-xs);
   }
 
   .wallpaper-meta {
+    font-size: 9px;
+  }
+}
+
+/* ==========================================================================
+   Touch Device Adjustments
+   ========================================================================== */
+@media (hover: none) {
+  /* On touch devices, keep overlay hidden by default - it shows on tap/click */
+  .wallpaper-overlay {
+    transform: translateY(100%);
+  }
+
+  /* Active state for touch feedback */
+  .wallpaper-card:active .wallpaper-overlay {
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Compact Overlay for Small Cards
+   When cards are too small, show minimal info
+   ========================================================================== */
+@media (max-width: 768px) {
+  .wallpaper-overlay {
+    padding: var(--spacing-sm);
+  }
+
+  .wallpaper-title {
     font-size: var(--font-size-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .wallpaper-meta {
+    font-size: 9px;
+    gap: 4px;
+  }
+
+  /* Hide provider and size, only show resolution */
+  .wallpaper-provider,
+  .wallpaper-size {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .wallpaper-overlay {
+    padding: var(--spacing-xs);
+  }
+
+  .wallpaper-title {
+    font-size: 9px;
+    margin-bottom: 2px;
+  }
+
+  .wallpaper-meta {
+    font-size: 8px;
+  }
+
+  .wallpaper-resolution {
+    padding: 1px 3px;
+    font-size: 7px;
   }
 }
