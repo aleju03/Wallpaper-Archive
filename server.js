@@ -5,62 +5,27 @@ const fastify = require('fastify')({
   disableRequestLogging: true
 });
 const path = require('path');
-const fs = require('fs').promises;
-const sharp = require('sharp');
 const Database = require('./database');
-const { generatePerceptualHash, findDuplicateGroups } = require('./image-hash');
 
+// Initialize database client
 const db = new Database();
 
-// Cache for duplicate detection results
-let duplicateCache = {
-  lastComputed: null,
-  results: null,
-  wallpaperCount: 0
-};
-
-// Invalidate cache on startup to use hybrid algorithm
-duplicateCache.lastComputed = null;
-
+// Enable CORS
 fastify.register(require('@fastify/cors'), {
   origin: ['*'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 });
 
-fastify.register(require('@fastify/static'), {
-  root: path.join(__dirname, 'downloads'),
-  prefix: '/images/',
-});
-
-fastify.register(require('@fastify/static'), {
-  root: path.join(__dirname, 'thumbnails'),
-  prefix: '/thumbnails/',
-  decorateReply: false
-});
-
-async function generateThumbnail(imagePath, thumbnailPath) {
-  try {
-    await sharp(imagePath)
-      .resize(300, 200, { fit: 'cover' })
-      .jpeg({ quality: 80 })
-      .toFile(thumbnailPath);
-    return true;
-  } catch (error) {
-    console.error('Error generating thumbnail:', error);
-    return false;
-  }
-}
-
 fastify.get('/', async (request, reply) => {
   return { 
-    message: 'Wallpaper Archive API',
+    message: 'Wallpaper Archive API (Serverless)',
     endpoints: {
       '/api/wallpapers': 'Get all wallpapers with optional filters',
       '/api/wallpapers/:id': 'Get specific wallpaper',
       '/api/stats': 'Get database statistics',
-      '/images/:filename': 'Serve original images',
-      '/thumbnails/:filename': 'Serve thumbnail images'
+      '/api/arena/battle': 'Get random pair for arena',
+      '/api/arena/leaderboard': 'Get arena leaderboard'
     }
   };
 });
@@ -99,9 +64,9 @@ fastify.get('/api/wallpapers', async (request, reply) => {
     return {
       wallpapers: wallpapers.map(w => ({
         ...w,
-        filename: path.basename(w.local_path),
-        image_url: `/images/${path.basename(w.local_path)}`,
-        thumbnail_url: `/thumbnails/${path.basename(w.local_path, path.extname(w.local_path))}.jpg`
+        filename: w.filename,
+        image_url: w.download_url, // Use public URL directly
+        thumbnail_url: w.download_url // Use full image as thumb for now
       })),
       total: total,
       page: currentPage,
@@ -128,8 +93,8 @@ fastify.get('/api/wallpapers/random', async (request, reply) => {
       success: true,
       wallpaper: {
         ...wallpaper,
-        image_url: `/images/${path.basename(wallpaper.local_path)}`,
-        thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
+        image_url: wallpaper.download_url,
+        thumbnail_url: wallpaper.download_url
       }
     };
   } catch (error) {
@@ -151,8 +116,8 @@ fastify.get('/api/wallpapers/:id', async (request, reply) => {
       success: true,
       wallpaper: {
         ...wallpaper,
-        image_url: `/images/${path.basename(wallpaper.local_path)}`,
-        thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
+        image_url: wallpaper.download_url,
+        thumbnail_url: wallpaper.download_url
       }
     };
   } catch (error) {
@@ -166,7 +131,9 @@ fastify.get('/api/stats', async (request, reply) => {
     const stats = await db.getStats();
     
     // Get all wallpapers to calculate additional stats
-    const wallpapers = await db.getWallpapers();
+    // Note: In serverless, fetching ALL rows might be slow/expensive.
+    // Optimizing to only fetch what is needed or simplified stats.
+    const wallpapers = await db.getWallpapers({ limit: 10000 }); // Soft limit
     
     // Calculate providers and folders
     const providers = {};
@@ -190,8 +157,8 @@ fastify.get('/api/stats', async (request, reply) => {
       }
       
       // File types (from filename extension)
-      if (w.local_path) {
-        const ext = path.extname(w.local_path).toLowerCase().replace('.', '');
+      if (w.filename) {
+        const ext = path.extname(w.filename).toLowerCase().replace('.', '');
         if (ext) {
           file_types[ext] = (file_types[ext] || 0) + 1;
         }
@@ -218,37 +185,12 @@ fastify.get('/api/stats', async (request, reply) => {
   }
 });
 
-fastify.get('/thumbnails/:filename', async (request, reply) => {
-  const filename = request.params.filename;
-  const thumbnailPath = path.join(__dirname, 'thumbnails', filename);
-  
-  try {
-    await fs.access(thumbnailPath);
-    return reply.sendFile(filename, path.join(__dirname, 'thumbnails'));
-  } catch (error) {
-    const originalFilename = filename.replace('.jpg', '');
-    const wallpapers = await db.getWallpapers({ search: originalFilename });
-    
-    if (wallpapers.length > 0) {
-      const wallpaper = wallpapers[0];
-      const success = await generateThumbnail(wallpaper.local_path, thumbnailPath);
-      
-      if (success) {
-        return reply.sendFile(filename, path.join(__dirname, 'thumbnails'));
-      }
-    }
-    
-    reply.code(404);
-    return { error: 'Thumbnail not found' };
-  }
-});
-
 fastify.get('/api/providers', async (request, reply) => {
   try {
-    const wallpapers = await db.getWallpapers();
+    // Optimized to not fetch all rows if possible, but reusing existing logic for now
+    const wallpapers = await db.getWallpapers({ limit: 5000 });
     const folders = [...new Set(wallpapers.map(w => w.folder).filter(Boolean))];
     
-    // Group wallpapers by provider and calculate stats
     const providerStats = {};
     wallpapers.forEach(wallpaper => {
       if (!providerStats[wallpaper.provider]) {
@@ -260,15 +202,13 @@ fastify.get('/api/providers', async (request, reply) => {
       }
       providerStats[wallpaper.provider].count++;
       
-      // Track the most recent wallpaper date for this provider
-      const wallpaperDate = new Date(wallpaper.created_at || wallpaper.downloaded_at);
+      const wallpaperDate = new Date(wallpaper.created_at);
       if (!providerStats[wallpaper.provider].lastUpdated || 
           wallpaperDate > providerStats[wallpaper.provider].lastUpdated) {
         providerStats[wallpaper.provider].lastUpdated = wallpaperDate;
       }
     });
     
-    // Convert to array and add status based on recent activity
     const providers = Object.values(providerStats).map(provider => {
       const daysSinceUpdate = provider.lastUpdated ? 
         Math.floor((new Date() - provider.lastUpdated) / (1000 * 60 * 60 * 24)) : null;
@@ -298,205 +238,6 @@ fastify.get('/api/providers', async (request, reply) => {
   }
 });
 
-// Generate perceptual hashes for images that don't have them
-fastify.post('/api/duplicates/generate-hashes', async (request, reply) => {
-  try {
-    const wallpapers = await db.getAllWallpapersWithoutHashes();
-    let processed = 0;
-    let errors = 0;
-    
-    console.log(`Starting hash generation for ${wallpapers.length} wallpapers...`);
-    
-    for (const wallpaper of wallpapers) {
-      try {
-        if (wallpaper.local_path && await fs.access(wallpaper.local_path).then(() => true).catch(() => false)) {
-          const hash = await generatePerceptualHash(wallpaper.local_path);
-          await db.updatePerceptualHash(wallpaper.id, hash);
-          processed++;
-          
-          if (processed % 10 === 0) {
-            console.log(`Processed ${processed}/${wallpapers.length} hashes...`);
-          }
-        } else {
-          console.log(`File not found: ${wallpaper.local_path}`);
-          errors++;
-        }
-      } catch (error) {
-        console.error(`Error processing ${wallpaper.filename}:`, error);
-        errors++;
-      }
-    }
-    
-    return {
-      success: true,
-      message: `Hash generation complete. Processed: ${processed}, Errors: ${errors}`
-    };
-  } catch (error) {
-    reply.code(500);
-    return { success: false, error: error.message };
-  }
-});
-
-// Find duplicate wallpapers
-fastify.get('/api/duplicates', async (request, reply) => {
-  try {
-    const startTime = Date.now();
-    console.log('🔍 DUPLICATES REQUEST START');
-    
-    const { threshold = 10, force = false } = request.query;
-    
-    // Check if we can use cached results first (before expensive DB query)
-    const cacheAge = duplicateCache.lastComputed ? Date.now() - duplicateCache.lastComputed : Infinity;
-    console.log(`⏰ Cache age: ${Math.round(cacheAge/1000)}s, threshold: ${threshold}, cached threshold: ${duplicateCache.threshold}, force: ${force}`);
-    
-    // Use cache if it's less than 5 minutes old and same threshold, unless force refresh is requested
-    if (duplicateCache.results && 
-        duplicateCache.threshold === parseInt(threshold) &&
-        cacheAge < 5 * 60 * 1000 &&
-        force !== 'true') {
-      console.log('✅ Using cached duplicate results (fast path)');
-      
-      const urlStartTime = Date.now();
-      // Add image URLs to cached results
-      const enhancedGroups = duplicateCache.results.map(group => 
-        group.map(wallpaper => ({
-          ...wallpaper,
-          image_url: `/images/${path.basename(wallpaper.local_path)}`,
-          thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
-        }))
-      );
-      console.log(`🔗 URL processing took: ${Date.now() - urlStartTime}ms`);
-      
-      const totalTime = Date.now() - startTime;
-      console.log(`⚡ FAST PATH TOTAL TIME: ${totalTime}ms`);
-      
-      return {
-        success: true,
-        duplicateGroups: enhancedGroups,
-        totalGroups: enhancedGroups.length,
-        totalDuplicates: enhancedGroups.reduce((sum, group) => sum + group.length, 0)
-      };
-    }
-    
-    // Only fetch all wallpapers if cache is invalid
-    console.log('❌ Cache miss - fetching wallpapers and computing duplicates...');
-    
-    const dbStartTime = Date.now();
-    const wallpapers = await db.getAllWallpapersWithHashes();
-    console.log(`📊 DB fetch took: ${Date.now() - dbStartTime}ms for ${wallpapers.length} wallpapers`);
-    
-    if (wallpapers.length === 0) {
-      return {
-        success: true,
-        message: 'No wallpapers with hashes found. Generate hashes first.',
-        duplicateGroups: []
-      };
-    }
-    
-    const computeStartTime = Date.now();
-    console.log(`🧮 Computing duplicates for ${wallpapers.length} wallpapers with threshold ${threshold}...`);
-    const duplicateGroups = findDuplicateGroups(wallpapers, parseInt(threshold));
-    console.log(`🧮 Duplicate computation took: ${Date.now() - computeStartTime}ms`);
-    
-    // Update cache
-    duplicateCache = {
-      lastComputed: Date.now(),
-      results: duplicateGroups,
-      wallpaperCount: wallpapers.length,
-      threshold: parseInt(threshold)
-    };
-    
-    const urlStartTime = Date.now();
-    // Add image URLs to each wallpaper in the groups
-    const enhancedGroups = duplicateGroups.map(group => 
-      group.map(wallpaper => ({
-        ...wallpaper,
-        image_url: `/images/${path.basename(wallpaper.local_path)}`,
-        thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
-      }))
-    );
-    console.log(`🔗 URL processing took: ${Date.now() - urlStartTime}ms`);
-    
-    const totalTime = Date.now() - startTime;
-    console.log(`🐌 SLOW PATH TOTAL TIME: ${totalTime}ms`);
-    
-    return {
-      success: true,
-      duplicateGroups: enhancedGroups,
-      totalGroups: enhancedGroups.length,
-      totalDuplicates: enhancedGroups.reduce((sum, group) => sum + group.length, 0)
-    };
-  } catch (error) {
-    reply.code(500);
-    return { success: false, error: error.message };
-  }
-});
-
-// Delete a wallpaper (for removing duplicates)
-fastify.delete('/api/wallpapers/:id', async (request, reply) => {
-  try {
-    const wallpaper = await db.getWallpaperById(request.params.id);
-    
-    if (!wallpaper) {
-      reply.code(404);
-      return { success: false, error: 'Wallpaper not found' };
-    }
-    
-    // Delete the database record
-    await db.deleteWallpaper(request.params.id);
-    
-    // Invalidate duplicate cache since data changed
-    duplicateCache.lastComputed = null;
-    
-    // Optionally delete the physical file
-    if (request.query.deleteFile === 'true' && wallpaper.local_path) {
-      try {
-        await fs.unlink(wallpaper.local_path);
-        
-        // Also try to delete the thumbnail
-        const thumbnailPath = path.join(__dirname, 'thumbnails', 
-          path.basename(wallpaper.local_path, path.extname(wallpaper.local_path)) + '.jpg');
-        await fs.unlink(thumbnailPath).catch(() => {}); // Ignore if thumbnail doesn't exist
-      } catch (fileError) {
-        console.error('Error deleting file:', fileError);
-        // Continue anyway - database record is already deleted
-      }
-    }
-    
-    return {
-      success: true,
-      message: 'Wallpaper deleted successfully'
-    };
-  } catch (error) {
-    reply.code(500);
-    return { success: false, error: error.message };
-  }
-});
-
-// Get hash generation status
-fastify.get('/api/duplicates/status', async (request, reply) => {
-  try {
-    const [withHashes, withoutHashes, total] = await Promise.all([
-      db.getAllWallpapersWithHashes(),
-      db.getAllWallpapersWithoutHashes(),
-      db.getWallpapersCount()
-    ]);
-    
-    return {
-      success: true,
-      status: {
-        total: total,
-        withHashes: withHashes.length,
-        withoutHashes: withoutHashes.length,
-        percentage: total > 0 ? Math.round((withHashes.length / total) * 100) : 0
-      }
-    };
-  } catch (error) {
-    reply.code(500);
-    return { success: false, error: error.message };
-  }
-});
-
 // Arena endpoints
 fastify.get('/api/arena/battle', async (request, reply) => {
   try {
@@ -510,8 +251,8 @@ fastify.get('/api/arena/battle', async (request, reply) => {
     // Add image and thumbnail URLs  
     const wallpapersWithUrls = wallpapers.map(wallpaper => ({
       ...wallpaper,
-      image_url: `/images/${path.basename(wallpaper.local_path)}`,
-      thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
+      image_url: wallpaper.download_url,
+      thumbnail_url: wallpaper.download_url
     }));
 
     return {
@@ -561,8 +302,8 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
     // Add image and thumbnail URLs
     const leaderboardWithUrls = leaderboard.map(wallpaper => ({
       ...wallpaper,
-      image_url: `/images/${path.basename(wallpaper.local_path)}`,
-      thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path))}.jpg`
+      image_url: wallpaper.download_url, // Use download_url assuming it maps to gitlab public url
+      thumbnail_url: wallpaper.download_url
     }));
 
     return {
@@ -576,29 +317,22 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
   }
 });
 
-fastify.post('/api/arena/reset', async (request, reply) => {
-  try {
-    const rowsAffected = await db.resetArenaStats();
-    
-    return {
-      success: true,
-      message: `Reset ELO ratings and battle stats for ${rowsAffected} wallpapers`
-    };
-  } catch (error) {
-    reply.code(500);
-    return { success: false, error: error.message };
-  }
-});
-
-const start = async () => {
-  try {
-    await fs.mkdir('./thumbnails', { recursive: true });
-    await fastify.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('Server running on http://localhost:3000');
-  } catch (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
+// Export for Vercel Serverless
+module.exports = async (req, res) => {
+  await fastify.ready();
+  fastify.server.emit('request', req, res);
 };
 
-start();
+// Start local server if running directly
+if (require.main === module) {
+  const start = async () => {
+    try {
+      await fastify.listen({ port: 3000, host: '0.0.0.0' });
+      console.log('Server running on http://localhost:3000');
+    } catch (err) {
+      fastify.log.error(err);
+      process.exit(1);
+    }
+  };
+  start();
+}

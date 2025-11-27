@@ -1,14 +1,20 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { createClient } = require('@libsql/client');
+require('dotenv').config();
 
 class Database {
-  constructor(dbPath = './wallpapers.db') {
-    this.db = new sqlite3.Database(dbPath);
+  constructor() {
+    const url = process.env.TURSO_DATABASE_URL || 'file:wallpapers.db';
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+
+    this.client = createClient({
+      url,
+      authToken,
+    });
+    
     this.init();
   }
 
-  init() {
-    // First create the basic table structure
+  async init() {
     const basicSchema = `
       CREATE TABLE IF NOT EXISTS wallpapers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +28,9 @@ class Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         tags TEXT,
         perceptual_hash TEXT,
+        elo_rating INTEGER DEFAULT 1000,
+        battles_won INTEGER DEFAULT 0,
+        battles_lost INTEGER DEFAULT 0,
         UNIQUE(provider, folder, filename)
       );
 
@@ -29,419 +38,331 @@ class Database {
       CREATE INDEX IF NOT EXISTS idx_folder ON wallpapers(folder);
       CREATE INDEX IF NOT EXISTS idx_filename ON wallpapers(filename);
       CREATE INDEX IF NOT EXISTS idx_perceptual_hash ON wallpapers(perceptual_hash);
+      CREATE INDEX IF NOT EXISTS idx_elo_rating ON wallpapers(elo_rating);
     `;
 
-    this.db.exec(basicSchema, (err) => {
-      if (err) {
-        console.error('Error creating database schema:', err);
-      } else {
-        console.log('Database initialized successfully');
-        // Run migrations for existing databases
-        this.runMigrations();
-      }
-    });
+    try {
+      await this.client.executeMultiple(basicSchema);
+      console.log('Database initialized successfully');
+    } catch (err) {
+      console.error('Error creating database schema:', err);
+    }
   }
 
-  runMigrations() {
-    // Add ELO columns if they don't exist (one by one to handle errors gracefully)
-    this.db.run('ALTER TABLE wallpapers ADD COLUMN elo_rating INTEGER DEFAULT 1000', (err) => {
-      if (err && !err.message.includes('duplicate column name')) {
-        console.error('Error adding elo_rating column:', err.message);
-      }
-    });
-
-    this.db.run('ALTER TABLE wallpapers ADD COLUMN battles_won INTEGER DEFAULT 0', (err) => {
-      if (err && !err.message.includes('duplicate column name')) {
-        console.error('Error adding battles_won column:', err.message);
-      }
-    });
-
-    this.db.run('ALTER TABLE wallpapers ADD COLUMN battles_lost INTEGER DEFAULT 0', (err) => {
-      if (err && !err.message.includes('duplicate column name')) {
-        console.error('Error adding battles_lost column:', err.message);
-      } else {
-        // After all columns are added, create the index
-        this.db.run('CREATE INDEX IF NOT EXISTS idx_elo_rating ON wallpapers(elo_rating)', (indexErr) => {
-          if (indexErr) {
-            console.error('Error creating ELO index:', indexErr.message);
-          } else {
-            console.log('ELO migration completed successfully');
-          }
-        });
-      }
-    });
-  }
+  // Migration method removed as we are creating the full schema in init() for this "serverless" version.
+  // If you need to migrate existing data, you would likely use a separate script.
 
   async insertWallpaper(wallpaper) {
-    // Auto-generate hash if image file exists and no hash provided
-    if (!wallpaper.perceptual_hash && wallpaper.local_path) {
-      try {
-        const fs = require('fs').promises;
-        await fs.access(wallpaper.local_path);
-        const { generatePerceptualHash } = require('./image-hash');
-        wallpaper.perceptual_hash = await generatePerceptualHash(wallpaper.local_path);
-        console.log(`Generated hash for new image: ${wallpaper.filename}`);
-      } catch (error) {
-        console.log(`Could not generate hash for ${wallpaper.filename}:`, error.message);
-        wallpaper.perceptual_hash = null;
-      }
-    }
+    // Hash generation removed from DB layer for serverless purity. 
+    // It should be done by the admin tool before insertion.
 
-    return new Promise((resolve, reject) => {
-      const sql = `
-        INSERT OR REPLACE INTO wallpapers 
-        (filename, provider, folder, file_size, dimensions, download_url, local_path, tags, perceptual_hash)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      
-      this.db.run(sql, [
-        wallpaper.filename,
-        wallpaper.provider,
-        wallpaper.folder,
-        wallpaper.file_size,
-        wallpaper.dimensions,
-        wallpaper.download_url,
-        wallpaper.local_path,
-        wallpaper.tags,
-        wallpaper.perceptual_hash
-      ], function(err) {
-        if (err) reject(err);
-        else resolve(this.lastID);
+    const sql = `
+      INSERT INTO wallpapers 
+      (filename, provider, folder, file_size, dimensions, download_url, local_path, tags, perceptual_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(provider, folder, filename) DO UPDATE SET
+      file_size=excluded.file_size,
+      dimensions=excluded.dimensions,
+      download_url=excluded.download_url,
+      local_path=excluded.local_path,
+      tags=excluded.tags,
+      perceptual_hash=excluded.perceptual_hash
+    `;
+    
+    try {
+      const result = await this.client.execute({
+        sql,
+        args: [
+          wallpaper.filename,
+          wallpaper.provider,
+          wallpaper.folder,
+          wallpaper.file_size,
+          wallpaper.dimensions,
+          wallpaper.download_url,
+          wallpaper.local_path,
+          wallpaper.tags,
+          wallpaper.perceptual_hash
+        ]
       });
-    });
+      return result.lastInsertRowid;
+    } catch (err) {
+      throw err;
+    }
   }
 
   async getWallpapers(filters = {}) {
-    return new Promise((resolve, reject) => {
-      let sql = 'SELECT * FROM wallpapers WHERE 1=1';
-      const params = [];
+    let sql = 'SELECT * FROM wallpapers WHERE 1=1';
+    const args = [];
 
-      if (filters.provider) {
-        sql += ' AND provider = ?';
-        params.push(filters.provider);
+    if (filters.provider) {
+      sql += ' AND provider = ?';
+      args.push(filters.provider);
+    }
+
+    if (filters.folder) {
+      sql += ' AND folder = ?';
+      args.push(filters.folder);
+    }
+
+    if (filters.filename) {
+      sql += ' AND filename = ?';
+      args.push(filters.filename);
+    }
+
+    if (filters.search) {
+      sql += ' AND (filename LIKE ? OR tags LIKE ?)';
+      args.push(`%${filters.search}%`, `%${filters.search}%`);
+    }
+
+    if (filters.resolution) {
+      sql += ' AND dimensions = ?';
+      args.push(filters.resolution);
+    }
+
+    sql += ' ORDER BY created_at DESC';
+
+    if (filters.limit) {
+      sql += ' LIMIT ?';
+      args.push(filters.limit);
+      
+      if (filters.offset) {
+        sql += ' OFFSET ?';
+        args.push(filters.offset);
       }
+    }
 
-      if (filters.folder) {
-        sql += ' AND folder = ?';
-        params.push(filters.folder);
-      }
-
-      if (filters.filename) {
-        sql += ' AND filename = ?';
-        params.push(filters.filename);
-      }
-
-      if (filters.search) {
-        sql += ' AND (filename LIKE ? OR tags LIKE ?)';
-        params.push(`%${filters.search}%`, `%${filters.search}%`);
-      }
-
-      if (filters.resolution) {
-        sql += ' AND dimensions = ?';
-        params.push(filters.resolution);
-      }
-
-      sql += ' ORDER BY created_at DESC';
-
-      if (filters.limit) {
-        sql += ' LIMIT ?';
-        params.push(filters.limit);
-        
-        if (filters.offset) {
-          sql += ' OFFSET ?';
-          params.push(filters.offset);
-        }
-      }
-
-      this.db.all(sql, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    const result = await this.client.execute({ sql, args });
+    return result.rows;
   }
 
   async getWallpapersCount(filters = {}) {
-    return new Promise((resolve, reject) => {
-      let sql = 'SELECT COUNT(*) as count FROM wallpapers WHERE 1=1';
-      const params = [];
+    let sql = 'SELECT COUNT(*) as count FROM wallpapers WHERE 1=1';
+    const args = [];
 
-      if (filters.provider) {
-        sql += ' AND provider = ?';
-        params.push(filters.provider);
-      }
+    if (filters.provider) {
+      sql += ' AND provider = ?';
+      args.push(filters.provider);
+    }
 
-      if (filters.folder) {
-        sql += ' AND folder = ?';
-        params.push(filters.folder);
-      }
+    if (filters.folder) {
+      sql += ' AND folder = ?';
+      args.push(filters.folder);
+    }
 
-      if (filters.search) {
-        sql += ' AND (filename LIKE ? OR tags LIKE ?)';
-        params.push(`%${filters.search}%`, `%${filters.search}%`);
-      }
+    if (filters.search) {
+      sql += ' AND (filename LIKE ? OR tags LIKE ?)';
+      args.push(`%${filters.search}%`, `%${filters.search}%`);
+    }
 
-      if (filters.resolution) {
-        sql += ' AND dimensions = ?';
-        params.push(filters.resolution);
-      }
+    if (filters.resolution) {
+      sql += ' AND dimensions = ?';
+      args.push(filters.resolution);
+    }
 
-      this.db.get(sql, params, (err, row) => {
-        if (err) reject(err);
-        else resolve(row.count);
-      });
-    });
+    const result = await this.client.execute({ sql, args });
+    // LibSQL returns rows as objects if not configured otherwise, but we can access by property
+    return result.rows[0].count; 
   }
 
   async getWallpaperById(id) {
-    return new Promise((resolve, reject) => {
-      this.db.get('SELECT * FROM wallpapers WHERE id = ?', [id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
+    const result = await this.client.execute({
+      sql: 'SELECT * FROM wallpapers WHERE id = ?',
+      args: [id]
     });
+    return result.rows[0];
   }
 
   async getStats() {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT 
-          COUNT(*) as total,
-          COUNT(DISTINCT provider) as providers,
-          COUNT(DISTINCT folder) as folders
-        FROM wallpapers
-      `;
-      
-      this.db.get(sql, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const sql = `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(DISTINCT provider) as providers,
+        COUNT(DISTINCT folder) as folders
+      FROM wallpapers
+    `;
+    
+    const result = await this.client.execute(sql);
+    return result.rows[0];
   }
 
   async getUniqueResolutions() {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT dimensions, COUNT(*) as count 
-        FROM wallpapers 
-        WHERE dimensions IS NOT NULL 
-        GROUP BY dimensions 
-        ORDER BY count DESC, dimensions ASC
-      `;
-      
-      this.db.all(sql, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    const sql = `
+      SELECT dimensions, COUNT(*) as count 
+      FROM wallpapers 
+      WHERE dimensions IS NOT NULL 
+      GROUP BY dimensions 
+      ORDER BY count DESC, dimensions ASC
+    `;
+    
+    const result = await this.client.execute(sql);
+    return result.rows;
   }
 
   async updatePerceptualHash(id, hash) {
-    return new Promise((resolve, reject) => {
-      this.db.run('UPDATE wallpapers SET perceptual_hash = ? WHERE id = ?', [hash, id], function(err) {
-        if (err) reject(err);
-        else resolve(this.changes);
-      });
+    const result = await this.client.execute({
+      sql: 'UPDATE wallpapers SET perceptual_hash = ? WHERE id = ?',
+      args: [hash, id]
     });
+    return result.rowsAffected;
   }
 
   async getAllWallpapersWithoutHashes() {
-    return new Promise((resolve, reject) => {
-      this.db.all('SELECT * FROM wallpapers WHERE perceptual_hash IS NULL OR perceptual_hash = ""', (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    const result = await this.client.execute('SELECT * FROM wallpapers WHERE perceptual_hash IS NULL OR perceptual_hash = ""');
+    return result.rows;
   }
 
   async getAllWallpapersWithHashes() {
-    return new Promise((resolve, reject) => {
-      this.db.all('SELECT * FROM wallpapers WHERE perceptual_hash IS NOT NULL AND perceptual_hash != ""', (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    const result = await this.client.execute('SELECT * FROM wallpapers WHERE perceptual_hash IS NOT NULL AND perceptual_hash != ""');
+    return result.rows;
   }
 
   async deleteWallpaper(id) {
-    return new Promise((resolve, reject) => {
-      this.db.run('DELETE FROM wallpapers WHERE id = ?', [id], function(err) {
-        if (err) reject(err);
-        else resolve(this.changes);
-      });
+    const result = await this.client.execute({
+      sql: 'DELETE FROM wallpapers WHERE id = ?',
+      args: [id]
     });
+    return result.rowsAffected;
   }
 
   // Arena-specific methods
   async getRandomWallpaperPair() {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT * FROM wallpapers 
-        WHERE local_path IS NOT NULL AND local_path != ''
-        ORDER BY RANDOM() 
-        LIMIT 2
-      `;
-      
-      this.db.all(sql, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    const sql = `
+      SELECT * FROM wallpapers 
+      WHERE local_path IS NOT NULL AND local_path != ''
+      ORDER BY RANDOM() 
+      LIMIT 2
+    `;
+    
+    const result = await this.client.execute(sql);
+    return result.rows;
   }
 
   async getRandomWallpaper() {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT * FROM wallpapers 
-        WHERE local_path IS NOT NULL AND local_path != ''
-        ORDER BY RANDOM() 
-        LIMIT 1
-      `;
-      
-      this.db.get(sql, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const sql = `
+      SELECT * FROM wallpapers 
+      WHERE local_path IS NOT NULL AND local_path != ''
+      ORDER BY RANDOM() 
+      LIMIT 1
+    `;
+    
+    const result = await this.client.execute(sql);
+    return result.rows[0];
   }
 
   async updateArenaResults(winnerId, loserId, voteTimeMs = null) {
-    return new Promise((resolve, reject) => {
-      // Get current ELO ratings
-      const getEloSql = 'SELECT id, COALESCE(elo_rating, 1000) as elo_rating FROM wallpapers WHERE id IN (?, ?)';
-      
-      this.db.all(getEloSql, [winnerId, loserId], (err, rows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        const winner = rows.find(r => r.id === winnerId);
-        const loser = rows.find(r => r.id === loserId);
-
-        if (!winner || !loser) {
-          reject(new Error('Wallpapers not found'));
-          return;
-        }
-
-        // Calculate dynamic K-factor based on vote time
-        let K = 32; // Base ELO constant
-        
-        if (voteTimeMs !== null) {
-          // Time-based K-factor adjustment:
-          // - Very fast votes (< 1s): K * 1.5 (clear preference)
-          // - Fast votes (1-3s): K * 1.2  
-          // - Normal votes (3-10s): K * 1.0
-          // - Slow votes (> 10s): K * 0.8 (uncertain decision)
-          if (voteTimeMs < 1000) {
-            K = Math.round(K * 1.5); // Very decisive
-          } else if (voteTimeMs < 3000) {
-            K = Math.round(K * 1.2); // Decisive
-          } else if (voteTimeMs > 10000) {
-            K = Math.round(K * 0.8); // Uncertain
-          }
-          // 3-10s range keeps default K value
-        }
-        
-        const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo_rating - winner.elo_rating) / 400));
-        const expectedLoser = 1 - expectedWinner;
-
-        const newWinnerElo = Math.round(winner.elo_rating + K * (1 - expectedWinner));
-        const newLoserElo = Math.round(loser.elo_rating + K * (0 - expectedLoser));
-
-        // Update both wallpapers
-        const updateSql = `
-          UPDATE wallpapers 
-          SET elo_rating = ?, battles_won = COALESCE(battles_won, 0) + ?, battles_lost = COALESCE(battles_lost, 0) + ?
-          WHERE id = ?
-        `;
-
-        this.db.run(updateSql, [newWinnerElo, 1, 0, winnerId], (err1) => {
-          if (err1) {
-            reject(err1);
-            return;
-          }
-
-          this.db.run(updateSql, [newLoserElo, 0, 1, loserId], (err2) => {
-            if (err2) {
-              reject(err2);
-              return;
-            }
-
-            resolve({
-              winner: { id: winnerId, oldElo: winner.elo_rating, newElo: newWinnerElo },
-              loser: { id: loserId, oldElo: loser.elo_rating, newElo: newLoserElo }
-            });
-          });
-        });
-      });
+    // Transaction-like logic handled manually or via batch if possible.
+    // We'll do separate lookups and updates for simplicity with HTTP driver.
+    
+    const getEloSql = 'SELECT id, COALESCE(elo_rating, 1000) as elo_rating FROM wallpapers WHERE id IN (?, ?)';
+    const result = await this.client.execute({
+      sql: getEloSql,
+      args: [winnerId, loserId]
     });
+    const rows = result.rows;
+
+    // Since rows are returned as generic objects in LibSQL (e.g., {id: 1, elo_rating: 1000})
+    // Note: depending on the driver version/config, it might be an array of arrays or objects. 
+    // The standard @libsql/client returns objects { col: val }.
+    
+    const winner = rows.find(r => r.id == winnerId); // Loose equality for string/int safety
+    const loser = rows.find(r => r.id == loserId);
+
+    if (!winner || !loser) {
+      throw new Error('Wallpapers not found');
+    }
+
+    let K = 32; 
+    if (voteTimeMs !== null) {
+      if (voteTimeMs < 1000) {
+        K = Math.round(K * 1.5);
+      } else if (voteTimeMs < 3000) {
+        K = Math.round(K * 1.2);
+      } else if (voteTimeMs > 10000) {
+        K = Math.round(K * 0.8);
+      }
+    }
+    
+    const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo_rating - winner.elo_rating) / 400));
+    const expectedLoser = 1 - expectedWinner;
+
+    const newWinnerElo = Math.round(winner.elo_rating + K * (1 - expectedWinner));
+    const newLoserElo = Math.round(loser.elo_rating + K * (0 - expectedLoser));
+
+    // Perform updates sequentially
+    const updateSql = `
+      UPDATE wallpapers 
+      SET elo_rating = ?, battles_won = COALESCE(battles_won, 0) + ?, battles_lost = COALESCE(battles_lost, 0) + ?
+      WHERE id = ?
+    `;
+
+    // We can use batch for atomicity if supported, or just await both.
+    // await this.client.batch([ ... ])
+    
+    await this.client.execute({
+      sql: updateSql,
+      args: [newWinnerElo, 1, 0, winnerId]
+    });
+
+    await this.client.execute({
+      sql: updateSql,
+      args: [newLoserElo, 0, 1, loserId]
+    });
+
+    return {
+      winner: { id: winnerId, oldElo: winner.elo_rating, newElo: newWinnerElo },
+      loser: { id: loserId, oldElo: loser.elo_rating, newElo: newLoserElo }
+    };
   }
 
   async getLeaderboard(limit = 50, getBottom = false) {
-    return new Promise((resolve, reject) => {
-      const orderBy = getBottom 
-        ? 'ORDER BY COALESCE(elo_rating, 1000) ASC, total_battles ASC'
-        : 'ORDER BY COALESCE(elo_rating, 1000) DESC, total_battles DESC';
-        
-      const sql = `
-        SELECT 
-          id, filename, provider, dimensions, local_path,
-          COALESCE(elo_rating, 1000) as elo_rating, 
-          COALESCE(battles_won, 0) as battles_won, 
-          COALESCE(battles_lost, 0) as battles_lost, 
-          (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)) as total_battles,
-          CASE 
-            WHEN (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)) > 0 
-            THEN ROUND((COALESCE(battles_won, 0) * 100.0) / (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)), 1) 
-            ELSE 0 
-          END as win_rate
-        FROM wallpapers
-        WHERE local_path IS NOT NULL AND local_path != ""
-        ${orderBy}
-        LIMIT ?
-      `;
+    const orderBy = getBottom 
+      ? 'ORDER BY COALESCE(elo_rating, 1000) ASC, total_battles ASC'
+      : 'ORDER BY COALESCE(elo_rating, 1000) DESC, total_battles DESC';
       
-      this.db.all(sql, [limit], (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
+    const sql = `
+      SELECT 
+        id, filename, provider, dimensions, local_path,
+        COALESCE(elo_rating, 1000) as elo_rating, 
+        COALESCE(battles_won, 0) as battles_won, 
+        COALESCE(battles_lost, 0) as battles_lost, 
+        (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)) as total_battles,
+        CASE 
+          WHEN (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)) > 0 
+          THEN ROUND((COALESCE(battles_won, 0) * 100.0) / (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)), 1) 
+          ELSE 0 
+        END as win_rate
+      FROM wallpapers
+      WHERE local_path IS NOT NULL AND local_path != ""
+      ${orderBy}
+      LIMIT ?
+    `;
+    
+    const result = await this.client.execute({
+      sql,
+      args: [limit]
     });
+    return result.rows;
   }
 
   async getTotalWallpaperCount() {
-    return new Promise((resolve, reject) => {
-      const sql = 'SELECT COUNT(*) as count FROM wallpapers WHERE local_path IS NOT NULL AND local_path != ""';
-      
-      this.db.get(sql, (err, row) => {
-        if (err) reject(err);
-        else resolve(row.count);
-      });
-    });
+    const sql = 'SELECT COUNT(*) as count FROM wallpapers WHERE local_path IS NOT NULL AND local_path != ""';
+    const result = await this.client.execute(sql);
+    return result.rows[0].count;
   }
 
   async resetArenaStats() {
-    return new Promise((resolve, reject) => {
-      const resetSql = `
-        UPDATE wallpapers 
-        SET elo_rating = 1000, battles_won = 0, battles_lost = 0
-        WHERE 1=1
-      `;
-      
-      this.db.run(resetSql, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(this.changes);
-        }
-      });
-    });
+    const resetSql = `
+      UPDATE wallpapers 
+      SET elo_rating = 1000, battles_won = 0, battles_lost = 0
+      WHERE 1=1
+    `;
+    const result = await this.client.execute(resetSql);
+    return result.rowsAffected;
   }
 
   close() {
-    this.db.close();
+    // LibSQL client doesn't explicitly require closing for HTTP, but good practice
+    // this.client.close(); 
   }
 }
 
