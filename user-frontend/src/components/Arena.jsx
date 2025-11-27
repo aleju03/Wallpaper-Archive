@@ -12,6 +12,7 @@ function Arena() {
   const [imagesLoaded, setImagesLoaded] = useState({ left: false, right: false })
   const [previewWallpaper, setPreviewWallpaper] = useState(null)
   const [previewImageLoaded, setPreviewImageLoaded] = useState(false)
+  const [eloResult, setEloResult] = useState(null)
 
   const fetchBattle = async () => {
     try {
@@ -44,9 +45,22 @@ function Arena() {
       })
       if (response.data.success) {
         setBattleCount(prev => prev + 1)
-        // Immediately load next battle
-        await fetchBattle()
-        setVoting(false) // Reset voting after next battle loads
+        
+        // Show Elo changes
+        const { winner, loser } = response.data.result
+        setEloResult({
+          winnerId,
+          loserId,
+          winnerDiff: winner.newElo - winner.oldElo,
+          loserDiff: loser.newElo - loser.oldElo
+        })
+        setVoting(false)
+
+        // Wait for animation before loading next battle
+        setTimeout(async () => {
+          setEloResult(null)
+          await fetchBattle()
+        }, 1500)
       } else {
         setVoting(false)
       }
@@ -137,7 +151,7 @@ function Arena() {
         <div 
           key={battlePair[0].id} 
           className={`battle-card ${voting ? 'voting' : ''} ${!imagesLoaded.left ? 'loading-image' : ''}`}
-          onClick={() => !voting && imagesLoaded.left && imagesLoaded.right && handleVote(battlePair[0].id, battlePair[1].id)}
+          onClick={() => !voting && !eloResult && imagesLoaded.left && imagesLoaded.right && handleVote(battlePair[0].id, battlePair[1].id)}
         >
           <div className="battle-image-container">
             {!imagesLoaded.left && (
@@ -163,6 +177,14 @@ function Arena() {
               <div className="voting-overlay">
                 <div className="voting-spinner">
                   <Zap size={24} />
+                </div>
+              </div>
+            )}
+
+            {eloResult && (eloResult.winnerId === battlePair[0].id || eloResult.loserId === battlePair[0].id) && (
+              <div className="elo-indicator-overlay">
+                <div className={`elo-change ${eloResult.winnerId === battlePair[0].id ? 'win' : 'loss'}`}>
+                  {eloResult.winnerId === battlePair[0].id ? `+${eloResult.winnerDiff}` : eloResult.loserDiff}
                 </div>
               </div>
             )}
@@ -210,7 +232,7 @@ function Arena() {
         <div 
           key={battlePair[1].id} 
           className={`battle-card ${voting ? 'voting' : ''} ${!imagesLoaded.right ? 'loading-image' : ''}`}
-          onClick={() => !voting && imagesLoaded.left && imagesLoaded.right && handleVote(battlePair[1].id, battlePair[0].id)}
+          onClick={() => !voting && !eloResult && imagesLoaded.left && imagesLoaded.right && handleVote(battlePair[1].id, battlePair[0].id)}
         >
           <div className="battle-image-container">
             {!imagesLoaded.right && (
@@ -236,6 +258,14 @@ function Arena() {
               <div className="voting-overlay">
                 <div className="voting-spinner">
                   <Zap size={24} />
+                </div>
+              </div>
+            )}
+
+            {eloResult && (eloResult.winnerId === battlePair[1].id || eloResult.loserId === battlePair[1].id) && (
+              <div className="elo-indicator-overlay">
+                <div className={`elo-change ${eloResult.winnerId === battlePair[1].id ? 'win' : 'loss'}`}>
+                  {eloResult.winnerId === battlePair[1].id ? `+${eloResult.winnerDiff}` : eloResult.loserDiff}
                 </div>
               </div>
             )}

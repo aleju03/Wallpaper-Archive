@@ -892,9 +892,16 @@ html {
   }
   
   .filters {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
+  }
+  
+  .filter-select,
+  .resolution-dropdown-trigger {
+    width: auto;
+    min-width: 0;
+    flex: 1;
   }
   
   .grid-controls {
@@ -1306,6 +1313,61 @@ html {
   text-transform: uppercase;
   letter-spacing: 1px;
   animation: pulse 2s ease-in-out infinite;
+}
+
+/* Elo Indicators */
+.elo-indicator-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.elo-change {
+  font-size: 48px;
+  font-weight: bold;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  animation: floatUp 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -1px;
+}
+
+.elo-change.win {
+  color: #4ade80; /* Green-400 */
+}
+
+.elo-change.loss {
+  color: #f87171; /* Red-400 */
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .arena-footer {
