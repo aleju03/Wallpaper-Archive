@@ -5,7 +5,7 @@ import { API_BASE, resolveAssetUrl } from '../config'
 
 function Arena() {
   const [battlePair, setBattlePair] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [voting, setVoting] = useState(false)
   const [battleCount, setBattleCount] = useState(0)
   const [battleStartTime, setBattleStartTime] = useState(null)
@@ -14,9 +14,11 @@ function Arena() {
   const [previewImageLoaded, setPreviewImageLoaded] = useState(false)
   const [eloResult, setEloResult] = useState(null)
 
-  const fetchBattle = async () => {
+  const fetchBattle = async (isInitial = false) => {
     try {
-      setLoading(true)
+      if (isInitial) {
+        setInitialLoading(true)
+      }
       setImagesLoaded({ left: false, right: false })
       const response = await axios.get(`${API_BASE}/api/arena/battle`)
       
@@ -27,7 +29,9 @@ function Arena() {
     } catch (error) {
       console.error('Failed to fetch battle:', error)
     } finally {
-      setLoading(false)
+      if (isInitial) {
+        setInitialLoading(false)
+      }
     }
   }
 
@@ -71,7 +75,7 @@ function Arena() {
   }
 
   useEffect(() => {
-    fetchBattle()
+    fetchBattle(true)
   }, [])
 
   useEffect(() => {
@@ -97,7 +101,7 @@ function Arena() {
   }
 
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="arena loading-container">
         <div className="loading-spinner">
@@ -118,7 +122,7 @@ function Arena() {
             there aren't enough wallpapers in the collection to form a battle pair.
             try downloading more wallpapers from the "browse" tab or check back later.
           </p>
-          <button onClick={fetchBattle} className="empty-state-button">
+          <button onClick={() => fetchBattle(true)} className="empty-state-button">
             <RefreshCw size={16} />
             try again
           </button>
