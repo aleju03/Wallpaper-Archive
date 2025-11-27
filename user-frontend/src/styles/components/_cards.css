@@ -102,13 +102,12 @@
 .battle-card {
   display: flex;
   flex-direction: column;
-  border: 2px solid var(--color-border-primary);
-  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
   cursor: pointer;
   transition: all var(--transition-normal) ease;
   position: relative;
   overflow: hidden;
-  height: 100%;
 }
 
 .battle-card:hover {
@@ -136,10 +135,10 @@
 .battle-image-container {
   position: relative;
   width: 100%;
-  aspect-ratio: 16/10;
+  aspect-ratio: 16/9;
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--color-bg-tertiary);
+  background: var(--color-bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;

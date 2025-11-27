@@ -145,6 +145,8 @@
     grid-template-columns: 1fr;
     gap: var(--spacing-sm);
     position: relative;
+    justify-items: center;
+    max-width: 100%;
   }
 
   .vs-divider {
@@ -154,23 +156,23 @@
     transform: translate(-50%, -50%);
     z-index: 10;
     margin: 0;
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
+    padding-top: 0;
     background: var(--color-bg-primary);
-    border: 2px solid var(--color-border-primary);
+    border: 1px solid var(--color-border-primary);
     border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--font-size-lg);
-    box-shadow: var(--shadow-sm);
+    font-size: var(--font-size-md);
   }
 
   .battle-card {
     height: 38vh;
-    border: none;
     margin: 0;
-    border-radius: var(--spacing-sm);
+    width: 100%;
+    max-width: 100%;
   }
 
   .battle-card:first-child {
@@ -184,7 +186,11 @@
   .battle-image-container {
     height: 100%;
     aspect-ratio: unset;
-    border-radius: var(--spacing-sm);
+  }
+
+  .battle-image {
+    object-fit: cover;
+    object-position: center center;
   }
 
   .battle-info {
@@ -197,7 +203,6 @@
     margin: 0;
     justify-content: flex-end;
     pointer-events: none;
-    border-radius: 0 0 var(--spacing-sm) var(--spacing-sm);
   }
 
   .wallpaper-name {

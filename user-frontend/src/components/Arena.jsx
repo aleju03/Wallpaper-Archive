@@ -46,7 +46,7 @@ function Arena() {
       if (response.data.success) {
         setBattleCount(prev => prev + 1)
         
-        // Show Elo changes
+        // Show Elo changes briefly on current wallpapers
         const { winner, loser } = response.data.result
         setEloResult({
           winnerId,
@@ -56,11 +56,11 @@ function Arena() {
         })
         setVoting(false)
 
-        // Wait for animation before loading next battle
-        setTimeout(async () => {
+        // Short delay to show Elo, then fetch next battle
+        setTimeout(() => {
           setEloResult(null)
-          await fetchBattle()
-        }, 1500)
+          fetchBattle()
+        }, 600)
       } else {
         setVoting(false)
       }

@@ -60,10 +60,10 @@
 .battle-arena {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: var(--spacing-3xl);
-  align-items: stretch;
+  gap: var(--spacing-xl);
+  align-items: start;
   flex: 1;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
@@ -73,12 +73,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-3xl);
-  font-weight: bold;
+  font-size: var(--font-size-lg);
+  font-weight: normal;
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 2px;
+  text-transform: lowercase;
+  letter-spacing: 1px;
   align-self: center;
+  padding-top: 80px;
 }
 
 /* Arena Footer */
@@ -88,37 +89,49 @@
   margin-top: var(--spacing-3xl);
 }
 
-/* Elo Indicators */
+/* Elo Indicators - Subtle corner display */
 .elo-indicator-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  left: auto;
+  bottom: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(2px);
-  animation: fadeIn var(--transition-normal) ease-out;
+  background: rgba(0, 0, 0, 0.7);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border-primary);
+  animation: eloFadeIn 0.2s ease-out;
 }
 
 .elo-change {
-  font-size: 48px;
-  font-weight: bold;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
-  animation: floatUp 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  font-size: var(--font-size-md);
+  font-weight: normal;
+  font-family: var(--font-family);
+  text-transform: uppercase;
+  letter-spacing: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
-  letter-spacing: -1px;
 }
 
 .elo-change.win {
-  color: var(--color-accent-success-light);
+  color: var(--color-accent-success);
 }
 
 .elo-change.loss {
-  color: var(--color-accent-error-light);
+  color: var(--color-accent-error);
+}
+
+@keyframes eloFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
