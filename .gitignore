@@ -5,3 +5,5 @@ wallpapers.db
 CLAUDE.md
 GEMINI.md
 .env
+.vercel
+vercel.json

@@ -1,0 +1,7 @@
+downloads/
+thumbnails/
+wallpapers.db
+node_modules/
+.env
+.vercel/
+.git/
