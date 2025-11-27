@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Images, Grid, Heart, Download, Swords, Trophy, Shuffle } from 'lucide-react'
+import { Search, Images, Grid, Heart, Download, Swords, Trophy, Shuffle, Sun, Moon } from 'lucide-react'
 import { OverlayScrollbars } from 'overlayscrollbars'
 import Browse from './components/Browse'
 import Arena from './components/Arena'
@@ -11,6 +11,19 @@ import './App.css'
 function App() {
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
   const [activeTab, setActiveTab] = useState('browse')
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('theme')
+    return saved || 'dark'
+  })
+  
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+  
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark')
+  }
   
   useEffect(() => {
     const osInstance = OverlayScrollbars(document.body, {
@@ -77,6 +90,13 @@ function App() {
           </div>
           
           <nav className="app-nav">
+            <button 
+              className="nav-button theme-toggle"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
             <button 
               className={`nav-button ${activeTab === 'browse' ? 'active' : ''}`}
               onClick={() => setActiveTab('browse')}

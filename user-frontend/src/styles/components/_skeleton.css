@@ -27,6 +27,16 @@
   animation: shimmer 2s infinite;
 }
 
+[data-theme="light"] .skeleton-loader::after {
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0.04) 20%,
+    rgba(0, 0, 0, 0.08) 60%,
+    rgba(0, 0, 0, 0)
+  );
+}
+
 /* Skeleton Card */
 .skeleton-card {
   background: var(--color-bg-secondary);
@@ -52,6 +62,16 @@
     rgba(255, 255, 255, 0)
   );
   animation: shimmer 2s infinite;
+}
+
+[data-theme="light"] .skeleton-card::after {
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0.04) 20%,
+    rgba(0, 0, 0, 0.08) 60%,
+    rgba(0, 0, 0, 0)
+  );
 }
 
 /* Loading State */

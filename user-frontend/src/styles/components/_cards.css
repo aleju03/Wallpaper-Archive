@@ -64,7 +64,7 @@
 .wallpaper-title {
   font-size: var(--font-size-md);
   font-weight: normal;
-  color: var(--color-text-primary);
+  color: #ffffff;
   margin-bottom: var(--spacing-xs);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -73,7 +73,7 @@
 
 .wallpaper-meta {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  color: #e0e0e0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -82,20 +82,20 @@
 }
 
 .wallpaper-provider {
-  color: var(--color-text-tertiary);
+  color: #cccccc;
 }
 
 .wallpaper-resolution {
-  color: var(--color-text-primary);
+  color: #ffffff;
   font-weight: bold;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
   padding: 2px var(--spacing-xs);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
 }
 
 .wallpaper-size {
-  color: var(--color-text-muted);
+  color: #aaaaaa;
 }
 
 /* Battle Card */

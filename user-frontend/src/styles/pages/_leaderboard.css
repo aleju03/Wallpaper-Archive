@@ -98,7 +98,7 @@
 /* Top 3 Rank Styles */
 .leaderboard-item.rank-1 {
   border-color: var(--color-accent-gold);
-  background: linear-gradient(135deg, var(--color-bg-secondary), #1a1a0f);
+  background: linear-gradient(135deg, var(--color-bg-secondary), var(--leaderboard-gold-bg));
 }
 
 .leaderboard-item.rank-2 {
@@ -108,7 +108,7 @@
 
 .leaderboard-item.rank-3 {
   border-color: var(--color-accent-bronze);
-  background: linear-gradient(135deg, var(--color-bg-secondary), #1a1511);
+  background: linear-gradient(135deg, var(--color-bg-secondary), var(--leaderboard-bronze-bg));
 }
 
 /* Rank Section */

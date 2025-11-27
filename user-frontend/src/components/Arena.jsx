@@ -221,12 +221,6 @@ function Arena() {
               preview
             </button>
           </div>
-
-          {!imagesLoaded.left && !voting && (
-            <div className="loading-hint">
-              loading...
-            </div>
-          )}
         </div>
 
         <div className="vs-divider">
@@ -302,12 +296,6 @@ function Arena() {
               preview
             </button>
           </div>
-
-          {!imagesLoaded.right && !voting && (
-            <div className="loading-hint">
-              loading...
-            </div>
-          )}
         </div>
       </div>
 
