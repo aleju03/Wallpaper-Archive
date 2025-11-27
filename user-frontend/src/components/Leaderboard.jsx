@@ -79,16 +79,35 @@ function Leaderboard() {
 
   const currentItems = leaderboard
 
-  if (loading) {
-    return (
-      <div className="leaderboard loading-container">
-        <div className="loading-spinner">
-          <Trophy size={32} />
-          <p>loading champions...</p>
+  // Skeleton Loading Row Component
+  const SkeletonRow = () => (
+    <div className="leaderboard-item" style={{ border: '1px solid #222' }}>
+      <div className="rank-section">
+        <div className="rank-number">
+          <div className="skeleton-loader" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+          <div className="skeleton-loader" style={{ width: '24px', height: '14px', borderRadius: '2px' }} />
         </div>
       </div>
-    )
-  }
+      <div className="wallpaper-preview">
+        <div className="skeleton-loader" style={{ width: '100%', height: '100%' }} />
+      </div>
+      <div className="wallpaper-info" style={{ width: '100%' }}>
+        <div className="skeleton-loader" style={{ width: '60%', height: '12px', marginBottom: '4px', borderRadius: '2px' }} />
+        <div className="wallpaper-meta">
+           <div className="skeleton-loader" style={{ width: '30%', height: '10px', borderRadius: '2px' }} />
+           <div className="skeleton-loader" style={{ width: '20%', height: '10px', borderRadius: '2px' }} />
+        </div>
+      </div>
+      <div className="battle-stats">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="stat-item">
+             <div className="skeleton-loader" style={{ width: '30px', height: '12px', marginBottom: '2px', borderRadius: '2px' }} />
+             <div className="skeleton-loader" style={{ width: '20px', height: '8px', borderRadius: '2px' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   if (error) {
     return (
@@ -105,7 +124,7 @@ function Leaderboard() {
         <div className="header-content">
           <Trophy size={24} />
           <h1>arena champions</h1>
-          <p>{leaderboard.length} ranked wallpapers</p>
+          <p>{leaderboard.length || 50} ranked wallpapers</p>
           <div className="leaderboard-header-actions">
             <button 
               className={`toggle-btn nav-button ${!showBottom ? 'active' : ''}`}
@@ -132,7 +151,13 @@ function Leaderboard() {
         </div>
       </div>
 
-      {leaderboard.length === 0 ? (
+      {loading ? (
+        <div className="leaderboard-list">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </div>
+      ) : leaderboard.length === 0 ? (
         <div className="empty-leaderboard">
           <p>no battles have been fought yet</p>
           <p>start some arena battles to see the leaderboard!</p>
@@ -159,6 +184,8 @@ function Leaderboard() {
                     src={`${API_BASE}${wallpaper.thumbnail_url}`}
                     alt={wallpaper.filename}
                     className="preview-image clickable"
+                    style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
+                    onLoad={(e) => e.target.style.opacity = 1}
                     onError={(e) => {
                       e.target.style.display = 'none'
                       e.target.parentNode.innerHTML += '<div class="preview-placeholder">no preview</div>'
