@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Download, Shuffle, Loader } from 'lucide-react'
 import { API_BASE, resolveAssetUrl } from '../config'
 
@@ -7,14 +7,17 @@ function Random() {
   const [loading, setLoading] = useState(true)
   const [imageLoading, setImageLoading] = useState(true)
 
-  const fetchRandom = async () => {
+  const fetchRandom = useCallback(async (signal, isInitial = false) => {
     setLoading(true)
     // Only show explicit image loading state if we don't have a wallpaper yet (first load)
     // For subsequent loads, we'll keep the current image visible until the new one is ready
-    if (!wallpaper) setImageLoading(true)
+    if (isInitial) setImageLoading(true)
     
+    // Handle both direct calls (where signal might be passed) and event handlers (where event is passed)
+    const fetchSignal = signal instanceof AbortSignal ? signal : undefined
+
     try {
-      const res = await fetch(`${API_BASE}/api/wallpapers/random?t=${Date.now()}`)
+      const res = await fetch(`${API_BASE}/api/wallpapers/random?t=${Date.now()}`, { signal: fetchSignal })
       const data = await res.json()
       if (data.success) {
         const newWallpaper = data.wallpaper
@@ -33,19 +36,26 @@ function Random() {
           }
         }
         
-        setWallpaper(newWallpaper)
+        if (!fetchSignal?.aborted) {
+          setWallpaper(newWallpaper)
+        }
       }
     } catch (error) {
+      if (error.name === 'AbortError') return
       console.error('Failed to fetch random wallpaper:', error)
     } finally {
-      setLoading(false)
-      setImageLoading(false)
+      if (!fetchSignal?.aborted) {
+        setLoading(false)
+        setImageLoading(false)
+      }
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchRandom()
-  }, [])
+    const controller = new AbortController()
+    fetchRandom(controller.signal, true)
+    return () => controller.abort()
+  }, [fetchRandom])
 
   const handleDownload = () => {
     if (!wallpaper) return

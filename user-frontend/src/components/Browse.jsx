@@ -56,6 +56,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     totalCount,
     totalPages,
     currentPage,
+    pendingPage,
     searchQuery,
     selectedProvider,
     selectedResolution,
@@ -107,15 +108,17 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     // If already initialized and not forced (e.g. by filter change), don't refetch
     if (initialized && !force) return
 
+    const pageToLoad = pendingPage ?? currentPage
+
     try {
-      setBrowseState(prev => ({ ...prev, loading: true }))
+      setBrowseState(prev => ({ ...prev, loading: true, currentPage: pageToLoad }))
       const params = new URLSearchParams()
       
       if (searchQuery) params.append('search', searchQuery)
       if (selectedProvider) params.append('provider', selectedProvider)
       if (selectedResolution) params.append('resolution', selectedResolution)
       params.append('limit', itemsPerPage.toString())
-      params.append('page', currentPage.toString())
+      params.append('page', pageToLoad.toString())
       
       const response = await axios.get(`${API_BASE}/api/wallpapers?${params}`)
       
@@ -124,6 +127,8 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
         wallpapers: response.data.wallpapers || [],
         totalCount: response.data.total || 0,
         totalPages: Math.ceil((response.data.total || 0) / itemsPerPage),
+        currentPage: pageToLoad,
+        pendingPage: null,
         loading: false,
         initialized: true
       }))
@@ -131,9 +136,15 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     } catch (err) {
       setError('Failed to load wallpapers')
       console.error('Browse error:', err)
-      setBrowseState(prev => ({ ...prev, loading: false }))
+      setBrowseState(prev => ({
+        ...prev,
+        loading: false,
+        pendingPage: null,
+        currentPage: pageToLoad,
+        initialized: true
+      }))
     }
-  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, initialized, setBrowseState])
+  }, [currentPage, pendingPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, initialized, setBrowseState])
 
   useEffect(() => {
     fetchProviders()
@@ -153,6 +164,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       ...prev,
       [key]: value,
       currentPage: 1, // Reset to page 1 on filter change
+      pendingPage: 1,
       loading: true, // Show loading immediately
       initialized: false // Force refetch
     }))
@@ -162,21 +174,11 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     setBrowseState(prev => ({
       ...prev,
       currentPage: newPage,
+      pendingPage: newPage,
       loading: true,
       initialized: false
     }))
   }
-
-  // Handle responsive grid adjustments
-  useEffect(() => {
-    const handleResize = () => {
-      // Only adjust on initial load or significant size changes, don't override user preference
-      const width = window.innerWidth
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -254,6 +256,8 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       default: return <Grid3X3 size={14} />
     }
   }
+
+  const displayPage = pendingPage ?? currentPage
 
 
 
@@ -401,11 +405,11 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
         )}
       </div>
 
-      {!loading && !error && totalPages > 1 && (
+      {!error && totalPages > 1 && (
         <div className="pagination">
           <button
-            onClick={() => updatePage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
+            onClick={() => updatePage(Math.max(1, displayPage - 1))}
+            disabled={displayPage === 1 || loading}
           >
             <ChevronLeft size={16} />
           </button>
@@ -414,19 +418,20 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
             let pageNum
             if (totalPages <= 5) {
               pageNum = i + 1
-            } else if (currentPage <= 3) {
+            } else if (displayPage <= 3) {
               pageNum = i + 1
-            } else if (currentPage >= totalPages - 2) {
+            } else if (displayPage >= totalPages - 2) {
               pageNum = totalPages - 4 + i
             } else {
-              pageNum = currentPage - 2 + i
+              pageNum = displayPage - 2 + i
             }
             
             return (
               <button
                 key={pageNum}
                 onClick={() => updatePage(pageNum)}
-                className={currentPage === pageNum ? 'active' : ''}
+                className={displayPage === pageNum ? 'active' : ''}
+                disabled={loading}
               >
                 {pageNum}
               </button>
@@ -434,8 +439,8 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
           })}
           
           <button
-            onClick={() => updatePage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => updatePage(Math.min(totalPages, displayPage + 1))}
+            disabled={displayPage === totalPages || loading}
           >
             <ChevronRight size={16} />
           </button>

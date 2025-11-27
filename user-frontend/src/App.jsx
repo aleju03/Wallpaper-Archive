@@ -29,6 +29,7 @@ function App() {
     totalCount: 0,
     totalPages: 1,
     currentPage: 1,
+    pendingPage: null,
     searchQuery: '',
     selectedProvider: '',
     selectedResolution: '',
