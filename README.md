@@ -24,4 +24,4 @@ The system runs three things at once: a Node/Fastify backend on port 3000 with S
 
 ## Usage
 
-Install dependencies with `npm install` and start everything with `npm run dev`.
+Install dependencies with `npm install`, then run `npm run download` to fetch wallpapers from the configured providers. After that, start everything with `npm run dev`.
