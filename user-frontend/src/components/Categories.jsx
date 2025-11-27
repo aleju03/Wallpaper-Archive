@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Folder, Image } from 'lucide-react'
 import axios from 'axios'
-import { API_BASE } from '../config'
+import { API_BASE, resolveAssetUrl } from '../config'
 
 function Categories({ onWallpaperClick }) {
   const [providers, setProviders] = useState([])
@@ -120,14 +120,15 @@ function Categories({ onWallpaperClick }) {
                   onClick={() => onWallpaperClick(wallpaper)}
                 >
                   <img
-                    src={`${API_BASE}${wallpaper.thumbnail_url}`}
+                    src={resolveAssetUrl(wallpaper.thumbnail_url)}
                     alt={wallpaper.filename}
                     className="wallpaper-image"
                     loading="lazy"
                     onError={(e) => {
+                      const fullImageSrc = resolveAssetUrl(wallpaper.image_url)
                       if (!e.target.dataset.fallbackTried) {
                         e.target.dataset.fallbackTried = 'true'
-                        e.target.src = `${API_BASE}${wallpaper.image_url}`
+                        e.target.src = fullImageSrc
                         return
                       }
                       e.target.style.display = 'none'

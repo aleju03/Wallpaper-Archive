@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Download, Shuffle, Loader } from 'lucide-react'
-import { API_BASE } from '../config'
+import { API_BASE, resolveAssetUrl } from '../config'
 
 function Random() {
   const [wallpaper, setWallpaper] = useState(null)
@@ -31,7 +31,7 @@ function Random() {
   const handleDownload = () => {
     if (!wallpaper) return
     const link = document.createElement('a')
-    link.href = `${API_BASE}${wallpaper.image_url}`
+    link.href = resolveAssetUrl(wallpaper.image_url)
     link.download = wallpaper.filename
     document.body.appendChild(link)
     link.click()
@@ -144,7 +144,7 @@ function Random() {
                 </div>
                )}
                <img
-                src={`${API_BASE}${wallpaper.image_url}`}
+                src={resolveAssetUrl(wallpaper.image_url)}
                 alt={wallpaper.filename}
                 style={{
                   maxWidth: '100%',
@@ -155,7 +155,7 @@ function Random() {
                 }}
                 onLoad={() => setImageLoading(false)}
                 onError={(e) => {
-                    e.target.src = `${API_BASE}${wallpaper.thumbnail_url}`
+                    e.target.src = resolveAssetUrl(wallpaper.thumbnail_url)
                     setImageLoading(false)
                 }}
                />

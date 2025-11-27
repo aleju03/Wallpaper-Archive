@@ -228,7 +228,7 @@ class Database {
   async getRandomWallpaperPair() {
     const sql = `
       SELECT * FROM wallpapers 
-      WHERE local_path IS NOT NULL AND local_path != ''
+      WHERE download_url IS NOT NULL AND download_url != ''
       ORDER BY RANDOM() 
       LIMIT 2
     `;
@@ -240,7 +240,7 @@ class Database {
   async getRandomWallpaper() {
     const sql = `
       SELECT * FROM wallpapers 
-      WHERE local_path IS NOT NULL AND local_path != ''
+      WHERE download_url IS NOT NULL AND download_url != ''
       ORDER BY RANDOM() 
       LIMIT 1
     `;
@@ -321,7 +321,7 @@ class Database {
       
     const sql = `
       SELECT 
-        id, filename, provider, dimensions, local_path,
+        id, filename, provider, dimensions, local_path, download_url,
         COALESCE(elo_rating, 1000) as elo_rating, 
         COALESCE(battles_won, 0) as battles_won, 
         COALESCE(battles_lost, 0) as battles_lost, 
@@ -332,7 +332,7 @@ class Database {
           ELSE 0 
         END as win_rate
       FROM wallpapers
-      WHERE local_path IS NOT NULL AND local_path != ""
+      WHERE download_url IS NOT NULL AND download_url != ""
       ${orderBy}
       LIMIT ?
     `;
@@ -345,7 +345,7 @@ class Database {
   }
 
   async getTotalWallpaperCount() {
-    const sql = 'SELECT COUNT(*) as count FROM wallpapers WHERE local_path IS NOT NULL AND local_path != ""';
+    const sql = 'SELECT COUNT(*) as count FROM wallpapers WHERE download_url IS NOT NULL AND download_url != ""';
     const result = await this.client.execute(sql);
     return result.rows[0].count;
   }

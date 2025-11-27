@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle } from 'lucide-react'
 import axios from 'axios'
-import { API_BASE } from '../config'
+import { API_BASE, resolveAssetUrl } from '../config'
 
 function Arena() {
   const [battlePair, setBattlePair] = useState(null)
@@ -144,7 +144,7 @@ function Arena() {
               </div>
             )}
             <img
-              src={`${API_BASE}${battlePair[0].image_url}`}
+              src={resolveAssetUrl(battlePair[0].image_url)}
               alt={battlePair[0].filename}
               className="battle-image"
               loading="eager"
@@ -217,7 +217,7 @@ function Arena() {
               </div>
             )}
             <img
-              src={`${API_BASE}${battlePair[1].image_url}`}
+              src={resolveAssetUrl(battlePair[1].image_url)}
               alt={battlePair[1].filename}
               className="battle-image"
               loading="eager"
@@ -297,11 +297,11 @@ function Arena() {
             <div className="modal-body">
               <div className="modal-image-container">
                 <img
-                  src={`${API_BASE}${previewWallpaper.image_url}`}
+                  src={resolveAssetUrl(previewWallpaper.image_url)}
                   alt={previewWallpaper.filename}
                   className="modal-image"
                   onError={e => {
-                    e.target.src = `${API_BASE}${previewWallpaper.thumbnail_url}`
+                    e.target.src = resolveAssetUrl(previewWallpaper.thumbnail_url)
                   }}
                 />
               </div>
@@ -320,7 +320,7 @@ function Arena() {
                 <div className="download-section">
                   <a
                     className="download-btn"
-                    href={`${API_BASE}${previewWallpaper.image_url}`}
+                    href={resolveAssetUrl(previewWallpaper.image_url)}
                     download
                     target="_blank"
                     rel="noopener noreferrer"

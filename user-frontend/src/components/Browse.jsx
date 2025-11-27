@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify } from 'lucide-react'
 import axios from 'axios'
-import { API_BASE } from '../config'
+import { API_BASE, resolveAssetUrl } from '../config'
 import References from './References'
 
 function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [error, setError] = useState(false)
+
+  const thumbnailSrc = resolveAssetUrl(wallpaper.thumbnail_url)
+  const fullImageSrc = resolveAssetUrl(wallpaper.image_url)
 
   return (
     <div 
@@ -15,7 +18,7 @@ function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
     >
       {!error ? (
         <img
-          src={`${API_BASE}${wallpaper.thumbnail_url}`}
+          src={thumbnailSrc}
           alt={wallpaper.filename}
           className={`wallpaper-image ${imageLoaded ? 'loaded' : ''}`}
           loading="lazy"
@@ -23,7 +26,7 @@ function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
           onError={(e) => {
             if (!e.target.dataset.fallbackTried) {
               e.target.dataset.fallbackTried = 'true'
-              e.target.src = `${API_BASE}${wallpaper.image_url}`
+              e.target.src = fullImageSrc
               return
             }
             setError(true)

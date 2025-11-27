@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, RefreshCw, Download, Swords, AlertCircle } from 'lucide-react'
 import axios from 'axios'
-import { API_BASE } from '../config'
+import { API_BASE, resolveAssetUrl } from '../config'
 
 function Leaderboard({ onNavigateToArena }) {
   const [leaderboard, setLeaderboard] = useState([])
@@ -199,12 +199,18 @@ function Leaderboard({ onNavigateToArena }) {
 
                 <div className="wallpaper-preview" onClick={() => handleImageClick(wallpaper)}>
                   <img
-                    src={`${API_BASE}${wallpaper.thumbnail_url}`}
+                    src={resolveAssetUrl(wallpaper.thumbnail_url)}
                     alt={wallpaper.filename}
                     className="preview-image clickable"
                     style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
                     onLoad={(e) => e.target.style.opacity = 1}
                     onError={(e) => {
+                      const fullImageSrc = resolveAssetUrl(wallpaper.image_url)
+                      if (!e.target.dataset.fallbackTried) {
+                        e.target.dataset.fallbackTried = 'true'
+                        e.target.src = fullImageSrc
+                        return
+                      }
                       e.target.style.display = 'none'
                       e.target.parentNode.innerHTML += '<div class="preview-placeholder">no preview</div>'
                     }}
@@ -261,11 +267,11 @@ function Leaderboard({ onNavigateToArena }) {
             <div className="modal-body">
               <div className="modal-image-container">
                 <img
-                  src={`${API_BASE}${selectedWallpaper.image_url}`}
+                  src={resolveAssetUrl(selectedWallpaper.image_url)}
                   alt={selectedWallpaper.filename}
                   className="modal-image"
                   onError={e => {
-                    e.target.src = `${API_BASE}${selectedWallpaper.thumbnail_url}`
+                    e.target.src = resolveAssetUrl(selectedWallpaper.thumbnail_url)
                   }}
                 />
               </div>
@@ -284,7 +290,7 @@ function Leaderboard({ onNavigateToArena }) {
                 <div className="download-section">
                   <a
                     className="download-btn"
-                    href={`${API_BASE}${selectedWallpaper.image_url}`}
+                    href={resolveAssetUrl(selectedWallpaper.image_url)}
                     download
                     target="_blank"
                     rel="noopener noreferrer"

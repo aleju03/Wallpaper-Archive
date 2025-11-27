@@ -10,6 +10,35 @@ const Database = require('./database');
 // Initialize database client
 const db = new Database();
 
+// Helper to build the expected thumbnail URL from the public download URL
+const buildThumbnailUrl = (downloadUrl) => {
+  if (!downloadUrl) return null;
+
+  try {
+    const url = new URL(downloadUrl, 'http://thumbnail-helper.local');
+    const isRelative = url.origin === 'http://thumbnail-helper.local';
+    const originalPath = url.pathname || '';
+
+    // Swap the folder to /thumbnails/ (fallback to prefixing if /images/ is missing)
+    let thumbPath = originalPath.includes('/images/')
+      ? originalPath.replace('/images/', '/thumbnails/')
+      : `/thumbnails/${originalPath.replace(/^\//, '')}`;
+
+    // Normalize extension to .jpg (avoid double .jpg endings)
+    if (thumbPath.match(/\.[^/.]+$/)) {
+      thumbPath = thumbPath.replace(/\.[^/.]+$/, '.jpg');
+    } else if (!thumbPath.endsWith('.jpg')) {
+      thumbPath = `${thumbPath}.jpg`;
+    }
+
+    url.pathname = thumbPath;
+    return isRelative ? url.pathname : url.toString();
+  } catch (error) {
+    console.warn('Failed to build thumbnail URL for', downloadUrl, error);
+    return downloadUrl;
+  }
+};
+
 // Enable CORS
 fastify.register(require('@fastify/cors'), {
   origin: ['*'],
@@ -66,7 +95,7 @@ fastify.get('/api/wallpapers', async (request, reply) => {
         ...w,
         filename: w.filename,
         image_url: w.download_url, // Use public URL directly
-        thumbnail_url: w.download_url // Use full image as thumb for now
+        thumbnail_url: buildThumbnailUrl(w.download_url)
       })),
       total: total,
       page: currentPage,
@@ -94,7 +123,7 @@ fastify.get('/api/wallpapers/random', async (request, reply) => {
       wallpaper: {
         ...wallpaper,
         image_url: wallpaper.download_url,
-        thumbnail_url: wallpaper.download_url
+        thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
       }
     };
   } catch (error) {
@@ -117,7 +146,7 @@ fastify.get('/api/wallpapers/:id', async (request, reply) => {
       wallpaper: {
         ...wallpaper,
         image_url: wallpaper.download_url,
-        thumbnail_url: wallpaper.download_url
+        thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
       }
     };
   } catch (error) {
@@ -252,7 +281,7 @@ fastify.get('/api/arena/battle', async (request, reply) => {
     const wallpapersWithUrls = wallpapers.map(wallpaper => ({
       ...wallpaper,
       image_url: wallpaper.download_url,
-      thumbnail_url: wallpaper.download_url
+      thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
     }));
 
     return {
@@ -303,7 +332,7 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
     const leaderboardWithUrls = leaderboard.map(wallpaper => ({
       ...wallpaper,
       image_url: wallpaper.download_url, // Use download_url assuming it maps to gitlab public url
-      thumbnail_url: wallpaper.download_url
+      thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
     }));
 
     return {

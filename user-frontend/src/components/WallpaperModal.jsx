@@ -1,5 +1,5 @@
 import { X, Download } from 'lucide-react'
-import { API_BASE } from '../config'
+import { resolveAssetUrl } from '../config'
 import { useEffect } from 'react'
 
 function WallpaperModal({ wallpaper, onClose }) {
@@ -24,7 +24,7 @@ function WallpaperModal({ wallpaper, onClose }) {
 
   const handleDownload = () => {
     const link = document.createElement('a')
-    link.href = `${API_BASE}${wallpaper.image_url}`
+    link.href = resolveAssetUrl(wallpaper.image_url)
     link.download = wallpaper.filename
     document.body.appendChild(link)
     link.click()
@@ -50,11 +50,11 @@ function WallpaperModal({ wallpaper, onClose }) {
         <div className="modal-body">
           <div className="modal-image-container">
             <img
-              src={`${API_BASE}${wallpaper.image_url}`}
+              src={resolveAssetUrl(wallpaper.image_url)}
               alt={wallpaper.filename}
               className="modal-image"
               onError={(e) => {
-                e.target.src = `${API_BASE}${wallpaper.thumbnail_url}`
+                e.target.src = resolveAssetUrl(wallpaper.thumbnail_url)
               }}
             />
           </div>
