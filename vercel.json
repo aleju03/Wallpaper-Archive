@@ -20,7 +20,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/user-frontend/dist/$1"
+      "dest": "/user-frontend/$1"
     }
   ]
 }
