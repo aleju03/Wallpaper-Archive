@@ -15,6 +15,7 @@ const db = new Database();
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10); // 1 minute
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || '120', 10); // 120 requests/ip/minute
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -50,6 +51,24 @@ fastify.addHook('onRequest', (request, reply, done) => {
 
   done();
 });
+
+// Admin auth helper
+const requireAdminKey = (request, reply) => {
+  if (!ADMIN_API_KEY) {
+    reply.code(500).send({ success: false, error: 'Admin key not configured' });
+    return false;
+  }
+  const authHeader = request.headers['authorization'];
+  const keyFromHeader = authHeader && authHeader.toLowerCase().startsWith('bearer ') 
+    ? authHeader.slice(7)
+    : null;
+  const key = keyFromHeader || request.headers['x-admin-key'];
+  if (key !== ADMIN_API_KEY) {
+    reply.code(401).send({ success: false, error: 'Unauthorized' });
+    return false;
+  }
+  return true;
+};
 
 // Pagination + cache helpers
 const normalizePagination = (limit, page, maxLimit = 100) => {
@@ -456,6 +475,8 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
 // Admin: delete wallpaper (optional R2 delete)
 fastify.delete('/api/wallpapers/:id', async (request, reply) => {
   try {
+    if (!requireAdminKey(request, reply)) return;
+
     const { deleteFile } = request.query;
     const wallpaper = await db.getWallpaperById(request.params.id);
 

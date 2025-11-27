@@ -16,3 +16,9 @@ export const resolveAssetUrl = (url) => {
     ? url
     : `${API_BASE}${url}`
 }
+
+// Admin API key (read from Vite env) for protected endpoints
+export const getAdminHeaders = () => {
+  const key = import.meta.env.VITE_ADMIN_API_KEY;
+  return key ? { Authorization: `Bearer ${key}` } : {};
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import axios from 'axios'
-import { API_BASE, resolveAssetUrl } from '../config'
+import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
 
 function Gallery() {
   const [wallpapers, setWallpapers] = useState([])
@@ -111,7 +111,7 @@ function Gallery() {
       async () => {
         try {
           const url = `${API_BASE}/api/wallpapers/${wallpaper.id}${deleteFile ? '?deleteFile=true' : ''}`
-          const response = await axios.delete(url)
+          const response = await axios.delete(url, { headers: getAdminHeaders() })
           
           if (response.data.success) {
             // Refresh the wallpapers list
