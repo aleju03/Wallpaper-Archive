@@ -10,6 +10,7 @@ function Leaderboard({ onNavigateToArena }) {
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
   const [showBottom, setShowBottom] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
+  const [modalImageLoaded, setModalImageLoaded] = useState(false)
 
   const fetchLeaderboard = async (bottom = false) => {
     try {
@@ -71,6 +72,7 @@ function Leaderboard({ onNavigateToArena }) {
 
   const handleImageClick = (wallpaper) => {
     setSelectedWallpaper(wallpaper)
+    setModalImageLoaded(false)
   }
 
   const closeModal = () => {
@@ -266,13 +268,16 @@ function Leaderboard({ onNavigateToArena }) {
             </div>
             <div className="modal-body">
               <div className="modal-image-container">
+                {!modalImageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
                 <img
                   src={resolveAssetUrl(selectedWallpaper.image_url)}
                   alt={selectedWallpaper.filename}
-                  className="modal-image"
+                  className={`modal-image ${modalImageLoaded ? 'loaded' : ''}`}
+                  loading="eager"
                   onError={e => {
                     e.target.src = resolveAssetUrl(selectedWallpaper.thumbnail_url)
                   }}
+                  onLoad={() => setModalImageLoaded(true)}
                 />
               </div>
               <div className="modal-sidebar">

@@ -1,11 +1,14 @@
 import { X, Download } from 'lucide-react'
 import { resolveAssetUrl } from '../config'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 function WallpaperModal({ wallpaper, onClose }) {
+  const [imageLoaded, setImageLoaded] = useState(false)
+
   useEffect(() => {
     if (wallpaper) {
       document.body.style.overflow = 'hidden';
+      setImageLoaded(false)
     } else {
       document.body.style.overflow = '';
     }
@@ -49,13 +52,15 @@ function WallpaperModal({ wallpaper, onClose }) {
         
         <div className="modal-body">
           <div className="modal-image-container">
+            {!imageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
             <img
               src={resolveAssetUrl(wallpaper.image_url)}
               alt={wallpaper.filename}
-              className="modal-image"
+              className={`modal-image ${imageLoaded ? 'loaded' : ''}`}
               onError={(e) => {
                 e.target.src = resolveAssetUrl(wallpaper.thumbnail_url)
               }}
+              onLoad={() => setImageLoaded(true)}
             />
           </div>
           

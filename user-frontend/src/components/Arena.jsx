@@ -11,6 +11,7 @@ function Arena() {
   const [battleStartTime, setBattleStartTime] = useState(null)
   const [imagesLoaded, setImagesLoaded] = useState({ left: false, right: false })
   const [previewWallpaper, setPreviewWallpaper] = useState(null)
+  const [previewImageLoaded, setPreviewImageLoaded] = useState(false)
 
   const fetchBattle = async () => {
     try {
@@ -74,6 +75,7 @@ function Arena() {
     event.preventDefault()
     event.stopPropagation()
     setPreviewWallpaper(wallpaper)
+    setPreviewImageLoaded(false)
   }
 
   const closePreview = () => {
@@ -296,13 +298,15 @@ function Arena() {
             </div>
             <div className="modal-body">
               <div className="modal-image-container">
+                {!previewImageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
                 <img
                   src={resolveAssetUrl(previewWallpaper.image_url)}
                   alt={previewWallpaper.filename}
-                  className="modal-image"
+                  className={`modal-image ${previewImageLoaded ? 'loaded' : ''}`}
                   onError={e => {
                     e.target.src = resolveAssetUrl(previewWallpaper.thumbnail_url)
                   }}
+                  onLoad={() => setPreviewImageLoaded(true)}
                 />
               </div>
               <div className="modal-sidebar">
