@@ -81,32 +81,34 @@
     overflow: hidden;
   }
 
-  /* Filters - stack provider and resolution on same row */
+  /* Filters - grid controls and results on top row, dropdowns below */
   .filters {
     flex-wrap: wrap;
     gap: var(--spacing-sm);
+  }
+
+  .grid-controls {
+    flex: 0 0 auto;
+    order: 1;
+  }
+
+  .results-info {
+    flex: 1 1 auto;
+    text-align: right;
+    margin-left: auto;
+    order: 2;
   }
 
   .filter-select,
   .resolution-dropdown-container {
     flex: 1 1 45%;
     min-width: 140px;
+    order: 3;
   }
 
   .filter-select,
   .resolution-dropdown-trigger {
     width: 100%;
-  }
-
-  .grid-controls {
-    flex: 0 0 auto;
-  }
-
-  .results-info {
-    flex: 1 1 100%;
-    text-align: left;
-    margin-left: 0;
-    order: 3;
   }
 
   /* Modal */
