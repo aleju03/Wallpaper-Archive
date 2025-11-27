@@ -35,7 +35,10 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h1>Wallpaper Archive</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+            <img src="/logo.svg" alt="Logo" style={{ height: '2em' }} />
+            <h1>Wallpaper Archive</h1>
+          </div>
           <p>Admin Panel</p>
         </div>
         
