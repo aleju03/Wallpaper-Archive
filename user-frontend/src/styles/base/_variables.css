@@ -120,6 +120,16 @@
 }
 
 /* Logo color invert for light mode */
-[data-theme="light"] .header-title img {
+/* removed image invert rule - logo now inlined and uses currentColor */
+
+/* Logo adapts to theme via filter */
+/* Dark mode: logo is black by default, invert to white */
+[data-theme="dark"] .site-logo,
+:root .site-logo {
   filter: invert(1);
+}
+
+/* Light mode: logo stays black (no filter) */
+[data-theme="light"] .site-logo {
+  filter: none;
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, RefreshCw, Download, Swords, AlertCircle } from 'lucide-react'
+import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, RefreshCw, Download, Swords, AlertCircle, Maximize2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 
@@ -293,15 +293,20 @@ function Leaderboard({ onNavigateToArena }) {
                   )}
                 </div>
                 <div className="download-section">
-                  <a
+                  <button
+                    className="download-btn fullscreen-btn"
+                    onClick={() => window.open(resolveAssetUrl(selectedWallpaper.image_url), '_blank')}
+                  >
+                    <Maximize2 size={16} />
+                    view fullscreen
+                  </button>
+                  <button
                     className="download-btn"
-                    href={resolveAssetUrl(selectedWallpaper.image_url)}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    onClick={() => window.open(`${API_BASE}/api/download/${selectedWallpaper.id}`, '_blank')}
                   >
                     <Download size={16} />
-                  </a>
+                    direct download
+                  </button>
                 </div>
               </div>
             </div>

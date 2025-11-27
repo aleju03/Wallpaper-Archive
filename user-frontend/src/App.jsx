@@ -82,14 +82,14 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="header-title" onClick={() => setActiveTab('browse')} style={{ cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img src="/logo.svg" alt="Logo" style={{ height: '2em', marginRight: '0.5em' }} />
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <img src="/logo.svg" alt="Logo" className="site-logo" />
               <h1>Wallpaper Archive</h1>
             </div>
             <p>discover and download wallpapers</p>
           </div>
           
-          <nav className="app-nav">
+          <div className="header-actions">
             <button 
               className="nav-button theme-toggle"
               onClick={toggleTheme}
@@ -97,6 +97,8 @@ function App() {
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
+            
+            <nav className="app-nav">
             <button 
               className={`nav-button ${activeTab === 'browse' ? 'active' : ''}`}
               onClick={() => setActiveTab('browse')}
@@ -125,7 +127,8 @@ function App() {
               <Trophy size={16} />
               <span>leaderboard</span>
             </button>
-          </nav>
+            </nav>
+          </div>
         </div>
       </header>
 

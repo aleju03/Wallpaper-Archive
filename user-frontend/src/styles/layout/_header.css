@@ -15,6 +15,11 @@
   align-items: center;
   max-width: var(--grid-max-width);
   margin: 0 auto;
+  gap: var(--spacing-md);
+}
+
+.header-title {
+  text-align: left;
 }
 
 .header-title h1 {
@@ -32,8 +37,53 @@
   text-transform: lowercase;
 }
 
+/* Logo styling */
+.site-logo {
+  height: 1.8em;
+  width: auto;
+  margin-right: 0.5em;
+}
+
+/* Header actions: theme toggle + nav */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 /* App Navigation */
 .app-nav {
   display: flex;
   gap: var(--spacing-xs);
+  align-items: center;
+}
+
+/* ==========================================================================
+   Mobile Header Layout (< 768px)
+   Theme toggle moves to top-right, title centers
+   ========================================================================== */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .header-title {
+    text-align: center;
+    order: 1;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: center;
+    order: 2;
+  }
+
+  /* Theme toggle floats to top-right on mobile */
+  .header-actions .theme-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle } from 'lucide-react'
+import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle, Maximize2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 
@@ -344,15 +344,20 @@ function Arena() {
                   )}
                 </div>
                 <div className="download-section">
-                  <a
+                  <button
+                    className="download-btn fullscreen-btn"
+                    onClick={() => window.open(resolveAssetUrl(previewWallpaper.image_url), '_blank')}
+                  >
+                    <Maximize2 size={16} />
+                    view fullscreen
+                  </button>
+                  <button
                     className="download-btn"
-                    href={resolveAssetUrl(previewWallpaper.image_url)}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    onClick={() => window.open(`${API_BASE}/api/download/${previewWallpaper.id}`, '_blank')}
                   >
                     <Download size={16} />
-                  </a>
+                    direct download
+                  </button>
                 </div>
               </div>
             </div>

@@ -61,7 +61,6 @@
 /* Theme Toggle Button */
 .nav-button.theme-toggle {
   padding: var(--spacing-sm);
-  margin-right: var(--spacing-sm);
   border-color: var(--color-border-secondary);
 }
 
