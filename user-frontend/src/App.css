@@ -1701,13 +1701,34 @@ html {
 @media (max-width: 768px) {
   .battle-arena {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 8px;
+    position: relative;
   }
   
   .vs-divider {
-    order: 1;
-    font-size: 18px;
-    margin-top: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    margin: 0;
+    width: 48px;
+    height: 48px;
+    background: #000000;
+    border: 2px solid #333333;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+  
+  .battle-card {
+    height: 38vh; /* Fit both on screen comfortably */
+    border: none;
+    margin: 0;
+    border-radius: 8px; /* Slight rounding looks modern */
   }
   
   .battle-card:first-child {
@@ -1716,6 +1737,47 @@ html {
   
   .battle-card:last-child {
     order: 2;
+  }
+  
+  .battle-image-container {
+    height: 100%;
+    aspect-ratio: unset;
+    border-radius: 8px;
+  }
+  
+  .battle-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.7) 50%, transparent);
+    padding: 40px 16px 16px;
+    margin: 0;
+    justify-content: flex-end;
+    pointer-events: none; /* Allow clicks to pass through to the image for voting */
+    border-radius: 0 0 8px 8px;
+  }
+
+  .wallpaper-name {
+    font-size: 14px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    margin-bottom: 4px;
+  }
+  
+  .wallpaper-details {
+    color: #cccccc;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .preview-btn {
+    pointer-events: auto; /* Re-enable pointer events for the button */
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(4px);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    width: fit-content;
+    margin-top: 8px;
+    padding: 6px 12px;
   }
   
   .battle-stats {

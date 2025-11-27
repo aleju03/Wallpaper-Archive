@@ -1,3 +1,5 @@
+import { Github } from 'lucide-react';
+
 function References() {
   const providers = [
     { name: 'BitterSweetcandyshop', url: 'https://github.com/BitterSweetcandyshop/wallpapers' },
@@ -19,7 +21,9 @@ function References() {
             target="_blank" 
             rel="noopener noreferrer" 
             className="provider-link"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
+            <Github size={16} />
             {provider.name}
           </a>
         ))}
