@@ -10,11 +10,30 @@ import './App.css'
 function App() {
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
   const [activeTab, setActiveTab] = useState('browse')
+  
+  // Lifted state for Browse component to persist data between tab switches
+  const [browseState, setBrowseState] = useState({
+    wallpapers: [],
+    totalCount: 0,
+    totalPages: 1,
+    currentPage: 1,
+    searchQuery: '',
+    selectedProvider: '',
+    selectedResolution: '',
+    loading: true,
+    initialized: false
+  })
 
   const renderContent = () => {
     switch (activeTab) {
       case 'browse':
-        return <Browse onWallpaperClick={setSelectedWallpaper} />
+        return (
+          <Browse 
+            onWallpaperClick={setSelectedWallpaper} 
+            browseState={browseState}
+            setBrowseState={setBrowseState}
+          />
+        )
       case 'arena':
         return <Arena />
       case 'leaderboard':
@@ -22,7 +41,13 @@ function App() {
       case 'random':
         return <Random />
       default:
-        return <Browse onWallpaperClick={setSelectedWallpaper} />
+        return (
+          <Browse 
+            onWallpaperClick={setSelectedWallpaper} 
+            browseState={browseState}
+            setBrowseState={setBrowseState}
+          />
+        )
     }
   }
 

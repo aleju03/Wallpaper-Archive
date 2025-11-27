@@ -46,20 +46,23 @@ function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
   )
 }
 
-function Browse({ onWallpaperClick }) {
-  const [wallpapers, setWallpapers] = useState([])
+function Browse({ onWallpaperClick, browseState, setBrowseState }) {
+  const {
+    wallpapers,
+    totalCount,
+    totalPages,
+    currentPage,
+    searchQuery,
+    selectedProvider,
+    selectedResolution,
+    loading,
+    initialized
+  } = browseState
+
   const [providers, setProviders] = useState([])
   const [resolutions, setResolutions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedProvider, setSelectedProvider] = useState('')
-  const [selectedResolution, setSelectedResolution] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
   const [gridColumns, setGridColumns] = useState(() => {
     // Set default based on screen size
     if (typeof window !== 'undefined') {
@@ -96,9 +99,12 @@ function Browse({ onWallpaperClick }) {
     }
   }
 
-  const fetchWallpapers = useCallback(async () => {
+  const fetchWallpapers = useCallback(async (force = false) => {
+    // If already initialized and not forced (e.g. by filter change), don't refetch
+    if (initialized && !force) return
+
     try {
-      setLoading(true)
+      setBrowseState(prev => ({ ...prev, loading: true }))
       const params = new URLSearchParams()
       
       if (searchQuery) params.append('search', searchQuery)
@@ -108,38 +114,60 @@ function Browse({ onWallpaperClick }) {
       params.append('page', currentPage.toString())
       
       const response = await axios.get(`${API_BASE}/api/wallpapers?${params}`)
-      setWallpapers(response.data.wallpapers || [])
-      setTotalCount(response.data.total || 0)
-      setTotalPages(Math.ceil((response.data.total || 0) / itemsPerPage))
+      
+      setBrowseState(prev => ({
+        ...prev,
+        wallpapers: response.data.wallpapers || [],
+        totalCount: response.data.total || 0,
+        totalPages: Math.ceil((response.data.total || 0) / itemsPerPage),
+        loading: false,
+        initialized: true
+      }))
       setError(null)
     } catch (err) {
       setError('Failed to load wallpapers')
       console.error('Browse error:', err)
-    } finally {
-      setLoading(false)
+      setBrowseState(prev => ({ ...prev, loading: false }))
     }
-  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution])
+  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, initialized, setBrowseState])
 
   useEffect(() => {
     fetchProviders()
     fetchResolutions()
-    fetchWallpapers()
-  }, [fetchWallpapers])
+  }, [])
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, selectedProvider, selectedResolution])
+    // Initial fetch only if not initialized
+    if (!initialized) {
+      fetchWallpapers(true)
+    }
+  }, [fetchWallpapers, initialized])
 
-  useEffect(() => {
-    fetchWallpapers()
-  }, [currentPage, searchQuery, selectedProvider, selectedResolution, fetchWallpapers])
+  // Helper to update state and trigger fetch
+  const updateFilter = (key, value) => {
+    setBrowseState(prev => ({
+      ...prev,
+      [key]: value,
+      currentPage: 1, // Reset to page 1 on filter change
+      loading: true, // Show loading immediately
+      initialized: false // Force refetch
+    }))
+  }
 
-  // Handle responsive grid adjustments - only set initial value, don't override user choices
+  const updatePage = (newPage) => {
+    setBrowseState(prev => ({
+      ...prev,
+      currentPage: newPage,
+      loading: true,
+      initialized: false
+    }))
+  }
+
+  // Handle responsive grid adjustments
   useEffect(() => {
     const handleResize = () => {
       // Only adjust on initial load or significant size changes, don't override user preference
       const width = window.innerWidth
-      // Remove automatic overrides - let users choose their preferred grid
     }
 
     window.addEventListener('resize', handleResize)
@@ -194,7 +222,7 @@ function Browse({ onWallpaperClick }) {
   }
 
   const handleResolutionSelect = (resolution) => {
-    setSelectedResolution(resolution)
+    updateFilter('selectedResolution', resolution)
     setResolutionDropdownOpen(false)
     setResolutionSearch('')
   }
@@ -235,7 +263,7 @@ function Browse({ onWallpaperClick }) {
               type="text"
               placeholder="search wallpapers..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => updateFilter('searchQuery', e.target.value)}
             />
           </div>
           
@@ -243,7 +271,7 @@ function Browse({ onWallpaperClick }) {
             <select 
               className="filter-select"
               value={selectedProvider}
-              onChange={(e) => setSelectedProvider(e.target.value)}
+              onChange={(e) => updateFilter('selectedProvider', e.target.value)}
             >
               <option value="">all providers</option>
               {providers.map(provider => (
@@ -372,7 +400,7 @@ function Browse({ onWallpaperClick }) {
       {!loading && !error && totalPages > 1 && (
         <div className="pagination">
           <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            onClick={() => updatePage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
           >
             <ChevronLeft size={16} />
@@ -393,7 +421,7 @@ function Browse({ onWallpaperClick }) {
             return (
               <button
                 key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
+                onClick={() => updatePage(pageNum)}
                 className={currentPage === pageNum ? 'active' : ''}
               >
                 {pageNum}
@@ -402,7 +430,7 @@ function Browse({ onWallpaperClick }) {
           })}
           
           <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            onClick={() => updatePage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
           >
             <ChevronRight size={16} />
