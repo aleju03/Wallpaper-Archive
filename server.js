@@ -10,6 +10,51 @@ const Database = require('./database');
 // Initialize database client
 const db = new Database();
 
+// Config for security/hardening
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10); // 1 minute
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || '120', 10); // 120 requests/ip/minute
+
+// Simple in-memory rate limiter (sufficient for small traffic/serverless; move to shared store if needed)
+const rateBuckets = new Map();
+const getClientId = (request) => {
+  const forwarded = request.headers['x-forwarded-for'];
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return request.ip || 'unknown';
+};
+
+fastify.addHook('onRequest', (request, reply, done) => {
+  const now = Date.now();
+  const clientId = getClientId(request);
+  const bucket = rateBuckets.get(clientId) || { count: 0, reset: now + RATE_LIMIT_WINDOW_MS };
+
+  if (now > bucket.reset) {
+    bucket.count = 0;
+    bucket.reset = now + RATE_LIMIT_WINDOW_MS;
+  }
+
+  bucket.count += 1;
+  rateBuckets.set(clientId, bucket);
+
+  if (bucket.count > RATE_LIMIT_MAX) {
+    reply.code(429).send({ success: false, error: 'Too many requests' });
+    return;
+  }
+
+  done();
+});
+
+// Pagination + cache helpers
+const normalizePagination = (limit, page, maxLimit = 100) => {
+  const safeLimit = Math.min(Math.max(parseInt(limit) || 0, 1), maxLimit);
+  const safePage = Math.max(parseInt(page) || 1, 1);
+  return { limit: safeLimit, page: safePage, offset: (safePage - 1) * safeLimit };
+};
+
+const setCache = (reply, seconds = 300) => {
+  reply.header('Cache-Control', `public, max-age=${seconds}, stale-while-revalidate=60`);
+};
+
 // Helper to build the expected thumbnail URL from the public download URL
 const buildThumbnailUrl = (downloadUrl) => {
   if (!downloadUrl) return null;
@@ -41,7 +86,12 @@ const buildThumbnailUrl = (downloadUrl) => {
 
 // Enable CORS
 fastify.register(require('@fastify/cors'), {
-  origin: ['*'],
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // same-origin / curl
+    if (!ALLOWED_ORIGINS.length) return cb(null, true); // allow all if no list provided
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 });
@@ -62,6 +112,7 @@ fastify.get('/', async (request, reply) => {
 fastify.get('/api/resolutions', async (request, reply) => {
   try {
     const resolutions = await db.getUniqueResolutions();
+    setCache(reply, 600);
     return { resolutions };
   } catch (error) {
     console.error('Error fetching resolutions:', error);
@@ -72,23 +123,26 @@ fastify.get('/api/resolutions', async (request, reply) => {
 fastify.get('/api/wallpapers', async (request, reply) => {
   try {
     const { provider, folder, search, resolution, limit = 50, page = 1 } = request.query;
+    const { limit: safeLimit, page: safePage, offset } = normalizePagination(limit, page);
     
     const filters = {};
     if (provider) filters.provider = provider;
     if (folder) filters.folder = folder;
     if (search) filters.search = search;
     if (resolution) filters.resolution = resolution;
-    filters.limit = parseInt(limit);
-    filters.offset = (parseInt(page) - 1) * parseInt(limit);
+    filters.limit = safeLimit;
+    filters.offset = offset;
 
     const [wallpapers, total] = await Promise.all([
       db.getWallpapers(filters),
       db.getWallpapersCount(filters)
     ]);
     
-    const currentPage = parseInt(page);
-    const totalPages = Math.ceil(total / parseInt(limit));
+    const currentPage = safePage;
+    const totalPages = Math.ceil(total / safeLimit);
     const hasNextPage = currentPage < totalPages;
+
+    setCache(reply, 120);
     
     return {
       wallpapers: wallpapers.map(w => ({
@@ -99,7 +153,7 @@ fastify.get('/api/wallpapers', async (request, reply) => {
       })),
       total: total,
       page: currentPage,
-      limit: parseInt(limit),
+      limit: safeLimit,
       hasNextPage: hasNextPage,
       totalPages: totalPages
     };
@@ -117,6 +171,8 @@ fastify.get('/api/wallpapers/random', async (request, reply) => {
       reply.code(404);
       return { success: false, error: 'No wallpapers found' };
     }
+
+    setCache(reply, 60);
 
     return {
       success: true,
@@ -140,6 +196,8 @@ fastify.get('/api/wallpapers/:id', async (request, reply) => {
       reply.code(404);
       return { success: false, error: 'Wallpaper not found' };
     }
+
+    setCache(reply, 300);
 
     return {
       success: true,
@@ -256,6 +314,8 @@ fastify.get('/api/providers', async (request, reply) => {
       };
     });
     
+    setCache(reply, 600);
+
     return {
       success: true,
       providers,
@@ -323,8 +383,9 @@ fastify.post('/api/arena/vote', async (request, reply) => {
 fastify.get('/api/arena/leaderboard', async (request, reply) => {
   try {
     const limit = parseInt(request.query.limit) || 50;
+    const { limit: safeLimit } = normalizePagination(limit, 1, 100);
     const getBottom = request.query.bottom === 'true';
-    const leaderboard = await db.getLeaderboard(limit, getBottom);
+    const leaderboard = await db.getLeaderboard(safeLimit, getBottom);
     const totalCount = await db.getTotalWallpaperCount();
     
     
@@ -334,6 +395,8 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
       image_url: wallpaper.download_url, // Use download_url assuming it maps to gitlab public url
       thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
     }));
+
+    setCache(reply, 120);
 
     return {
       success: true,
