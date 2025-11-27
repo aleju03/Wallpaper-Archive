@@ -754,6 +754,8 @@ body {
   color: #cccccc;
   margin: 0;
   line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .confirm-modal-actions {
