@@ -56,13 +56,16 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     totalCount,
     totalPages,
     currentPage,
-    pendingPage,
     searchQuery,
     selectedProvider,
     selectedResolution,
     loading,
     initialized
   } = browseState
+
+  // Local display state so the active page flips immediately on click
+  // This is the single source of truth for UI highlighting
+  const [displayPage, setDisplayPage] = useState(currentPage)
 
   const [providers, setProviders] = useState([])
   const [resolutions, setResolutions] = useState([])
@@ -108,10 +111,11 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     // If already initialized and not forced (e.g. by filter change), don't refetch
     if (initialized && !force) return
 
-    const pageToLoad = pendingPage ?? currentPage
+    // Use currentPage from browseState - it's already set to the target page
+    const pageToLoad = currentPage
 
     try {
-      setBrowseState(prev => ({ ...prev, loading: true, currentPage: pageToLoad }))
+      setBrowseState(prev => ({ ...prev, loading: true }))
       const params = new URLSearchParams()
       
       if (searchQuery) params.append('search', searchQuery)
@@ -127,8 +131,6 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
         wallpapers: response.data.wallpapers || [],
         totalCount: response.data.total || 0,
         totalPages: Math.ceil((response.data.total || 0) / itemsPerPage),
-        currentPage: pageToLoad,
-        pendingPage: null,
         loading: false,
         initialized: true
       }))
@@ -139,12 +141,10 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       setBrowseState(prev => ({
         ...prev,
         loading: false,
-        pendingPage: null,
-        currentPage: pageToLoad,
         initialized: true
       }))
     }
-  }, [currentPage, pendingPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, initialized, setBrowseState])
+  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, initialized, setBrowseState])
 
   useEffect(() => {
     fetchProviders()
@@ -160,21 +160,22 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
 
   // Helper to update state and trigger fetch
   const updateFilter = (key, value) => {
+    setDisplayPage(1)
     setBrowseState(prev => ({
       ...prev,
       [key]: value,
       currentPage: 1, // Reset to page 1 on filter change
-      pendingPage: 1,
       loading: true, // Show loading immediately
       initialized: false // Force refetch
     }))
   }
 
   const updatePage = (newPage) => {
+    // Set displayPage synchronously so UI updates immediately
+    setDisplayPage(newPage)
     setBrowseState(prev => ({
       ...prev,
       currentPage: newPage,
-      pendingPage: newPage,
       loading: true,
       initialized: false
     }))
@@ -256,9 +257,6 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       default: return <Grid3X3 size={14} />
     }
   }
-
-  const displayPage = pendingPage ?? currentPage
-
 
 
   return (
@@ -414,29 +412,27 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
             <ChevronLeft size={16} />
           </button>
           
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            let pageNum
-            if (totalPages <= 5) {
-              pageNum = i + 1
-            } else if (displayPage <= 3) {
-              pageNum = i + 1
-            } else if (displayPage >= totalPages - 2) {
-              pageNum = totalPages - 4 + i
-            } else {
-              pageNum = displayPage - 2 + i
-            }
+          {(() => {
+            // Show pages in fixed groups of 5: 1-5, 6-10, 11-15, etc.
+            const groupSize = 5
+            const currentGroup = Math.floor((displayPage - 1) / groupSize)
+            const startPage = currentGroup * groupSize + 1
+            const endPage = Math.min(startPage + groupSize - 1, totalPages)
             
-            return (
-              <button
-                key={pageNum}
-                onClick={() => updatePage(pageNum)}
-                className={displayPage === pageNum ? 'active' : ''}
-                disabled={loading}
-              >
-                {pageNum}
-              </button>
-            )
-          })}
+            return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
+              const pageNum = startPage + i
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => updatePage(pageNum)}
+                  className={displayPage === pageNum ? 'active' : ''}
+                  disabled={loading}
+                >
+                  {pageNum}
+                </button>
+              )
+            })
+          })()}
           
           <button
             onClick={() => updatePage(Math.min(totalPages, displayPage + 1))}

@@ -685,15 +685,15 @@ body {
   cursor: pointer;
   font-size: 11px;
   font-family: inherit;
-  transition: all 0.1s;
+  transition: background 0.1s, border-color 0.1s;
 }
 
-.pagination button:hover:not(:disabled) {
-  background: #111111;
-  border-color: #ffffff;
+.pagination button:hover:not(:disabled):not(.active) {
+  background: #222222;
+  border-color: #666666;
 }
 
-.pagination button:disabled {
+.pagination button:disabled:not(.active) {
   opacity: 0.3;
   cursor: not-allowed;
 }
@@ -702,6 +702,8 @@ body {
   background: #ffffff;
   color: #000000;
   border-color: #ffffff;
+  opacity: 1;
+  transition: none;
 }
 
 /* Performance Optimizations */
