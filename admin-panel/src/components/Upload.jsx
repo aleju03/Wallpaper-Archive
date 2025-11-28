@@ -2,7 +2,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { UploadCloud, CheckCircle, AlertCircle, Hash, Shield, Image as ImageIcon } from 'lucide-react'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
-import { useAdminData } from '../context/AdminDataContext'
+import { useAdminData } from '../context/useAdminData'
 
 function Upload() {
   const [mode, setMode] = useState('manual')

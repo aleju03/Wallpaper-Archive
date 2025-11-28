@@ -1,6 +1,6 @@
 import { BarChart3, PieChart, TrendingUp } from 'lucide-react'
 import { useEffect } from 'react'
-import { useAdminData } from '../context/AdminDataContext'
+import { useAdminData } from '../context/useAdminData'
 
 function Statistics() {
   const { stats, fetchStats, statsLoading, errors } = useAdminData()

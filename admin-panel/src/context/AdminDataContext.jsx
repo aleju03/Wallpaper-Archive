@@ -1,8 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import axios from 'axios'
 import { API_BASE } from '../config'
-
-const AdminDataContext = createContext(null)
+import { AdminDataContext } from './adminDataContext'
 
 export function AdminDataProvider({ children }) {
   const [stats, setStats] = useState(null)
@@ -70,5 +69,3 @@ export function AdminDataProvider({ children }) {
     </AdminDataContext.Provider>
   )
 }
-
-export const useAdminData = () => useContext(AdminDataContext)

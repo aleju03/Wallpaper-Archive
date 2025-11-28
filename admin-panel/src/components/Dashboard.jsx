@@ -1,7 +1,7 @@
 import { Database, Images } from 'lucide-react'
 import { useEffect } from 'react'
 import { API_BASE } from '../config'
-import { useAdminData } from '../context/AdminDataContext'
+import { useAdminData } from '../context/useAdminData'
 
 function Dashboard() {
   const { stats, fetchStats, providerMeta, fetchProviders, statsLoading, providersLoading, errors } = useAdminData()

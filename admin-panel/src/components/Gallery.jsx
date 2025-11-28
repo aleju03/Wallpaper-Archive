@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
-import { useAdminData } from '../context/AdminDataContext'
+import { useAdminData } from '../context/useAdminData'
 
 function Gallery() {
   const [wallpapers, setWallpapers] = useState([])
