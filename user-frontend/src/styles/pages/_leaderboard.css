@@ -58,7 +58,7 @@
 /* Leaderboard Item */
 .leaderboard-item {
   display: grid;
-  grid-template-columns: auto 80px minmax(0, 1fr) auto;
+  grid-template-columns: auto 80px minmax(0, 1fr) minmax(auto, max-content);
   gap: var(--spacing-lg);
   align-items: center;
   background: var(--color-bg-secondary);
@@ -148,6 +148,12 @@
   color: var(--color-text-muted);
 }
 
+/* Wallpaper Info Section */
+.leaderboard-item .wallpaper-info {
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* Leaderboard Item Wallpaper Name */
 .leaderboard-item .wallpaper-name {
   font-size: var(--font-size-md);
@@ -165,6 +171,8 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--spacing-lg);
   text-align: center;
+  min-width: max-content;
+  flex-shrink: 0;
 }
 
 .stat-item {

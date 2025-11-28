@@ -47,6 +47,26 @@
   .wallpaper-grid-4 {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  /* Leaderboard - Compact layout for intermediate screens */
+  .leaderboard-item {
+    grid-template-columns: auto 70px minmax(100px, 1fr) auto;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .leaderboard-item .battle-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+  }
+
+  .leaderboard-item .stat-value {
+    font-size: var(--font-size-sm);
+  }
+
+  .leaderboard-item .stat-label {
+    font-size: 9px;
+  }
 }
 
 /* ==========================================================================
