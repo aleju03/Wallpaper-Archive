@@ -68,6 +68,24 @@
   font-size: var(--font-size-md);
 }
 
+.status-toast {
+  margin: var(--spacing-md) 0;
+  padding: var(--spacing-md);
+  border-radius: 10px;
+  border-left: 4px solid var(--color-border);
+  background: var(--color-bg-primary);
+}
+
+.status-toast--success {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.status-toast--error {
+  border-color: var(--color-accent-red);
+  color: var(--color-accent-red);
+}
+
 /* ==========================================================================
    Empty State
    ========================================================================== */

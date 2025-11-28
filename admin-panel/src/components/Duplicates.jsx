@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Copy, Trash2, Eye, RefreshCw, Settings, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { Trash2, Eye, RefreshCw, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 import axios from 'axios'
-import { API_BASE } from '../config'
+import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
 
-// Toggle duplicates feature; defaults off for serverless/Turso deployment
-const DUPLICATES_ENABLED = import.meta.env.VITE_ENABLE_DUPLICATES === 'true';
+// Toggle duplicates feature; now enabled by default
+const DUPLICATES_ENABLED = true;
 
 // Simple path utility functions
 const path = {
@@ -67,6 +67,7 @@ function Duplicates() {
   useEffect(() => {
     // Load cached data synchronously first, then fetch fresh data if needed
     loadCachedDataSync()
+    fetchData()
   }, [])
   
   // Filter groups when threshold changes (reset page)
@@ -219,7 +220,7 @@ function Duplicates() {
 
   const fetchHashStatus = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/duplicates/status`)
+      const response = await axios.get(`${API_BASE}/api/duplicates/status`, { headers: getAdminHeaders() })
       const status = response.data.status
       setHashStatus(status)
       
@@ -235,7 +236,7 @@ function Duplicates() {
     try {
       // Fetch all duplicates with a high threshold to get everything, then filter client-side
       const url = `${API_BASE}/api/duplicates?threshold=20${forceRefresh ? '&force=true' : ''}`
-      const response = await axios.get(url)
+      const response = await axios.get(url, { headers: getAdminHeaders() })
       const data = response.data
       setAllDuplicateGroups(data.duplicateGroups || [])
       
@@ -249,7 +250,7 @@ function Duplicates() {
   const generateHashes = async () => {
     try {
       setGenerating(true)
-      const response = await axios.post(`${API_BASE}/api/duplicates/generate-hashes`)
+      const response = await axios.post(`${API_BASE}/api/duplicates/generate-hashes`, null, { headers: getAdminHeaders() })
       
       if (response.data.success) {
         await fetchData() // Refresh data after generation
@@ -281,7 +282,7 @@ function Duplicates() {
       async () => {
         try {
           const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
-          const response = await axios.delete(url)
+          const response = await axios.delete(url, { headers: getAdminHeaders() })
           
           if (response.data.success) {
             // Remove the deleted wallpaper from both all groups and filtered groups
@@ -312,7 +313,7 @@ function Duplicates() {
   const deleteWallpaperNoConfirm = async (id, deleteFile = false) => {
     try {
       const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
-      const response = await axios.delete(url)
+      const response = await axios.delete(url, { headers: getAdminHeaders() })
       
       if (response.data.success) {
         // Remove the deleted wallpaper from both all groups and filtered groups
@@ -483,6 +484,9 @@ function Duplicates() {
                 </div>
                 <div className="status-text">
                   {hashStatus.withHashes} of {hashStatus.total} images processed ({hashStatus.percentage}%)
+                </div>
+                <div className="status-text" style={{ marginTop: '6px', fontSize: '12px' }}>
+                  Uses hashes already stored in the database; generation only fills in missing hashes.
                 </div>
                 {hashStatus.withoutHashes > 0 && (
                   <button 
@@ -667,13 +671,13 @@ function Duplicates() {
                       )}
                       <div className="image-container">
                         <img
-                          src={`${API_BASE}${wallpaper.thumbnail_url}`}
+                          src={resolveAssetUrl(wallpaper.thumbnail_url)}
                           alt={wallpaper.filename}
                           onClick={() => {
                             if (isMultiSelectMode) {
                               toggleWallpaperSelection(wallpaper.id)
                             } else {
-                              setSelectedImage(`${API_BASE}${wallpaper.image_url}`)
+                              setSelectedImage(resolveAssetUrl(wallpaper.image_url))
                             }
                           }}
                         />
@@ -697,7 +701,7 @@ function Duplicates() {
                           {!isMultiSelectMode && (
                             <>
                               <button
-                                onClick={() => setSelectedImage(`${API_BASE}${wallpaper.image_url}`)}
+                                onClick={() => setSelectedImage(resolveAssetUrl(wallpaper.image_url))}
                                 className="action-btn view"
                                 title="View full size"
                               >

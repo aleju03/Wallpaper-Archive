@@ -1,85 +1,13 @@
-import { useState, useEffect } from 'react'
 import { BarChart3, PieChart, TrendingUp } from 'lucide-react'
-import axios from 'axios'
-import { API_BASE } from '../config'
+import { useEffect } from 'react'
+import { useAdminData } from '../context/AdminDataContext'
 
 function Statistics() {
-  const [wallpapers, setWallpapers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { stats, fetchStats, statsLoading, errors } = useAdminData()
 
   useEffect(() => {
-    fetchAllWallpapers()
-  }, [])
-
-  const fetchAllWallpapers = async () => {
-    try {
-      setLoading(true)
-      const response = await axios.get(`${API_BASE}/api/wallpapers?limit=10000`)
-      setWallpapers(response.data.wallpapers || [])
-      setError(null)
-    } catch (err) {
-      setError('Failed to load statistics')
-      console.error('Statistics error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getProviderStats = () => {
-    const stats = {}
-    wallpapers.forEach(w => {
-      stats[w.provider] = (stats[w.provider] || 0) + 1
-    })
-    return Object.entries(stats)
-      .sort(([,a], [,b]) => b - a)
-      .map(([provider, count]) => ({ provider, count }))
-  }
-
-  const getFolderStats = () => {
-    const stats = {}
-    wallpapers.forEach(w => {
-      if (w.folder) {
-        stats[w.folder] = (stats[w.folder] || 0) + 1
-      }
-    })
-    return Object.entries(stats)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 10)
-      .map(([folder, count]) => ({ folder, count }))
-  }
-
-  const getResolutionStats = () => {
-    const stats = {}
-    wallpapers.forEach(w => {
-      if (w.dimensions) {
-        stats[w.dimensions] = (stats[w.dimensions] || 0) + 1
-      }
-    })
-    return Object.entries(stats)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 8)
-      .map(([resolution, count]) => ({ resolution, count }))
-  }
-
-  const getFileSizeStats = () => {
-    const ranges = {
-      'Under 1MB': 0,
-      '1-5MB': 0,
-      '5-10MB': 0,
-      'Over 10MB': 0
-    }
-    
-    wallpapers.forEach(w => {
-      const sizeMB = (w.file_size || 0) / (1024 * 1024)
-      if (sizeMB < 1) ranges['Under 1MB']++
-      else if (sizeMB < 5) ranges['1-5MB']++
-      else if (sizeMB < 10) ranges['5-10MB']++
-      else ranges['Over 10MB']++
-    })
-    
-    return Object.entries(ranges).map(([range, count]) => ({ range, count }))
-  }
+    fetchStats()
+  }, [fetchStats])
 
   const StatRow = ({ label, count, maxCount, color }) => (
     <div className="stat-row">
@@ -94,25 +22,46 @@ function Statistics() {
     </div>
   )
 
-  if (loading) {
+  if (statsLoading && !stats) {
     return <div className="loading">Loading statistics...</div>
   }
 
-  if (error) {
-    return <div className="error">{error}</div>
+  if (errors.stats) {
+    return <div className="error">{errors.stats}</div>
   }
 
-  const providerStats = getProviderStats()
-  const folderStats = getFolderStats()
-  const resolutionStats = getResolutionStats()
-  const fileSizeStats = getFileSizeStats()
-  const maxFileSize = Math.max(...fileSizeStats.map(s => s.count))
+  const providerStats = (stats?.providers_breakdown || []).map(item => ({
+    provider: item.provider,
+    count: item.count
+  }))
+
+  const folderStats = (stats?.folder_breakdown || []).map(item => ({
+    folder: item.folder,
+    count: item.count
+  }))
+
+  const resolutionStats = Object.entries(stats?.dimensions || {})
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 8)
+    .map(([resolution, count]) => ({ resolution, count }))
+
+  const buckets = stats?.file_size_buckets || {}
+  const fileSizeStats = [
+    { range: 'Under 1MB', count: buckets.under_1mb || 0 },
+    { range: '1-5MB', count: buckets.between_1_5mb || 0 },
+    { range: '5-10MB', count: buckets.between_5_10mb || 0 },
+    { range: 'Over 10MB', count: buckets.over_10mb || 0 }
+  ]
+  const maxFileSize = Math.max(1, ...fileSizeStats.map(s => s.count))
+  const topProviderCount = providerStats[0]?.count || 1
+  const topFolderCount = folderStats[0]?.count || 1
+  const topResolutionCount = resolutionStats[0]?.count || 1
 
   return (
     <div className="statistics">
       <div className="stats-grid">
         {/* Provider Distribution */}
-        <div className="stat-card">
+        <div className="stat-card stat-card--scrollable">
           <h3>
             <BarChart3 size={16} style={{ display: 'inline', marginRight: '8px' }} />
             Wallpapers by Provider
@@ -123,7 +72,7 @@ function Statistics() {
                 key={provider}
                 label={provider}
                 count={count}
-                maxCount={providerStats[0].count}
+                maxCount={topProviderCount}
                 color="blue"
               />
             ))}
@@ -131,7 +80,7 @@ function Statistics() {
         </div>
 
         {/* Top Folders */}
-        <div className="stat-card">
+        <div className="stat-card stat-card--scrollable">
           <h3>
             <PieChart size={16} style={{ display: 'inline', marginRight: '8px' }} />
             Top Categories
@@ -142,7 +91,7 @@ function Statistics() {
                 key={folder}
                 label={folder}
                 count={count}
-                maxCount={folderStats[0].count}
+                maxCount={topFolderCount}
                 color="green"
               />
             ))}
@@ -150,7 +99,7 @@ function Statistics() {
         </div>
 
         {/* Resolution Distribution */}
-        <div className="stat-card">
+        <div className="stat-card stat-card--scrollable">
           <h3>
             <TrendingUp size={16} style={{ display: 'inline', marginRight: '8px' }} />
             Common Resolutions
@@ -161,7 +110,7 @@ function Statistics() {
                 key={resolution}
                 label={resolution}
                 count={count}
-                maxCount={resolutionStats[0].count}
+                maxCount={topResolutionCount}
                 color="red"
               />
             ))}
@@ -191,28 +140,28 @@ function Statistics() {
         <div className="collection-summary">
           <div className="summary-item">
             <div className="summary-item__value summary-item__value--blue">
-              {wallpapers.length}
+              {stats?.total_wallpapers || 0}
             </div>
             <div className="summary-item__label">Total Wallpapers</div>
           </div>
           
           <div className="summary-item">
             <div className="summary-item__value summary-item__value--green">
-              {new Set(wallpapers.map(w => w.provider)).size}
+              {stats?.providers || 0}
             </div>
             <div className="summary-item__label">Providers</div>
           </div>
           
           <div className="summary-item">
             <div className="summary-item__value summary-item__value--red">
-              {new Set(wallpapers.map(w => w.folder).filter(Boolean)).size}
+              {stats?.folders || 0}
             </div>
             <div className="summary-item__label">Unique Folders</div>
           </div>
           
           <div className="summary-item">
             <div className="summary-item__value summary-item__value--orange">
-              {((wallpapers.reduce((sum, w) => sum + (w.file_size || 0), 0)) / (1024 * 1024 * 1024)).toFixed(1)}GB
+              {((stats?.total_size || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB
             </div>
             <div className="summary-item__label">Total Size</div>
           </div>

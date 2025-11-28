@@ -14,6 +14,12 @@
   margin-bottom: 0;
 }
 
+.stat-card--scrollable {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: var(--spacing-md);
+}
+
 /* ==========================================================================
    Stat Row (Bar chart style)
    ========================================================================== */

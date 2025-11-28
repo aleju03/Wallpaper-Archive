@@ -87,6 +87,17 @@
   border-color: var(--color-accent-purple-hover);
 }
 
+.btn--neutral {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.btn--neutral:hover {
+  background: var(--color-bg-primary);
+  border-color: var(--color-border-hover);
+}
+
 .btn--outline-danger {
   background: transparent;
   border-color: var(--color-accent-red);

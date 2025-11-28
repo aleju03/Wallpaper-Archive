@@ -1,37 +1,17 @@
-import { useState, useEffect } from 'react'
 import { Database, Images } from 'lucide-react'
-import axios from 'axios'
+import { useEffect } from 'react'
 import { API_BASE } from '../config'
+import { useAdminData } from '../context/AdminDataContext'
 
 function Dashboard() {
-  const [stats, setStats] = useState(null)
-  const [providers, setProviders] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { stats, fetchStats, providerMeta, fetchProviders, statsLoading, providersLoading, errors } = useAdminData()
+  const loading = statsLoading || providersLoading
+  const error = errors.stats || errors.providers
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      
-      const [statsResponse, providersResponse] = await Promise.all([
-        axios.get(`${API_BASE}/api/stats`),
-        axios.get(`${API_BASE}/api/providers`)
-      ])
-      
-      setStats(statsResponse.data)
-      setProviders(providersResponse.data.providers)
-      setError(null)
-    } catch (err) {
-      setError('Failed to load dashboard data')
-      console.error('Dashboard error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+    fetchStats()
+    fetchProviders()
+  }, [fetchStats, fetchProviders])
 
   if (loading) {
     return <div className="loading">Loading dashboard...</div>
@@ -73,16 +53,16 @@ function Dashboard() {
         <div className="stat-card">
           <h3>Provider Status</h3>
           <div>
-            {providers.map((provider, index) => {
-              const getStatusBadgeClass = (status) => {
+            {providerMeta.map((provider, index) => {
+              const getStatusStyle = (status) => {
                 switch(status) {
-                  case 'active': return 'provider-item__badge--active'
-                  case 'recent': return 'provider-item__badge--recent'
-                  case 'stale': return 'provider-item__badge--stale'
-                  default: return ''
+                  case 'active': return { color: '#2ecc71' }
+                  case 'recent': return { color: '#f1c40f' }
+                  case 'stale': return { color: '#e74c3c' }
+                  default: return {}
                 }
               }
-              
+
               const getStatusText = (status, daysSinceUpdate) => {
                 switch(status) {
                   case 'active': return `${provider.count} wallpapers • Updated today`
@@ -96,13 +76,10 @@ function Dashboard() {
                 <div key={index} className="provider-item">
                   <div>
                     <div className="provider-item__name">{provider.name}</div>
-                    <div className="provider-item__status">
+                    <div className="provider-item__status" style={getStatusStyle(provider.status)}>
                       {getStatusText(provider.status, provider.daysSinceUpdate)}
                     </div>
                   </div>
-                  <span className={`provider-item__badge ${getStatusBadgeClass(provider.status)}`}>
-                    {provider.status}
-                  </span>
                 </div>
               )
             })}

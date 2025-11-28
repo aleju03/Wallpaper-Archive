@@ -5,8 +5,12 @@ const fastify = require('fastify')({
   disableRequestLogging: true
 });
 const path = require('path');
-const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const fs = require('fs');
+const fsPromises = require('fs/promises');
+const sharp = require('sharp');
+const { S3Client, DeleteObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 const Database = require('./database');
+const { generatePerceptualHash, findDuplicateGroups } = require('./image-hash');
 
 // Initialize database client
 const db = new Database();
@@ -22,6 +26,9 @@ const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const R2_ENDPOINT = process.env.R2_ENDPOINT || (R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : null);
 const R2_ENABLED = !!(R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME && R2_ENDPOINT);
+const LOCAL_DOWNLOADS_DIR = path.join(__dirname, 'downloads');
+const LOCAL_THUMBNAILS_DIR = path.join(__dirname, 'thumbnails');
+const STORAGE_MODE = R2_ENABLED ? 'r2' : 'local';
 
 // Simple in-memory rate limiter (sufficient for small traffic/serverless; move to shared store if needed)
 const rateBuckets = new Map();
@@ -52,6 +59,35 @@ fastify.addHook('onRequest', (request, reply, done) => {
   done();
 });
 
+// Basic helpers
+const sanitizeFilename = (name = '') => name.replace(/[^a-zA-Z0-9._-]/g, '_');
+const ensureDir = async (dirPath) => fsPromises.mkdir(dirPath, { recursive: true });
+const streamToBuffer = async (stream) => {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+};
+const guessMime = (filePath) => {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  if (ext === '.gif') return 'image/gif';
+  return 'image/jpeg';
+};
+
+const r2Client = R2_ENABLED ? new S3Client({
+  region: 'auto',
+  endpoint: R2_ENDPOINT,
+  credentials: {
+    accessKeyId: R2_ACCESS_KEY_ID,
+    secretAccessKey: R2_SECRET_ACCESS_KEY
+  }
+}) : null;
+
+const buildR2Url = (key) => `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+
 // Admin auth helper
 const requireAdminKey = (request, reply) => {
   if (!ADMIN_API_KEY) {
@@ -81,20 +117,14 @@ const setCache = (reply, seconds = 300) => {
   reply.header('Cache-Control', `public, max-age=${seconds}, stale-while-revalidate=60`);
 };
 
-// R2 client (optional, only if credentials are provided)
-const r2Client = R2_ENABLED ? new S3Client({
-  region: 'auto',
-  endpoint: R2_ENDPOINT,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY
-  }
-}) : null;
-
 const getKeyFromUrl = (urlStr) => {
   try {
     const url = new URL(urlStr);
-    return url.pathname.replace(/^\//, '');
+    const key = url.pathname.replace(/^\//, '');
+    if (R2_BUCKET_NAME && key.startsWith(`${R2_BUCKET_NAME}/`)) {
+      return key.slice(R2_BUCKET_NAME.length + 1);
+    }
+    return key;
   } catch {
     return null;
   }
@@ -113,6 +143,71 @@ const deleteFromR2 = async (keys = []) => {
       console.warn('R2 delete failed for key', key, error.message || error);
     }
   }
+};
+
+const uploadToStorage = async (key, buffer, contentType = 'application/octet-stream', isThumbnail = false) => {
+  if (R2_ENABLED && r2Client) {
+    await r2Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType
+    }));
+    return buildR2Url(key);
+  }
+
+  // Local fallback storage
+  const targetDir = isThumbnail ? LOCAL_THUMBNAILS_DIR : LOCAL_DOWNLOADS_DIR;
+  await ensureDir(targetDir);
+  const filename = path.basename(key);
+  const targetPath = path.join(targetDir, filename);
+  await fsPromises.writeFile(targetPath, buffer);
+  return `/${isThumbnail ? 'thumbnails' : 'images'}/${filename}`;
+};
+
+const getImageBuffer = async (wallpaperOrUrl) => {
+  const target = typeof wallpaperOrUrl === 'string' ? { download_url: wallpaperOrUrl } : wallpaperOrUrl;
+  const localPath = target?.local_path;
+  const filename = target?.filename;
+
+  // Prefer local file if it exists
+  const candidatePaths = [];
+  if (localPath) {
+    candidatePaths.push(path.isAbsolute(localPath) ? localPath : path.join(__dirname, localPath.replace(/^\.?\//, '')));
+  }
+  if (filename) {
+    candidatePaths.push(path.join(LOCAL_DOWNLOADS_DIR, filename));
+  }
+
+  for (const candidate of candidatePaths) {
+    try {
+      const stats = await fsPromises.stat(candidate);
+      if (stats.isFile()) {
+        return fsPromises.readFile(candidate);
+      }
+    } catch {
+      // Continue trying other options
+    }
+  }
+
+  // Fallback to remote download
+  const urlStr = target?.download_url;
+  if (!urlStr) {
+    throw new Error('No source available to fetch image buffer');
+  }
+
+  const downloader = urlStr.startsWith('https') ? require('https') : require('http');
+  return new Promise((resolve, reject) => {
+    downloader.get(urlStr, (res) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`Unexpected status ${res.statusCode} when fetching ${urlStr}`));
+        return;
+      }
+      const data = [];
+      res.on('data', chunk => data.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(data)));
+    }).on('error', reject);
+  });
 };
 
 // Helper to build the expected thumbnail URL from the public download URL
@@ -154,6 +249,43 @@ fastify.register(require('@fastify/cors'), {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+});
+
+fastify.register(require('@fastify/multipart'), {
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB per file
+  }
+});
+
+// Local file serving (for local storage mode)
+fastify.get('/images/:file', async (request, reply) => {
+  try {
+    const safeName = sanitizeFilename(request.params.file);
+    const filePath = path.join(LOCAL_DOWNLOADS_DIR, safeName);
+    await fsPromises.access(filePath);
+    const stream = fs.createReadStream(filePath);
+    reply.header('Content-Type', guessMime(filePath));
+    reply.header('Cache-Control', 'public, max-age=86400');
+    return reply.send(stream);
+  } catch (error) {
+    reply.code(404);
+    return { success: false, error: 'Image not found' };
+  }
+});
+
+fastify.get('/thumbnails/:file', async (request, reply) => {
+  try {
+    const safeName = sanitizeFilename(request.params.file);
+    const filePath = path.join(LOCAL_THUMBNAILS_DIR, safeName);
+    await fsPromises.access(filePath);
+    const stream = fs.createReadStream(filePath);
+    reply.header('Content-Type', guessMime(filePath));
+    reply.header('Cache-Control', 'public, max-age=86400');
+    return reply.send(stream);
+  } catch (error) {
+    reply.code(404);
+    return { success: false, error: 'Thumbnail not found' };
+  }
 });
 
 fastify.get('/', async (request, reply) => {
@@ -337,56 +469,70 @@ fastify.get('/api/wallpapers/:id', async (request, reply) => {
 
 fastify.get('/api/stats', async (request, reply) => {
   try {
-    const stats = await db.getStats();
-    
-    // Get all wallpapers to calculate additional stats
-    // Note: In serverless, fetching ALL rows might be slow/expensive.
-    // Optimizing to only fetch what is needed or simplified stats.
-    const wallpapers = await db.getWallpapers({ limit: 10000 }); // Soft limit
-    
-    // Calculate providers and folders
-    const providers = {};
-    const folders = {};
+    const [baseStats, providerBreakdownRaw, folderBreakdownRaw, resolutionRows, fileSizeBuckets, filenames] = await Promise.all([
+      db.getStats(),
+      db.getProviderBreakdown(),
+      db.getFolderBreakdown(25),
+      db.getUniqueResolutions(),
+      db.getFileSizeBuckets(),
+      db.getAllFilenames()
+    ]);
+
+    const providerBreakdown = providerBreakdownRaw.map((item) => ({
+      ...item,
+      count: Number(item.count || 0),
+      total_size: Number(item.total_size || 0)
+    }));
+
+    const folderBreakdown = folderBreakdownRaw.map((item) => ({
+      ...item,
+      count: Number(item.count || 0),
+      total_size: Number(item.total_size || 0)
+    }));
+
+    const totalWallpapers = Number(baseStats.total || 0);
+    const totalSize = Number(baseStats.total_size || 0);
+    const totalProviders = Number(baseStats.providers || 0);
+    const totalFolders = Number(baseStats.folders || 0);
+
+    const providerCounts = {};
+    providerBreakdown.forEach((item) => { providerCounts[item.provider] = item.count; });
+
+    const folderCounts = {};
+    folderBreakdown.forEach((item) => { folderCounts[item.folder] = item.count; });
+
     const dimensions = {};
+    resolutionRows.forEach((item) => { dimensions[item.dimensions] = item.count; });
+
     const file_types = {};
-    let total_size = 0;
-    
-    wallpapers.forEach(w => {
-      // Providers
-      providers[w.provider] = (providers[w.provider] || 0) + 1;
-      
-      // Folders
-      if (w.folder) {
-        folders[w.folder] = (folders[w.folder] || 0) + 1;
-      }
-      
-      // Dimensions
-      if (w.dimensions) {
-        dimensions[w.dimensions] = (dimensions[w.dimensions] || 0) + 1;
-      }
-      
-      // File types (from filename extension)
-      if (w.filename) {
-        const ext = path.extname(w.filename).toLowerCase().replace('.', '');
-        if (ext) {
-          file_types[ext] = (file_types[ext] || 0) + 1;
-        }
-      }
-      
-      // Total size
-      if (w.file_size) {
-        total_size += parseInt(w.file_size) || 0;
+    filenames.forEach((name) => {
+      const ext = path.extname(name || '').toLowerCase().replace('.', '');
+      if (ext) {
+        file_types[ext] = (file_types[ext] || 0) + 1;
       }
     });
-    
+
+    const normalizedBuckets = {
+      under_1mb: Number(fileSizeBuckets?.under_1mb || 0),
+      between_1_5mb: Number(fileSizeBuckets?.between_1_5mb || 0),
+      between_5_10mb: Number(fileSizeBuckets?.between_5_10mb || 0),
+      over_10mb: Number(fileSizeBuckets?.over_10mb || 0)
+    };
+
+    setCache(reply, 120);
+
     return {
-      total_wallpapers: wallpapers.length,
-      total_size,
-      providers,
-      folders,
+      total_wallpapers: totalWallpapers,
+      total_size: totalSize,
+      providers: totalProviders,
+      folders: totalFolders,
+      provider_counts: providerCounts,
+      providers_breakdown: providerBreakdown,
+      folder_counts: folderCounts,
+      folder_breakdown: folderBreakdown,
       dimensions,
       file_types,
-      ...stats
+      file_size_buckets: normalizedBuckets
     };
   } catch (error) {
     reply.code(500);
@@ -532,6 +678,165 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
       leaderboard: leaderboardWithUrls,
       totalCount
     };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Admin: upload new wallpapers (stores file, thumbnail, DB row, and hash)
+fastify.post('/api/upload', async (request, reply) => {
+  try {
+    if (!requireAdminKey(request, reply)) return;
+
+    const parts = request.parts();
+    const formFields = {
+      provider: null,
+      folder: null,
+      tags: null
+    };
+    const uploaded = [];
+    const errors = [];
+    const files = [];
+
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        try {
+          const originalName = sanitizeFilename(part.filename || `upload-${Date.now()}.jpg`);
+          const buffer = await streamToBuffer(part.file);
+          files.push({ originalName, buffer });
+        } catch (error) {
+          errors.push({ filename: part.filename, error: error.message });
+        }
+      } else if (part.type === 'field') {
+        if (Object.prototype.hasOwnProperty.call(formFields, part.fieldname)) {
+          formFields[part.fieldname] = part.value;
+        }
+      }
+    }
+
+    if (files.length === 0) {
+      reply.code(400);
+      return { success: false, error: 'No files received' };
+    }
+
+    for (const file of files) {
+      try {
+        const meta = await sharp(file.buffer).metadata();
+        const dimensions = meta.width && meta.height ? `${meta.width}x${meta.height}` : null;
+        const fileSize = file.buffer.length;
+        const hash = await generatePerceptualHash(file.buffer);
+
+        const timestamp = Date.now();
+        const baseName = `${timestamp}-${file.originalName}`;
+        const imageKey = `images/${baseName}`;
+        const thumbKey = `thumbnails/${path.basename(baseName, path.extname(baseName))}.jpg`;
+
+        // Upload original
+        const downloadUrl = await uploadToStorage(imageKey, file.buffer, meta.format ? `image/${meta.format}` : 'application/octet-stream', false);
+
+        // Upload thumbnail (JPEG)
+        const thumbBuffer = await sharp(file.buffer)
+          .resize({ width: 900, height: 900, fit: 'inside' })
+          .jpeg({ quality: 82 })
+          .toBuffer();
+        const thumbUrl = await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
+
+        const record = {
+          filename: baseName,
+          provider: formFields.provider || 'manual',
+          folder: formFields.folder || null,
+          file_size: fileSize,
+          dimensions,
+          download_url: downloadUrl,
+          local_path: STORAGE_MODE === 'local' ? path.join('downloads', baseName) : null,
+          tags: formFields.tags || null,
+          perceptual_hash: hash
+        };
+
+        const insertedId = await db.insertWallpaper(record);
+        uploaded.push({
+          id: insertedId,
+          filename: baseName,
+          download_url: downloadUrl,
+          thumbnail_url: thumbUrl,
+          perceptual_hash: hash
+        });
+      } catch (error) {
+        errors.push({ filename: file.originalName, error: error.message });
+      }
+    }
+
+    return {
+      success: errors.length === 0,
+      uploaded,
+      errors
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Admin: duplicate detection helpers
+fastify.get('/api/duplicates/status', async (request, reply) => {
+  try {
+    if (!requireAdminKey(request, reply)) return;
+    const status = await db.getHashStatus();
+    setCache(reply, 60);
+    return { success: true, status };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+fastify.get('/api/duplicates', async (request, reply) => {
+  try {
+    if (!requireAdminKey(request, reply)) return;
+    const threshold = Math.max(1, Math.min(parseInt(request.query.threshold) || 10, 64));
+    const wallpapers = await db.getAllWallpapersWithHashes();
+    const duplicateGroups = findDuplicateGroups(wallpapers, threshold).map(group => 
+      group.map(w => ({
+        ...w,
+        image_url: w.download_url,
+        thumbnail_url: buildThumbnailUrl(w.download_url)
+      }))
+    );
+
+    setCache(reply, 60);
+
+    return {
+      success: true,
+      duplicateGroups,
+      totalGroups: duplicateGroups.length,
+      totalDuplicates: duplicateGroups.reduce((sum, group) => sum + group.length, 0)
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+fastify.post('/api/duplicates/generate-hashes', async (request, reply) => {
+  try {
+    if (!requireAdminKey(request, reply)) return;
+    const missing = await db.getAllWallpapersWithoutHashes();
+    let updated = 0;
+    const failed = [];
+
+    for (const wallpaper of missing) {
+      try {
+        const buffer = await getImageBuffer(wallpaper);
+        const hash = await generatePerceptualHash(buffer);
+        await db.updatePerceptualHash(wallpaper.id, hash);
+        updated += 1;
+      } catch (error) {
+        failed.push({ id: wallpaper.id, error: error.message });
+      }
+    }
+
+    return { success: true, processed: missing.length, updated, failed };
   } catch (error) {
     reply.code(500);
     return { success: false, error: error.message };

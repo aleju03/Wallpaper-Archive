@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Search, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
+import { useAdminData } from '../context/AdminDataContext'
 
 function Gallery() {
   const [wallpapers, setWallpapers] = useState([])
-  const [providers, setProviders] = useState([])
-  const [folders, setFolders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const { providers, folders, fetchProviders } = useAdminData()
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -22,6 +22,7 @@ function Gallery() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, wallpaper: null })
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
+  const [statusMessage, setStatusMessage] = useState(null)
 
   useEffect(() => {
     fetchProviders()
@@ -34,25 +35,18 @@ function Gallery() {
   }, [])
 
   useEffect(() => {
+    if (!statusMessage) return
+    const timer = setTimeout(() => setStatusMessage(null), 4000)
+    return () => clearTimeout(timer)
+  }, [statusMessage])
+
+  useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, selectedProvider, selectedFolder])
 
   useEffect(() => {
     fetchWallpapers()
   }, [currentPage, searchQuery, selectedProvider, selectedFolder])
-
-  const fetchProviders = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/api/providers`)
-      // Handle both old format (strings) and new format (objects)
-      const providersData = response.data.providers || []
-      const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
-      setProviders(providerNames)
-      setFolders(response.data.folders || [])
-    } catch (err) {
-      console.error('Failed to fetch providers:', err)
-    }
-  }
 
   const fetchWallpapers = async () => {
     try {
@@ -101,7 +95,7 @@ function Gallery() {
     setConfirmModal({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
   }
 
-  const deleteWallpaper = async (wallpaper, deleteFile = false) => {
+  const deleteWallpaper = async (wallpaper, deleteFile = true) => {
     const action = deleteFile ? 'delete the file and database entry' : 'delete from database'
     const title = deleteFile ? 'Delete File & Database Entry' : 'Delete from Database'
     
@@ -116,11 +110,14 @@ function Gallery() {
           if (response.data.success) {
             // Refresh the wallpapers list
             fetchWallpapers()
+            setStatusMessage({ type: 'success', text: `Deleted ${wallpaper.filename}` })
           } else {
             console.error('Failed to delete wallpaper:', response.data.error)
+            setStatusMessage({ type: 'error', text: response.data.error || 'Deletion failed' })
           }
         } catch (err) {
           console.error('Error deleting wallpaper:', err.message)
+          setStatusMessage({ type: 'error', text: 'Deletion failed. Check console for details.' })
         }
         hideConfirmModal()
       }
@@ -178,6 +175,12 @@ function Gallery() {
           </div>
         </div>
       </div>
+
+      {statusMessage && (
+        <div className={`status-toast ${statusMessage.type === 'success' ? 'status-toast--success' : 'status-toast--error'}`}>
+          {statusMessage.text}
+        </div>
+      )}
 
       {loading && <div className="loading">Loading wallpapers...</div>}
       
@@ -297,16 +300,6 @@ function Gallery() {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            className="context-menu-item"
-            onClick={() => {
-              deleteWallpaper(contextMenu.wallpaper, false)
-              setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
-            }}
-          >
-            <Trash2 size={14} />
-            Delete from Database
-          </button>
           <button
             className="context-menu-item context-menu-item--danger"
             onClick={() => {

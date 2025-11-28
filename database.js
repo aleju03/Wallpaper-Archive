@@ -177,12 +177,76 @@ class Database {
       SELECT 
         COUNT(*) as total,
         COUNT(DISTINCT provider) as providers,
-        COUNT(DISTINCT folder) as folders
+        COUNT(DISTINCT folder) as folders,
+        COALESCE(SUM(file_size), 0) as total_size
       FROM wallpapers
     `;
     
     const result = await this.client.execute(sql);
     return result.rows[0];
+  }
+
+  async getProviderBreakdown() {
+    const sql = `
+      SELECT 
+        provider, 
+        COUNT(*) as count, 
+        MAX(created_at) as last_created_at,
+        COALESCE(SUM(file_size), 0) as total_size
+      FROM wallpapers
+      GROUP BY provider
+      ORDER BY count DESC
+    `;
+    const result = await this.client.execute(sql);
+    return result.rows;
+  }
+
+  async getFolderBreakdown(limit = 25) {
+    const sql = `
+      SELECT 
+        folder, 
+        COUNT(*) as count,
+        COALESCE(SUM(file_size), 0) as total_size
+      FROM wallpapers
+      WHERE folder IS NOT NULL AND folder != ''
+      GROUP BY folder
+      ORDER BY count DESC
+      LIMIT ?
+    `;
+    const result = await this.client.execute({
+      sql,
+      args: [limit]
+    });
+    return result.rows;
+  }
+
+  async getFileSizeBuckets() {
+    const sql = `
+      SELECT
+        SUM(CASE WHEN file_size < 1048576 THEN 1 ELSE 0 END) as under_1mb,
+        SUM(CASE WHEN file_size >= 1048576 AND file_size < 5242880 THEN 1 ELSE 0 END) as between_1_5mb,
+        SUM(CASE WHEN file_size >= 5242880 AND file_size < 10485760 THEN 1 ELSE 0 END) as between_5_10mb,
+        SUM(CASE WHEN file_size >= 10485760 THEN 1 ELSE 0 END) as over_10mb
+      FROM wallpapers
+    `;
+    const result = await this.client.execute(sql);
+    return result.rows[0];
+  }
+
+  async getHashStatus() {
+    const sql = `
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN perceptual_hash IS NOT NULL AND perceptual_hash != '' THEN 1 ELSE 0 END) as with_hashes
+      FROM wallpapers
+    `;
+    const result = await this.client.execute(sql);
+    const row = result.rows[0] || { total: 0, with_hashes: 0 };
+    const withHashes = Number(row.with_hashes || 0);
+    const total = Number(row.total || 0);
+    const withoutHashes = Math.max(total - withHashes, 0);
+    const percentage = total === 0 ? 0 : Math.round((withHashes / total) * 100);
+    return { total, withHashes, withoutHashes, percentage };
   }
 
   async getUniqueResolutions() {
@@ -207,13 +271,18 @@ class Database {
   }
 
   async getAllWallpapersWithoutHashes() {
-    const result = await this.client.execute('SELECT * FROM wallpapers WHERE perceptual_hash IS NULL OR perceptual_hash = ""');
+    const result = await this.client.execute('SELECT id, filename, provider, folder, file_size, dimensions, download_url, local_path FROM wallpapers WHERE perceptual_hash IS NULL OR perceptual_hash = ""');
     return result.rows;
   }
 
   async getAllWallpapersWithHashes() {
-    const result = await this.client.execute('SELECT * FROM wallpapers WHERE perceptual_hash IS NOT NULL AND perceptual_hash != ""');
+    const result = await this.client.execute('SELECT id, filename, provider, folder, file_size, dimensions, download_url, local_path, perceptual_hash FROM wallpapers WHERE perceptual_hash IS NOT NULL AND perceptual_hash != ""');
     return result.rows;
+  }
+
+  async getAllFilenames() {
+    const result = await this.client.execute('SELECT filename FROM wallpapers WHERE filename IS NOT NULL AND filename != ""');
+    return result.rows.map(row => row.filename);
   }
 
   async deleteWallpaper(id) {

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { BarChart3, Images, Database, Copy } from 'lucide-react'
+import { BarChart3, Images, Database, Copy, UploadCloud } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import Gallery from './components/Gallery'
 import Statistics from './components/Statistics'
 import Duplicates from './components/Duplicates'
+import Upload from './components/Upload'
 import './styles/index.css'
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
 
   const navigation = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
+    { id: 'upload', name: 'Upload', icon: UploadCloud },
     { id: 'gallery', name: 'Gallery', icon: Images },
     { id: 'duplicates', name: 'Duplicates', icon: Copy },
     { id: 'statistics', name: 'Statistics', icon: Database },
@@ -20,6 +22,8 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />
+      case 'upload':
+        return <Upload />
       case 'gallery':
         return <Gallery />
       case 'duplicates':
