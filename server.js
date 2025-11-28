@@ -87,6 +87,41 @@ const r2Client = R2_ENABLED ? new S3Client({
 }) : null;
 
 const buildR2Url = (key) => `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+const toSafeSlug = (value = '') => sanitizeFilename(value.toLowerCase().replace(/\s+/g, '-'));
+const getGithubHeaders = () => {
+  const headers = { 'User-Agent': 'WallpaperEngine' };
+  if (process.env.GITHUB_TOKEN) {
+    headers.Authorization = `token ${process.env.GITHUB_TOKEN}`;
+  }
+  return headers;
+};
+const fetchJson = async (url) => {
+  const res = await fetch(url, { headers: getGithubHeaders() });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GitHub request failed ${res.status}: ${text || res.statusText}`);
+  }
+  return res.json();
+};
+
+const fetchBuffer = async (url) => {
+  const res = await fetch(url, { headers: getGithubHeaders() });
+  if (!res.ok) {
+    throw new Error(`Fetch failed ${res.status} ${res.statusText}`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+};
+
+const parseRepoUrl = (repoUrl) => {
+  try {
+    const url = new URL(repoUrl);
+    const parts = url.pathname.replace(/^\/|\.git$/g, '').split('/');
+    if (parts.length < 2) return null;
+    return { owner: parts[0], repo: parts[1] };
+  } catch (error) {
+    return null;
+  }
+};
 
 // Admin auth helper
 const requireAdminKey = (request, reply) => {
@@ -772,6 +807,140 @@ fastify.post('/api/upload', async (request, reply) => {
       uploaded,
       errors
     };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Admin: GitHub import preview (top-level folder strategy)
+fastify.post('/api/import/repo/preview', async (request, reply) => {
+  try {
+    if (!requireAdminKey(request, reply)) return;
+    const { repoUrl, branch, limit = 10 } = request.body || {};
+    const parsed = parseRepoUrl(repoUrl || '');
+    if (!parsed) {
+      reply.code(400);
+      return { success: false, error: 'Invalid repo URL' };
+    }
+
+    const repoMeta = await fetchJson(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}`);
+    const branchName = branch || repoMeta.default_branch || 'main';
+
+    const tree = await fetchJson(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}/git/trees/${branchName}?recursive=1`);
+    const files = (tree.tree || []).filter(item => item.type === 'blob' && item.path && item.path.match(/\.(jpg|jpeg|png|webp|gif)$/i));
+
+    const byFolder = {};
+    const samples = [];
+
+    files.forEach((file) => {
+      const parts = file.path.split('/');
+      const folder = parts.length > 1 ? parts[0] : '';
+      byFolder[folder] = (byFolder[folder] || 0) + 1;
+    });
+
+    files.slice(0, Math.max(1, Math.min(limit, 25))).forEach((file) => {
+      const parts = file.path.split('/');
+      const folder = parts.length > 1 ? parts[0] : '';
+      samples.push({
+        filename: path.basename(file.path),
+        folder,
+        path: file.path,
+        size: file.size
+      });
+    });
+
+    return {
+      success: true,
+      provider_suggested: parsed.repo,
+      branch: branchName,
+      total_images: files.length,
+      by_folder: byFolder,
+      sample: samples
+    };
+  } catch (error) {
+    reply.code(500);
+    return { success: false, error: error.message };
+  }
+});
+
+// Admin: GitHub import (downloads -> hash -> thumbnail -> storage -> DB)
+fastify.post('/api/import/repo/import', async (request, reply) => {
+  try {
+    if (!requireAdminKey(request, reply)) return;
+    const { repoUrl, branch, provider, folderStrategy = 'top-level' } = request.body || {};
+    const parsed = parseRepoUrl(repoUrl || '');
+    if (!parsed) {
+      reply.code(400);
+      return { success: false, error: 'Invalid repo URL' };
+    }
+
+    const repoMeta = await fetchJson(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}`);
+    const branchName = branch || repoMeta.default_branch || 'main';
+
+    const tree = await fetchJson(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}/git/trees/${branchName}?recursive=1`);
+    const files = (tree.tree || []).filter(item => item.type === 'blob' && item.path && item.path.match(/\.(jpg|jpeg|png|webp|gif)$/i));
+
+    const providerName = provider || parsed.repo;
+    const providerSlug = toSafeSlug(providerName) || 'repo';
+    const results = { imported: [], skipped: [], failed: [] };
+
+    for (const file of files) {
+      try {
+        const parts = file.path.split('/');
+        const folder = parts.length > 1 ? parts[0] : '';
+        const filename = path.basename(file.path);
+        const finalFolder = folderStrategy === 'top-level' ? folder || null : null;
+
+        // Skip if already in DB
+        const existing = await db.getWallpapers({ provider: providerName, folder: finalFolder, filename });
+        if (existing.length > 0) {
+          results.skipped.push({ filename, reason: 'exists' });
+          continue;
+        }
+
+        const rawUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${branchName}/${file.path}`;
+        const buffer = await fetchBuffer(rawUrl);
+        const meta = await sharp(buffer).metadata();
+        const dimensions = meta.width && meta.height ? `${meta.width}x${meta.height}` : null;
+        const fileSize = buffer.length;
+        const hash = await generatePerceptualHash(buffer);
+
+        const safeFolder = finalFolder ? toSafeSlug(finalFolder) : '';
+        const uniqueName = `${Date.now()}-${sanitizeFilename(filename)}`;
+        const imageKey = `images/${providerSlug}${safeFolder ? `/${safeFolder}` : ''}/${uniqueName}`;
+        const thumbKey = `thumbnails/${providerSlug}${safeFolder ? `/${safeFolder}` : ''}/${path.basename(uniqueName, path.extname(uniqueName))}.jpg`;
+
+        const downloadUrl = await uploadToStorage(imageKey, buffer, meta.format ? `image/${meta.format}` : 'application/octet-stream', false);
+        const thumbBuffer = await sharp(buffer).resize({ width: 900, height: 900, fit: 'inside' }).jpeg({ quality: 82 }).toBuffer();
+        const thumbUrl = await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
+
+        const record = {
+          filename,
+          provider: providerName,
+          folder: finalFolder,
+          file_size: fileSize,
+          dimensions,
+          download_url: downloadUrl,
+          local_path: STORAGE_MODE === 'local' ? path.join('downloads', path.basename(imageKey)) : null,
+          tags: finalFolder ? `["${finalFolder}"]` : null,
+          perceptual_hash: hash
+        };
+
+        const insertedId = await db.insertWallpaper(record);
+        results.imported.push({
+          id: insertedId,
+          filename,
+          folder: finalFolder,
+          download_url: downloadUrl,
+          thumbnail_url: thumbUrl
+        });
+      } catch (error) {
+        results.failed.push({ filename: file.path, error: error.message });
+      }
+    }
+
+    return { success: true, ...results };
   } catch (error) {
     reply.code(500);
     return { success: false, error: error.message };

@@ -12,6 +12,12 @@ function Upload() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
+  const [repoUrl, setRepoUrl] = useState('')
+  const [branch, setBranch] = useState('')
+  const [importPreview, setImportPreview] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [importError, setImportError] = useState(null)
   const { fetchStats, fetchProviders } = useAdminData()
 
   const handleFiles = (event) => {
@@ -163,6 +169,142 @@ function Upload() {
             <div className="upload-note">
               <Shield size={12} /> Requires admin key header
             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="stat-card" style={{ marginTop: '20px' }}>
+        <h3>
+          <UploadCloud size={16} style={{ display: 'inline', marginRight: '8px' }} />
+          Import from GitHub repository
+        </h3>
+        <p style={{ color: '#888', marginBottom: '12px' }}>
+          Paste a repo URL (uses your configured GitHub token), preview images by top-level folder, then import.
+        </p>
+
+        <div className="upload-grid">
+          <div className="upload-field">
+            <label>Repository URL</label>
+            <input
+              type="text"
+              placeholder="https://github.com/owner/repo"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+            />
+          </div>
+          <div className="upload-field">
+            <label>Branch (optional)</label>
+            <input
+              type="text"
+              placeholder="Defaults to repo default branch"
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+            />
+          </div>
+          <div className="upload-field">
+            <label>Provider name (optional)</label>
+            <input
+              type="text"
+              placeholder="Defaults to repo name"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="import-actions">
+          <button
+            className="btn btn--neutral"
+            disabled={!repoUrl || previewLoading}
+            onClick={async () => {
+              setPreviewLoading(true)
+              setImportError(null)
+              try {
+                const response = await axios.post(`${API_BASE}/api/import/repo/preview`, {
+                  repoUrl,
+                  branch: branch || undefined,
+                  limit: 10
+                }, { headers: getAdminHeaders() })
+                setImportPreview(response.data)
+              } catch (err) {
+                setImportError(err.response?.data?.error || 'Preview failed')
+                setImportPreview(null)
+              } finally {
+                setPreviewLoading(false)
+              }
+            }}
+          >
+            {previewLoading ? 'Previewing…' : 'Preview'}
+          </button>
+
+          <button
+            className="btn btn--primary"
+            disabled={!importPreview || importing}
+            onClick={async () => {
+              if (!importPreview) return
+              setImportError(null)
+              setImporting(true)
+              try {
+                const response = await axios.post(`${API_BASE}/api/import/repo/import`, {
+                  repoUrl,
+                  branch: branch || undefined,
+                  provider: provider || importPreview.provider_suggested,
+                  folderStrategy: 'top-level'
+                }, { headers: getAdminHeaders() })
+                setResult(response.data)
+                await Promise.all([
+                  fetchStats(true),
+                  fetchProviders(true)
+                ])
+              } catch (err) {
+                setImportError(err.response?.data?.error || 'Import failed')
+              } finally {
+                setImporting(false)
+              }
+            }}
+          >
+            {importing ? 'Importing…' : 'Import'}
+          </button>
+        </div>
+
+        {importError && (
+          <div className="error" style={{ marginTop: '12px' }}>
+            <AlertCircle size={16} /> {importError}
+          </div>
+        )}
+
+        {importPreview && (
+          <div className="upload-result" style={{ marginTop: '16px' }}>
+            <div className="success">
+              <CheckCircle size={16} /> Found {importPreview.total_images} images on branch {importPreview.branch}
+            </div>
+            <div className="upload-list">
+              <div className="upload-list__item">
+                <div>
+                  <div className="upload-list__name">Suggested provider</div>
+                  <div className="upload-list__meta">{importPreview.provider_suggested}</div>
+                </div>
+              </div>
+              {Object.entries(importPreview.by_folder || {}).map(([name, count]) => (
+                <div key={name || 'root'} className="upload-list__item">
+                  <div>
+                    <div className="upload-list__name">{name || '(root)'}</div>
+                    <div className="upload-list__meta">{count} images</div>
+                  </div>
+                </div>
+              )).slice(0, 6)}
+            </div>
+
+            {importPreview.sample?.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <div className="upload-list__name">Sample files</div>
+                <ul style={{ marginTop: '8px', paddingLeft: '16px', color: '#aaa' }}>
+                  {importPreview.sample.slice(0, 10).map((item) => (
+                    <li key={item.path}>{item.path}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

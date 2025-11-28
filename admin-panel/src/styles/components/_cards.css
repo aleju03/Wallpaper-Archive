@@ -360,3 +360,10 @@
   gap: var(--spacing-xs);
   margin-top: var(--spacing-xs);
 }
+
+.import-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  align-items: center;
+}
