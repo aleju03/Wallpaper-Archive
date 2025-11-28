@@ -161,9 +161,9 @@ function Statistics() {
           
           <div className="summary-item">
             <div className="summary-item__value summary-item__value--orange">
-              {((stats?.total_size || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB
+              {((stats?.storage_size || 0) / (1000 * 1000 * 1000)).toFixed(2)}GB
             </div>
-            <div className="summary-item__label">Total Size</div>
+            <div className="summary-item__label">Storage Size</div>
           </div>
         </div>
       </div>

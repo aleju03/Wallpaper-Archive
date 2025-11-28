@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs/promises');
 const sharp = require('sharp');
-const { S3Client, DeleteObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, PutObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const Database = require('./database');
 const { generatePerceptualHash, findDuplicateGroups } = require('./image-hash');
 
@@ -87,6 +87,42 @@ const r2Client = R2_ENABLED ? new S3Client({
 }) : null;
 
 const buildR2Url = (key) => `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+
+// Calculate actual R2 bucket size (images + thumbnails)
+const getR2BucketSize = async () => {
+  if (!R2_ENABLED || !r2Client) return null;
+  
+  try {
+    let totalSize = 0;
+    let objectCount = 0;
+    let continuationToken = null;
+    
+    do {
+      const command = new ListObjectsV2Command({
+        Bucket: R2_BUCKET_NAME,
+        ContinuationToken: continuationToken
+      });
+      
+      const response = await r2Client.send(command);
+      
+      if (response.Contents) {
+        for (const obj of response.Contents) {
+          totalSize += obj.Size || 0;
+          objectCount++;
+        }
+      }
+      
+      continuationToken = response.IsTruncated ? response.NextContinuationToken : null;
+    } while (continuationToken);
+    
+    console.log(`R2 bucket: ${objectCount} objects, ${(totalSize / 1024 / 1024 / 1024).toFixed(2)} GB`);
+    return totalSize;
+  } catch (error) {
+    console.error('Error getting R2 bucket size:', error.message);
+    return null;
+  }
+};
+
 const toSafeSlug = (value = '') => sanitizeFilename(value.toLowerCase().replace(/\s+/g, '-'));
 const getGithubHeaders = () => {
   const headers = { 'User-Agent': 'WallpaperEngine' };
@@ -504,13 +540,14 @@ fastify.get('/api/wallpapers/:id', async (request, reply) => {
 
 fastify.get('/api/stats', async (request, reply) => {
   try {
-    const [baseStats, providerBreakdownRaw, folderBreakdownRaw, resolutionRows, fileSizeBuckets, filenames] = await Promise.all([
+    const [baseStats, providerBreakdownRaw, folderBreakdownRaw, resolutionRows, fileSizeBuckets, filenames, r2BucketSize] = await Promise.all([
       db.getStats(),
       db.getProviderBreakdown(),
       db.getFolderBreakdown(25),
       db.getUniqueResolutions(),
       db.getFileSizeBuckets(),
-      db.getAllFilenames()
+      db.getAllFilenames(),
+      getR2BucketSize()
     ]);
 
     const providerBreakdown = providerBreakdownRaw.map((item) => ({
@@ -559,6 +596,7 @@ fastify.get('/api/stats', async (request, reply) => {
     return {
       total_wallpapers: totalWallpapers,
       total_size: totalSize,
+      storage_size: r2BucketSize !== null ? r2BucketSize : totalSize,
       providers: totalProviders,
       folders: totalFolders,
       provider_counts: providerCounts,

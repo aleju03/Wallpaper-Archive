@@ -43,9 +43,9 @@ function Dashboard() {
         </div>
 
         <div className="stat-card">
-          <h3>Database Size</h3>
-          <div className="value">{((stats?.total_size || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB</div>
-          <div className="change">Total file size</div>
+          <h3>Storage Size</h3>
+          <div className="value">{((stats?.storage_size || 0) / (1000 * 1000 * 1000)).toFixed(2)}GB</div>
+          <div className="change">R2 bucket total</div>
         </div>
       </div>
 
