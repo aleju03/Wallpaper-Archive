@@ -13,18 +13,27 @@ function Arena() {
   const [previewWallpaper, setPreviewWallpaper] = useState(null)
   const [previewImageLoaded, setPreviewImageLoaded] = useState(false)
   const [eloResult, setEloResult] = useState(null)
+  const [seenIds, setSeenIds] = useState([])
 
   const fetchBattle = async (isInitial = false) => {
     try {
       if (isInitial) {
         setInitialLoading(true)
       }
+      // Reset states to prevent stuck UI
+      setEloResult(null)
       setImagesLoaded({ left: false, right: false })
-      const response = await axios.get(`${API_BASE}/api/arena/battle`)
+      
+      // Pass seen IDs to avoid repetition (limit to last 50 to keep URL reasonable)
+      const excludeParam = seenIds.length > 0 ? `?exclude=${seenIds.slice(-50).join(',')}` : ''
+      const response = await axios.get(`${API_BASE}/api/arena/battle${excludeParam}`)
       
       if (response.data.success) {
         setBattlePair(response.data.wallpapers)
         setBattleStartTime(Date.now())
+        // Track these wallpapers as seen
+        const newIds = response.data.wallpapers.map(w => w.id)
+        setSeenIds(prev => [...prev, ...newIds])
       }
     } catch (error) {
       console.error('Failed to fetch battle:', error)

@@ -225,16 +225,100 @@ class Database {
   }
 
   // Arena-specific methods
-  async getRandomWallpaperPair() {
-    const sql = `
+  async getRandomWallpaperPair(excludeIds = []) {
+    // Build exclusion clause if we have IDs to exclude
+    const hasExclusions = excludeIds.length > 0;
+    const excludePlaceholders = hasExclusions ? excludeIds.map(() => '?').join(',') : '';
+    const excludeClause = hasExclusions ? `AND id NOT IN (${excludePlaceholders})` : '';
+    
+    // Step 1: Pick first wallpaper truly randomly (no bias - for variety)
+    const firstSql = `
       SELECT * FROM wallpapers 
       WHERE download_url IS NOT NULL AND download_url != ''
-      ORDER BY RANDOM() 
-      LIMIT 2
+        ${excludeClause}
+      ORDER BY RANDOM()
+      LIMIT 1
     `;
     
-    const result = await this.client.execute(sql);
-    return result.rows;
+    const firstResult = await this.client.execute({
+      sql: firstSql,
+      args: hasExclusions ? [...excludeIds] : []
+    });
+    
+    // If no wallpapers found with exclusions, try without them
+    if (firstResult.rows.length === 0 && hasExclusions) {
+      const fallbackFirstSql = `
+        SELECT * FROM wallpapers 
+        WHERE download_url IS NOT NULL AND download_url != ''
+        ORDER BY RANDOM()
+        LIMIT 1
+      `;
+      const fallbackFirst = await this.client.execute(fallbackFirstSql);
+      if (fallbackFirst.rows.length === 0) return [];
+      firstResult.rows = fallbackFirst.rows;
+    }
+    
+    if (firstResult.rows.length === 0) return [];
+    
+    const firstWallpaper = firstResult.rows[0];
+    const firstElo = firstWallpaper.elo_rating || 1000;
+    
+    // Step 2: Try to find second wallpaper within ±400 Elo (excluding seen ones)
+    const secondExcludeIds = hasExclusions ? [...excludeIds, firstWallpaper.id] : [firstWallpaper.id];
+    const secondExcludePlaceholders = secondExcludeIds.map(() => '?').join(',');
+    
+    const matchedSql = `
+      SELECT * FROM wallpapers 
+      WHERE download_url IS NOT NULL AND download_url != ''
+        AND id NOT IN (${secondExcludePlaceholders})
+        AND COALESCE(elo_rating, 1000) BETWEEN ? AND ?
+      ORDER BY RANDOM()
+      LIMIT 1
+    `;
+    
+    const matchedResult = await this.client.execute({
+      sql: matchedSql,
+      args: [...secondExcludeIds, firstElo - 400, firstElo + 400]
+    });
+    
+    // Step 3: Fallback to any random wallpaper if no Elo-matched one found
+    let secondWallpaper;
+    if (matchedResult.rows.length > 0) {
+      secondWallpaper = matchedResult.rows[0];
+    } else {
+      const fallbackSql = `
+        SELECT * FROM wallpapers 
+        WHERE download_url IS NOT NULL AND download_url != ''
+          AND id NOT IN (${secondExcludePlaceholders})
+        ORDER BY RANDOM()
+        LIMIT 1
+      `;
+      const fallbackResult = await this.client.execute({
+        sql: fallbackSql,
+        args: secondExcludeIds
+      });
+      
+      // If still nothing, try without any exclusions except first wallpaper
+      if (fallbackResult.rows.length === 0) {
+        const lastResortSql = `
+          SELECT * FROM wallpapers 
+          WHERE download_url IS NOT NULL AND download_url != ''
+            AND id != ?
+          ORDER BY RANDOM()
+          LIMIT 1
+        `;
+        const lastResort = await this.client.execute({
+          sql: lastResortSql,
+          args: [firstWallpaper.id]
+        });
+        if (lastResort.rows.length === 0) return [firstWallpaper];
+        secondWallpaper = lastResort.rows[0];
+      } else {
+        secondWallpaper = fallbackResult.rows[0];
+      }
+    }
+    
+    return [firstWallpaper, secondWallpaper];
   }
 
   async getRandomWallpaper() {
@@ -253,7 +337,13 @@ class Database {
     // Transaction-like logic handled manually or via batch if possible.
     // We'll do separate lookups and updates for simplicity with HTTP driver.
     
-    const getEloSql = 'SELECT id, COALESCE(elo_rating, 1000) as elo_rating FROM wallpapers WHERE id IN (?, ?)';
+    const getEloSql = `
+      SELECT id, 
+        COALESCE(elo_rating, 1000) as elo_rating,
+        COALESCE(battles_won, 0) as battles_won,
+        COALESCE(battles_lost, 0) as battles_lost
+      FROM wallpapers WHERE id IN (?, ?)
+    `;
     const result = await this.client.execute({
       sql: getEloSql,
       args: [winnerId, loserId]
@@ -271,15 +361,26 @@ class Database {
       throw new Error('Wallpapers not found');
     }
 
-    let K = 32; 
+    // Get total battles for each wallpaper to determine if provisional
+    const winnerBattles = (winner.battles_won || 0) + (winner.battles_lost || 0);
+    const loserBattles = (loser.battles_won || 0) + (loser.battles_lost || 0);
+    
+    // Provisional K-factor: K=64 for first 10 battles, then K=32
+    // Use average of both wallpapers' provisional status
+    const winnerK = winnerBattles < 10 ? 64 : 32;
+    const loserK = loserBattles < 10 ? 64 : 32;
+    let K = (winnerK + loserK) / 2;
+    
+    // Time-based weighting (fixed: penalize spam, reward thoughtful votes)
     if (voteTimeMs !== null) {
-      if (voteTimeMs < 1000) {
-        K = Math.round(K * 1.5);
-      } else if (voteTimeMs < 3000) {
-        K = Math.round(K * 1.2);
+      if (voteTimeMs < 800) {
+        // Spam protection: very fast votes are likely not thoughtful
+        K = Math.round(K * 0.5);
       } else if (voteTimeMs > 10000) {
-        K = Math.round(K * 0.8);
+        // Slightly reduce for very slow votes (distracted user)
+        K = Math.round(K * 0.9);
       }
+      // 800ms - 10s: standard multiplier (1.0x), no change needed
     }
     
     const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo_rating - winner.elo_rating) / 400));

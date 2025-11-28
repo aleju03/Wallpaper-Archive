@@ -452,7 +452,14 @@ fastify.get('/api/providers', async (request, reply) => {
 // Arena endpoints
 fastify.get('/api/arena/battle', async (request, reply) => {
   try {
-    const wallpapers = await db.getRandomWallpaperPair();
+    // Parse exclude parameter for session-based deduplication
+    const excludeParam = request.query.exclude || '';
+    const excludeIds = excludeParam
+      .split(',')
+      .map(id => parseInt(id, 10))
+      .filter(id => !isNaN(id));
+    
+    const wallpapers = await db.getRandomWallpaperPair(excludeIds);
     
     if (wallpapers.length < 2) {
       reply.code(400);
