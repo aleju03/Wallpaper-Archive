@@ -98,6 +98,12 @@
   border-color: var(--color-border-hover);
 }
 
+.btn--active {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
 .btn--outline-danger {
   background: transparent;
   border-color: var(--color-accent-red);

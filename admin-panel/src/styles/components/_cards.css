@@ -368,6 +368,24 @@
   align-items: center;
 }
 
+.upload-mode-switch {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.upload-mode-switch .btn.btn--active {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.upload-mode-switch .btn.btn--active:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
 .sample-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
