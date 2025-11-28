@@ -115,10 +115,8 @@ const getR2BucketSize = async () => {
       continuationToken = response.IsTruncated ? response.NextContinuationToken : null;
     } while (continuationToken);
     
-    console.log(`R2 bucket: ${objectCount} objects, ${(totalSize / 1024 / 1024 / 1024).toFixed(2)} GB`);
     return totalSize;
   } catch (error) {
-    console.error('Error getting R2 bucket size:', error.message);
     return null;
   }
 };
@@ -211,7 +209,7 @@ const deleteFromR2 = async (keys = []) => {
         Key: key
       }));
     } catch (error) {
-      console.warn('R2 delete failed for key', key, error.message || error);
+      // Silently ignore R2 delete failures
     }
   }
 };
@@ -305,7 +303,6 @@ const buildThumbnailUrl = (downloadUrl) => {
     url.pathname = thumbPath;
     return isRelative ? url.pathname : url.toString();
   } catch (error) {
-    console.warn('Failed to build thumbnail URL for', downloadUrl, error);
     return downloadUrl;
   }
 };
@@ -378,7 +375,6 @@ fastify.get('/api/resolutions', async (request, reply) => {
     setCache(reply, 600);
     return { resolutions };
   } catch (error) {
-    console.error('Error fetching resolutions:', error);
     return reply.status(500).send({ error: 'Failed to fetch resolutions' });
   }
 });
@@ -425,18 +421,15 @@ fastify.get('/api/download/:id', async (request, reply) => {
           resolve(reply.send(buffer));
         });
         response.on('error', (err) => {
-          console.error('Download stream error:', err);
           reply.code(500);
           resolve({ success: false, error: 'Download stream failed' });
         });
       }).on('error', (err) => {
-        console.error('Download request error:', err);
         reply.code(500);
         resolve({ success: false, error: 'Download request failed' });
       });
     });
   } catch (error) {
-    console.error('Download proxy error:', error);
     reply.code(500);
     return { success: false, error: 'Download failed' };
   }
@@ -1095,7 +1088,6 @@ if (require.main === module) {
   const start = async () => {
     try {
       await fastify.listen({ port: 3000, host: '0.0.0.0' });
-      console.log('Server running on http://localhost:3000');
     } catch (err) {
       fastify.log.error(err);
       process.exit(1);
