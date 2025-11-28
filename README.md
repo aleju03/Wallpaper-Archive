@@ -10,7 +10,7 @@
   </table>
 </div>
 
-Wallpaper gallery I built by scraping various GitHub wallpaper repositories (and the local osu backgrounds if wanted) to get a faster way to view and download some wallpapers for myself. Includes a backend for data handling, an admin panel for curation, and a frontend for browsing. Now hosted on Vercel for others to use.
+Wallpaper gallery I built by scraping various GitHub wallpaper repositories (and my local osu backgrounds) to get a faster way to view and download some wallpapers for myself. Includes a backend for data handling, an admin panel for curation, and a frontend for browsing. Now hosted on Vercel for others to use.
 
 ## Features
 
