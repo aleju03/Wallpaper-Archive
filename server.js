@@ -846,13 +846,14 @@ fastify.post('/api/import/repo/preview', async (request, reply) => {
         filename: path.basename(file.path),
         folder,
         path: file.path,
-        size: file.size
+        size: file.size,
+        raw_url: `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${branchName}/${file.path}`
       });
     });
 
     return {
       success: true,
-      provider_suggested: parsed.repo,
+      provider_suggested: parsed.owner || parsed.repo,
       branch: branchName,
       total_images: files.length,
       by_folder: byFolder,

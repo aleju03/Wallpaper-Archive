@@ -298,11 +298,16 @@ function Upload() {
             {importPreview.sample?.length > 0 && (
               <div style={{ marginTop: '12px' }}>
                 <div className="upload-list__name">Sample files</div>
-                <ul style={{ marginTop: '8px', paddingLeft: '16px', color: '#aaa' }}>
+                <div className="sample-grid">
                   {importPreview.sample.slice(0, 10).map((item) => (
-                    <li key={item.path}>{item.path}</li>
+                    <div key={item.path} className="sample-card">
+                      <div className="sample-thumb">
+                        <img src={item.raw_url} alt={item.filename} loading="lazy" />
+                      </div>
+                      <div className="upload-list__meta">{item.filename}</div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>
