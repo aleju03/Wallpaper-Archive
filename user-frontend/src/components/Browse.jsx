@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
@@ -6,36 +6,65 @@ import References from './References'
 
 function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const [error, setError] = useState(false)
+  const cardRef = useRef(null)
 
   const thumbnailSrc = resolveAssetUrl(wallpaper.thumbnail_url)
   const fullImageSrc = resolveAssetUrl(wallpaper.image_url)
 
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          observer.disconnect() // Stop observing once visible
+        }
+      },
+      {
+        rootMargin: '100px', // Start loading 100px before entering viewport
+        threshold: 0
+      }
+    )
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div 
+      ref={cardRef}
       className="wallpaper-card"
       onClick={() => onClick(wallpaper)}
     >
-      {!error ? (
-        <img
-          src={thumbnailSrc}
-          alt={wallpaper.filename}
-          className={`wallpaper-image ${imageLoaded ? 'loaded' : ''}`}
-          loading="lazy"
-          onLoad={() => setImageLoaded(true)}
-          onError={(e) => {
-            if (!e.target.dataset.fallbackTried) {
-              e.target.dataset.fallbackTried = 'true'
-              e.target.src = fullImageSrc
-              return
-            }
-            setError(true)
-          }}
-        />
+      {isVisible ? (
+        !error ? (
+          <img
+            src={thumbnailSrc}
+            alt={wallpaper.filename}
+            className={`wallpaper-image ${imageLoaded ? 'loaded' : ''}`}
+            onLoad={() => setImageLoaded(true)}
+            onError={(e) => {
+              if (!e.target.dataset.fallbackTried) {
+                e.target.dataset.fallbackTried = 'true'
+                e.target.src = fullImageSrc
+                return
+              }
+              setError(true)
+            }}
+          />
+        ) : (
+          <div className="wallpaper-image" style={{ background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '10px', opacity: 1 }}>
+            no preview
+          </div>
+        )
       ) : (
-        <div className="wallpaper-image" style={{ background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '10px', opacity: 1 }}>
-          no preview
-        </div>
+        // Placeholder while not in viewport
+        <div className="wallpaper-image-placeholder" />
       )}
       
       <div className="wallpaper-overlay">
