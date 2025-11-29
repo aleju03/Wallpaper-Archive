@@ -111,6 +111,15 @@
   background: linear-gradient(135deg, var(--color-bg-secondary), var(--leaderboard-bronze-bg));
 }
 
+/* Light mode desktop: transparent backgrounds for better contrast */
+@media (min-width: 769px) {
+  [data-theme="light"] .leaderboard-item.rank-1,
+  [data-theme="light"] .leaderboard-item.rank-2,
+  [data-theme="light"] .leaderboard-item.rank-3 {
+    background: transparent;
+  }
+}
+
 /* Rank Section */
 .rank-section {
   display: flex;

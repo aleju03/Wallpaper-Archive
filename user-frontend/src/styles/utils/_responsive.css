@@ -790,10 +790,12 @@
    Light Mode Responsive Fixes
    ========================================================================== */
 
-/* Leaderboard rank section light mode */
-[data-theme="light"] .leaderboard-item .rank-section {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* Leaderboard rank section light mode - only on mobile where it overlays the image */
+@media (max-width: 768px) {
+  [data-theme="light"] .leaderboard-item .rank-section {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
 }
 
 /* Remove text shadows in light mode for leaderboard */
