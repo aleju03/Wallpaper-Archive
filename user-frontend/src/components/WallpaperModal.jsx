@@ -197,7 +197,12 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
   const handleDownload = () => {
     // Use the server-side download proxy that sets Content-Disposition header
     const downloadUrl = `${API_BASE}/api/download/${wallpaper.id}`
-    window.open(downloadUrl, '_blank')
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = wallpaper.filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleShare = async () => {

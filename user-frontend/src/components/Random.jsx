@@ -1,11 +1,144 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Download, Shuffle, Loader } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Download, Shuffle, Loader, Maximize2, Minimize2 } from 'lucide-react'
 import { API_BASE, resolveAssetUrl } from '../config'
+
+// Custom fullscreen viewer with pinch-to-zoom support
+function FullscreenViewer({ imageUrl, onClose }) {
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const containerRef = useRef(null)
+  const lastPinchDistRef = useRef(null)
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 })
+
+  const resetTransform = useCallback(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+  }, [])
+
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault()
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      lastPinchDistRef.current = dist
+    } else if (e.touches.length === 1 && scale > 1) {
+      setIsDragging(true)
+      dragStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        posX: position.x,
+        posY: position.y
+      }
+    }
+  }, [scale, position])
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2 && lastPinchDistRef.current) {
+      e.preventDefault()
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      const delta = dist / lastPinchDistRef.current
+      setScale(prev => Math.min(Math.max(prev * delta, 1), 5))
+      lastPinchDistRef.current = dist
+    } else if (e.touches.length === 1 && isDragging && scale > 1) {
+      e.preventDefault()
+      const deltaX = e.touches[0].clientX - dragStartRef.current.x
+      const deltaY = e.touches[0].clientY - dragStartRef.current.y
+      setPosition({
+        x: dragStartRef.current.posX + deltaX,
+        y: dragStartRef.current.posY + deltaY
+      })
+    }
+  }, [isDragging, scale])
+
+  const handleTouchEnd = useCallback((e) => {
+    if (e.touches.length < 2) {
+      lastPinchDistRef.current = null
+    }
+    if (e.touches.length === 0) {
+      setIsDragging(false)
+      if (scale <= 1) {
+        resetTransform()
+      }
+    }
+  }, [scale, resetTransform])
+
+  const lastTapRef = useRef(0)
+  const handleDoubleTap = useCallback((e) => {
+    const now = Date.now()
+    if (now - lastTapRef.current < 300) {
+      e.preventDefault()
+      if (scale > 1) {
+        resetTransform()
+      } else {
+        setScale(2.5)
+        const rect = containerRef.current.getBoundingClientRect()
+        const tapX = e.changedTouches?.[0]?.clientX || e.clientX
+        const tapY = e.changedTouches?.[0]?.clientY || e.clientY
+        const centerX = rect.width / 2
+        const centerY = rect.height / 2
+        setPosition({
+          x: (centerX - tapX) * 1.5,
+          y: (centerY - tapY) * 1.5
+        })
+      }
+    }
+    lastTapRef.current = now
+  }, [scale, resetTransform])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div 
+      className="fullscreen-viewer"
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClick={handleDoubleTap}
+    >
+      <img
+        src={imageUrl}
+        alt="Fullscreen view"
+        className="fullscreen-viewer-image"
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+        }}
+        draggable={false}
+      />
+      <button className="fullscreen-exit-btn" onClick={onClose} aria-label="Exit fullscreen">
+        <Minimize2 size={20} />
+        <span>exit fullscreen</span>
+      </button>
+      {scale > 1 && (
+        <button className="fullscreen-reset-btn" onClick={resetTransform} aria-label="Reset zoom">
+          reset zoom
+        </button>
+      )}
+      <div className="fullscreen-hint">
+        {scale === 1 ? 'pinch or double-tap to zoom' : `${Math.round(scale * 100)}%`}
+      </div>
+    </div>
+  )
+}
 
 function Random() {
   const [wallpaper, setWallpaper] = useState(null)
   const [loading, setLoading] = useState(true)
   const [imageLoading, setImageLoading] = useState(true)
+  const [showFullscreen, setShowFullscreen] = useState(false)
 
   const fetchRandom = useCallback(async (signal, isInitial = false) => {
     setLoading(true)
@@ -59,8 +192,10 @@ function Random() {
 
   const handleDownload = () => {
     if (!wallpaper) return
+    // Use the server-side download proxy that sets Content-Disposition header
+    const downloadUrl = `${API_BASE}/api/download/${wallpaper.id}`
     const link = document.createElement('a')
-    link.href = resolveAssetUrl(wallpaper.image_url)
+    link.href = downloadUrl
     link.download = wallpaper.filename
     document.body.appendChild(link)
     link.click()
@@ -126,10 +261,16 @@ function Random() {
                 </div>
               </div>
               
-              <button className="random-download-btn" onClick={handleDownload}>
-                <Download size={16} />
-                Download
-              </button>
+              <div className="random-action-buttons">
+                <button className="random-preview-btn" onClick={() => setShowFullscreen(true)}>
+                  <Maximize2 size={16} />
+                  Preview
+                </button>
+                <button className="random-download-btn" onClick={handleDownload}>
+                  <Download size={16} />
+                  Download
+                </button>
+              </div>
             </div>
           ) : (
             <div className="random-skeleton-container">
@@ -146,6 +287,13 @@ function Random() {
           )}
         </div>
       </div>
+
+      {showFullscreen && wallpaper && (
+        <FullscreenViewer
+          imageUrl={resolveAssetUrl(wallpaper.image_url)}
+          onClose={() => setShowFullscreen(false)}
+        />
+      )}
     </div>
   )
 }
