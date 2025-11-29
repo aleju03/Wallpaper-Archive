@@ -364,7 +364,6 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
                       placeholder="search resolutions..."
                       value={resolutionSearch}
                       onChange={(e) => setResolutionSearch(e.target.value)}
-                      autoFocus
                     />
                   </div>
                   
