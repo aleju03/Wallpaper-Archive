@@ -163,7 +163,11 @@ class Database {
       args.push(filters.provider);
     }
 
-    if (filters.folder) {
+    if (filters.folders && filters.folders.length > 0) {
+      const placeholders = filters.folders.map(() => '?').join(', ');
+      sql += ` AND folder IN (${placeholders})`;
+      args.push(...filters.folders);
+    } else if (filters.folder) {
       sql += ' AND folder = ?';
       args.push(filters.folder);
     }
