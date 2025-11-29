@@ -151,7 +151,7 @@
   padding: 2px 6px;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  min-width: 32px;
+  min-width: 38px;
   text-align: center;
 }
 
@@ -206,6 +206,7 @@
   align-items: center;
   width: 100%;
   margin-top: var(--spacing-sm);
+  min-height: 22px; /* Prevent vertical layout shift */
 }
 
 .chips-label {
@@ -319,15 +320,15 @@
   );
 }
 
-/* Varying widths to simulate different category names */
-.category-chip-skeleton:nth-child(2) { width: 70px; }
-.category-chip-skeleton:nth-child(3) { width: 120px; }
-.category-chip-skeleton:nth-child(4) { width: 55px; }
+/* Varying widths to match actual category chip sizes */
+.category-chip-skeleton:nth-child(2) { width: 75px; }
+.category-chip-skeleton:nth-child(3) { width: 155px; }
+.category-chip-skeleton:nth-child(4) { width: 85px; }
 .category-chip-skeleton:nth-child(5) { width: 80px; }
-.category-chip-skeleton:nth-child(6) { width: 65px; }
-.category-chip-skeleton:nth-child(7) { width: 90px; }
+.category-chip-skeleton:nth-child(6) { width: 70px; }
+.category-chip-skeleton:nth-child(7) { width: 80px; }
 .category-chip-skeleton:nth-child(8) { width: 75px; }
-.category-chip-skeleton:nth-child(9) { width: 60px; }
+.category-chip-skeleton:nth-child(9) { width: 85px; }
 
 /* ==========================================================================
    Category Modal
