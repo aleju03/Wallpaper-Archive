@@ -475,12 +475,17 @@ fastify.get('/api/download/:id', async (request, reply) => {
 
 fastify.get('/api/wallpapers', async (request, reply) => {
   try {
-    const { provider, folder, search, resolution, aspect, limit = 50, page = 1 } = request.query;
+    const { provider, folder, folders, search, resolution, aspect, limit = 50, page = 1 } = request.query;
     const { limit: safeLimit, page: safePage, offset } = normalizePagination(limit, page);
     
     const filters = {};
     if (provider) filters.provider = provider;
-    if (folder) filters.folder = folder;
+    // Support both single folder and multiple folders (comma-separated)
+    if (folders) {
+      filters.folders = folders.split(',').map(f => f.trim()).filter(Boolean);
+    } else if (folder) {
+      filters.folder = folder;
+    }
     if (search) filters.search = search;
     if (resolution) filters.resolution = resolution;
     if (aspect) filters.aspect = aspect;

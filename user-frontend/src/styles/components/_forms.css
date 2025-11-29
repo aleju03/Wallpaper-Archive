@@ -212,6 +212,17 @@
   border-style: dashed;
 }
 
+.category-chip.reset-chip {
+  border-style: dashed;
+  border-color: var(--color-text-muted);
+  color: var(--color-text-muted);
+}
+
+.category-chip.reset-chip:hover {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+}
+
 /* ==========================================================================
    Category Modal
    ========================================================================== */

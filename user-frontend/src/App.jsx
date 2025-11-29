@@ -80,7 +80,7 @@ function App() {
     pendingPage: null,
     searchQuery: '',
     selectedProvider: '',
-    selectedFolder: '',
+    selectedFolders: [],
     selectedResolution: '',
     selectedAspect: '',
     loading: true,
