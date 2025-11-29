@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { BarChart3, Images, Database, Copy, UploadCloud } from 'lucide-react'
+import { BarChart3, Images, Database, Copy, UploadCloud, Swords } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import Gallery from './components/Gallery'
 import Statistics from './components/Statistics'
 import Duplicates from './components/Duplicates'
 import Upload from './components/Upload'
+import ArenaStats from './components/ArenaStats'
 import './styles/index.css'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
     { id: 'upload', name: 'Upload', icon: UploadCloud },
     { id: 'gallery', name: 'Gallery', icon: Images },
     { id: 'duplicates', name: 'Duplicates', icon: Copy },
+    { id: 'arena', name: 'Arena Stats', icon: Swords },
     { id: 'statistics', name: 'Statistics', icon: Database },
   ]
 
@@ -28,6 +30,8 @@ function App() {
         return <Gallery />
       case 'duplicates':
         return <Duplicates />
+      case 'arena':
+        return <ArenaStats />
       case 'statistics':
         return <Statistics />
       default:

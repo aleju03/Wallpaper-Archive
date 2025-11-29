@@ -100,6 +100,24 @@ class Database {
         count INTEGER NOT NULL,
         reset_at INTEGER NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS battle_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        winner_id INTEGER NOT NULL,
+        loser_id INTEGER NOT NULL,
+        winner_elo_before INTEGER NOT NULL,
+        winner_elo_after INTEGER NOT NULL,
+        loser_elo_before INTEGER NOT NULL,
+        loser_elo_after INTEGER NOT NULL,
+        vote_time_ms INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (winner_id) REFERENCES wallpapers(id) ON DELETE CASCADE,
+        FOREIGN KEY (loser_id) REFERENCES wallpapers(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_battle_history_created_at ON battle_history(created_at);
+      CREATE INDEX IF NOT EXISTS idx_battle_history_winner ON battle_history(winner_id);
+      CREATE INDEX IF NOT EXISTS idx_battle_history_loser ON battle_history(loser_id);
     `;
 
     try {
@@ -613,9 +631,22 @@ class Database {
       { sql: updateSql, args: [newLoserElo, 0, 1, loserId] }
     ], 'write');
 
+    // Record battle history
+    try {
+      await this.client.execute({
+        sql: `INSERT INTO battle_history 
+          (winner_id, loser_id, winner_elo_before, winner_elo_after, loser_elo_before, loser_elo_after, vote_time_ms)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [winnerId, loserId, winner.elo_rating, newWinnerElo, loser.elo_rating, newLoserElo, voteTimeMs]
+      });
+    } catch (historyError) {
+      console.warn('Failed to record battle history:', historyError);
+    }
+
     return {
       winner: { id: winnerId, oldElo: winner.elo_rating, newElo: newWinnerElo },
-      loser: { id: loserId, oldElo: loser.elo_rating, newElo: newLoserElo }
+      loser: { id: loserId, oldElo: loser.elo_rating, newElo: newLoserElo },
+      battleId: Date.now() // Used for undo functionality
     };
   }
 
@@ -813,6 +844,245 @@ class Database {
     } catch (error) {
       console.error('Failed to increment download count:', error);
     }
+  }
+
+  // Get filtered battle pair based on mode
+  async getFilteredBattlePair(filters = {}, excludeIds = []) {
+    const { provider, aspect, mode } = filters;
+    const hasExclusions = excludeIds.length > 0;
+    
+    let whereClause = "WHERE download_url IS NOT NULL AND download_url != ''";
+    const args = [];
+    
+    if (provider) {
+      whereClause += ' AND provider = ?';
+      args.push(provider);
+    }
+    
+    if (aspect) {
+      whereClause += ' AND aspect_ratio = ?';
+      args.push(aspect);
+    }
+    
+    // Mode-specific filters
+    if (mode === 'newcomers') {
+      whereClause += ' AND (COALESCE(battles_won, 0) + COALESCE(battles_lost, 0)) < 5';
+    }
+    
+    if (hasExclusions) {
+      const placeholders = excludeIds.map(() => '?').join(',');
+      whereClause += ` AND id NOT IN (${placeholders})`;
+      args.push(...excludeIds);
+    }
+    
+    // For underdog mode, get one high and one low rated
+    if (mode === 'underdog') {
+      const highSql = `
+        SELECT * FROM wallpapers ${whereClause}
+        ORDER BY COALESCE(elo_rating, 1000) DESC
+        LIMIT 20
+      `;
+      const lowSql = `
+        SELECT * FROM wallpapers ${whereClause}
+        ORDER BY COALESCE(elo_rating, 1000) ASC
+        LIMIT 20
+      `;
+      
+      const [highResult, lowResult] = await Promise.all([
+        this.client.execute({ sql: highSql, args }),
+        this.client.execute({ sql: lowSql, args })
+      ]);
+      
+      if (highResult.rows.length === 0 || lowResult.rows.length === 0) {
+        return this.getRandomWallpaperPair(excludeIds);
+      }
+      
+      const highIdx = Math.floor(Math.random() * highResult.rows.length);
+      const lowIdx = Math.floor(Math.random() * lowResult.rows.length);
+      
+      const high = highResult.rows[highIdx];
+      let low = lowResult.rows[lowIdx];
+      
+      // Make sure they're different
+      if (high.id === low.id && lowResult.rows.length > 1) {
+        low = lowResult.rows[(lowIdx + 1) % lowResult.rows.length];
+      }
+      
+      return high.id !== low.id ? [high, low] : [high];
+    }
+    
+    // Standard random selection with filters
+    const firstSql = `
+      SELECT * FROM wallpapers ${whereClause}
+      ORDER BY RANDOM()
+      LIMIT 1
+    `;
+    
+    const firstResult = await this.client.execute({ sql: firstSql, args });
+    
+    if (firstResult.rows.length === 0) {
+      return this.getRandomWallpaperPair(excludeIds);
+    }
+    
+    const firstWallpaper = firstResult.rows[0];
+    const firstElo = firstWallpaper.elo_rating || 1000;
+    
+    // Get second wallpaper with similar filters
+    const secondArgs = [...args, firstWallpaper.id, firstElo - 400, firstElo + 400];
+    const secondSql = `
+      SELECT * FROM wallpapers ${whereClause}
+        AND id != ?
+        AND COALESCE(elo_rating, 1000) BETWEEN ? AND ?
+      ORDER BY RANDOM()
+      LIMIT 1
+    `;
+    
+    const secondResult = await this.client.execute({ sql: secondSql, args: secondArgs });
+    
+    if (secondResult.rows.length > 0) {
+      return [firstWallpaper, secondResult.rows[0]];
+    }
+    
+    // Fallback without ELO range
+    const fallbackArgs = [...args, firstWallpaper.id];
+    const fallbackSql = `
+      SELECT * FROM wallpapers ${whereClause}
+        AND id != ?
+      ORDER BY RANDOM()
+      LIMIT 1
+    `;
+    
+    const fallbackResult = await this.client.execute({ sql: fallbackSql, args: fallbackArgs });
+    
+    if (fallbackResult.rows.length > 0) {
+      return [firstWallpaper, fallbackResult.rows[0]];
+    }
+    
+    return [firstWallpaper];
+  }
+
+  // Undo last battle
+  async undoBattle(winnerId, loserId, winnerOldElo, loserOldElo) {
+    try {
+      const updateSql = `
+        UPDATE wallpapers 
+        SET elo_rating = ?, 
+            battles_won = COALESCE(battles_won, 0) - ?, 
+            battles_lost = COALESCE(battles_lost, 0) - ?
+        WHERE id = ?
+      `;
+      
+      await this.client.batch([
+        { sql: updateSql, args: [winnerOldElo, 1, 0, winnerId] },
+        { sql: updateSql, args: [loserOldElo, 0, 1, loserId] }
+      ], 'write');
+
+      // Remove from battle history
+      await this.client.execute({
+        sql: `DELETE FROM battle_history 
+              WHERE winner_id = ? AND loser_id = ? 
+              ORDER BY created_at DESC LIMIT 1`,
+        args: [winnerId, loserId]
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to undo battle:', error);
+      return false;
+    }
+  }
+
+  // Get battle history for admin panel
+  async getBattleHistory(limit = 50) {
+    const sql = `
+      SELECT 
+        bh.id,
+        bh.winner_id,
+        bh.loser_id,
+        bh.winner_elo_before,
+        bh.winner_elo_after,
+        bh.loser_elo_before,
+        bh.loser_elo_after,
+        bh.vote_time_ms,
+        bh.created_at,
+        w1.filename as winner_filename,
+        w1.provider as winner_provider,
+        w1.download_url as winner_download_url,
+        w2.filename as loser_filename,
+        w2.provider as loser_provider,
+        w2.download_url as loser_download_url
+      FROM battle_history bh
+      LEFT JOIN wallpapers w1 ON bh.winner_id = w1.id
+      LEFT JOIN wallpapers w2 ON bh.loser_id = w2.id
+      ORDER BY bh.created_at DESC
+      LIMIT ?
+    `;
+    
+    const result = await this.client.execute({ sql, args: [limit] });
+    return result.rows;
+  }
+
+  // Get arena statistics for admin
+  async getArenaStats() {
+    const totalBattlesSql = `SELECT COUNT(*) as count FROM battle_history`;
+    const todayBattlesSql = `
+      SELECT COUNT(*) as count FROM battle_history 
+      WHERE date(created_at) = date('now')
+    `;
+    const avgEloSql = `SELECT AVG(COALESCE(elo_rating, 1000)) as avg_elo FROM wallpapers`;
+    const mostImprovedSql = `
+      SELECT 
+        w.id, w.filename, w.provider, w.download_url,
+        COALESCE(w.elo_rating, 1000) as elo_rating,
+        (COALESCE(w.elo_rating, 1000) - 1000) as elo_change,
+        COALESCE(w.battles_won, 0) + COALESCE(w.battles_lost, 0) as total_battles
+      FROM wallpapers w
+      WHERE COALESCE(w.battles_won, 0) + COALESCE(w.battles_lost, 0) >= 5
+      ORDER BY (COALESCE(w.elo_rating, 1000) - 1000) DESC
+      LIMIT 5
+    `;
+    const biggestLosersSql = `
+      SELECT 
+        w.id, w.filename, w.provider, w.download_url,
+        COALESCE(w.elo_rating, 1000) as elo_rating,
+        (COALESCE(w.elo_rating, 1000) - 1000) as elo_change,
+        COALESCE(w.battles_won, 0) + COALESCE(w.battles_lost, 0) as total_battles
+      FROM wallpapers w
+      WHERE COALESCE(w.battles_won, 0) + COALESCE(w.battles_lost, 0) >= 5
+      ORDER BY (COALESCE(w.elo_rating, 1000) - 1000) ASC
+      LIMIT 5
+    `;
+    const controversialSql = `
+      SELECT 
+        w.id, w.filename, w.provider, w.download_url,
+        COALESCE(w.elo_rating, 1000) as elo_rating,
+        COALESCE(w.battles_won, 0) as battles_won,
+        COALESCE(w.battles_lost, 0) as battles_lost,
+        COALESCE(w.battles_won, 0) + COALESCE(w.battles_lost, 0) as total_battles,
+        ABS(COALESCE(w.battles_won, 0) - COALESCE(w.battles_lost, 0)) as win_diff
+      FROM wallpapers w
+      WHERE COALESCE(w.battles_won, 0) + COALESCE(w.battles_lost, 0) >= 10
+      ORDER BY win_diff ASC, total_battles DESC
+      LIMIT 10
+    `;
+    
+    const [totalResult, todayResult, avgResult, improvedResult, losersResult, controversialResult] = await Promise.all([
+      this.client.execute(totalBattlesSql),
+      this.client.execute(todayBattlesSql),
+      this.client.execute(avgEloSql),
+      this.client.execute(mostImprovedSql),
+      this.client.execute(biggestLosersSql),
+      this.client.execute(controversialSql)
+    ]);
+    
+    return {
+      totalBattles: totalResult.rows[0]?.count || 0,
+      battlesToday: todayResult.rows[0]?.count || 0,
+      averageElo: Math.round(avgResult.rows[0]?.avg_elo || 1000),
+      mostImproved: improvedResult.rows,
+      biggestLosers: losersResult.rows,
+      controversial: controversialResult.rows
+    };
   }
 }
 

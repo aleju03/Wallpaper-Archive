@@ -15,7 +15,18 @@ async function registerArenaRoutes(fastify, db) {
         .map(id => parseInt(id, 10))
         .filter(id => !isNaN(id));
       
-      const wallpapers = await db.getRandomWallpaperPair(excludeIds);
+      // Parse filter parameters
+      const filters = {
+        provider: request.query.provider || null,
+        aspect: request.query.aspect || null,
+        mode: request.query.mode || null // 'newcomers', 'underdog', or null for standard
+      };
+      
+      // Use filtered query if any filters are active
+      const hasFilters = filters.provider || filters.aspect || filters.mode;
+      const wallpapers = hasFilters 
+        ? await db.getFilteredBattlePair(filters, excludeIds)
+        : await db.getRandomWallpaperPair(excludeIds);
       
       if (wallpapers.length < 2) {
         reply.code(400);
@@ -65,6 +76,30 @@ async function registerArenaRoutes(fastify, db) {
     }
   });
 
+  // Undo last vote
+  fastify.post('/api/arena/undo', async (request, reply) => {
+    try {
+      const { winnerId, loserId, winnerOldElo, loserOldElo } = request.body;
+      
+      if (!winnerId || !loserId || winnerOldElo === undefined || loserOldElo === undefined) {
+        reply.code(400);
+        return { success: false, error: 'Missing required fields for undo' };
+      }
+
+      const success = await db.undoBattle(
+        parseInt(winnerId), 
+        parseInt(loserId), 
+        parseInt(winnerOldElo), 
+        parseInt(loserOldElo)
+      );
+      
+      return { success };
+    } catch (error) {
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
   fastify.get('/api/arena/leaderboard', async (request, reply) => {
     try {
       const limit = parseInt(request.query.limit) || 50;
@@ -86,6 +121,55 @@ async function registerArenaRoutes(fastify, db) {
         success: true,
         leaderboard: leaderboardWithUrls,
         totalCount
+      };
+    } catch (error) {
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Admin-only: Get battle history
+  fastify.get('/api/arena/history', async (request, reply) => {
+    try {
+      const limit = parseInt(request.query.limit) || 50;
+      const history = await db.getBattleHistory(limit);
+      
+      // Add thumbnail URLs
+      const historyWithUrls = history.map(battle => ({
+        ...battle,
+        winner_thumbnail_url: buildThumbnailUrl(battle.winner_download_url),
+        loser_thumbnail_url: buildThumbnailUrl(battle.loser_download_url)
+      }));
+
+      return {
+        success: true,
+        history: historyWithUrls
+      };
+    } catch (error) {
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Admin-only: Get arena statistics
+  fastify.get('/api/arena/stats', async (request, reply) => {
+    try {
+      const stats = await db.getArenaStats();
+      
+      // Add thumbnail URLs to wallpapers in stats
+      const addThumbnails = (wallpapers) => wallpapers.map(w => ({
+        ...w,
+        thumbnail_url: buildThumbnailUrl(w.download_url)
+      }));
+
+      return {
+        success: true,
+        stats: {
+          ...stats,
+          mostImproved: addThumbnails(stats.mostImproved),
+          biggestLosers: addThumbnails(stats.biggestLosers),
+          controversial: addThumbnails(stats.controversial)
+        }
       };
     } catch (error) {
       reply.code(500);
