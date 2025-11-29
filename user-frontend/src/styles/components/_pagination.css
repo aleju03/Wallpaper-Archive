@@ -2,14 +2,37 @@
    Pagination Component
    ========================================================================== */
 
+.pagination-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg-primary);
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.pagination-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-xl);
-  background: var(--color-bg-primary);
-  border-top: 1px solid var(--color-border-primary);
+}
+
+.pagination-pages {
+  display: flex;
+  gap: var(--spacing-xs);
 }
 
 .pagination button {
@@ -21,6 +44,13 @@
   font-size: var(--font-size-base);
   font-family: inherit;
   transition: background var(--transition-fast), border-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination button.pagination-nav {
+  padding: var(--spacing-sm);
 }
 
 .pagination button:hover:not(:disabled):not(.active) {
@@ -39,4 +69,62 @@
   border-color: var(--color-text-primary);
   opacity: 1;
   transition: none;
+}
+
+.pagination-goto {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.pagination-goto-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.pagination-goto-input {
+  width: 50px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.pagination-goto-input::-webkit-outer-spin-button,
+.pagination-goto-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pagination-goto-input:focus {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.pagination-goto-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  .pagination-container {
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+  }
+  
+  .pagination-goto-input {
+    width: 60px;
+  }
+  
+  .pagination-text,
+  .pagination-goto-label {
+    font-size: var(--font-size-sm);
+  }
 }

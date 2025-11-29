@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify, MonitorSmartphone, Smartphone, Minimize2, SlidersHorizontal, X } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify, MonitorSmartphone, Smartphone, Minimize2, SlidersHorizontal, X } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 import References from './References'
@@ -698,42 +698,93 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       </div>
 
       {!error && totalPages > 1 && (
-        <div className="pagination">
-          <button
-            onClick={() => updatePage(Math.max(1, displayPage - 1))}
-            disabled={displayPage === 1 || loading}
-          >
-            <ChevronLeft size={16} />
-          </button>
+        <div className="pagination-container">
+          <div className="pagination-info">
+            <span className="pagination-text">
+              page {displayPage} of {totalPages.toLocaleString()}
+            </span>
+          </div>
           
-          {(() => {
-            // Show pages in fixed groups of 5: 1-5, 6-10, 11-15, etc.
-            const groupSize = 5
-            const currentGroup = Math.floor((displayPage - 1) / groupSize)
-            const startPage = currentGroup * groupSize + 1
-            const endPage = Math.min(startPage + groupSize - 1, totalPages)
+          <div className="pagination">
+            <button
+              onClick={() => updatePage(1)}
+              disabled={displayPage === 1 || loading}
+              title="First page"
+              className="pagination-nav"
+            >
+              <ChevronsLeft size={16} />
+            </button>
+            <button
+              onClick={() => updatePage(Math.max(1, displayPage - 1))}
+              disabled={displayPage === 1 || loading}
+              title="Previous page"
+              className="pagination-nav"
+            >
+              <ChevronLeft size={16} />
+            </button>
             
-            return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
-              const pageNum = startPage + i
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => updatePage(pageNum)}
-                  className={displayPage === pageNum ? 'active' : ''}
-                  disabled={loading}
-                >
-                  {pageNum}
-                </button>
-              )
-            })
-          })()}
+            <div className="pagination-pages">
+              {(() => {
+                // Show pages in fixed groups of 5: 1-5, 6-10, 11-15, etc.
+                const groupSize = 5
+                const currentGroup = Math.floor((displayPage - 1) / groupSize)
+                const startPage = currentGroup * groupSize + 1
+                const endPage = Math.min(startPage + groupSize - 1, totalPages)
+                
+                return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
+                  const pageNum = startPage + i
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => updatePage(pageNum)}
+                      className={displayPage === pageNum ? 'active' : ''}
+                      disabled={loading}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })
+              })()}
+            </div>
+            
+            <button
+              onClick={() => updatePage(Math.min(totalPages, displayPage + 1))}
+              disabled={displayPage === totalPages || loading}
+              title="Next page"
+              className="pagination-nav"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <button
+              onClick={() => updatePage(totalPages)}
+              disabled={displayPage === totalPages || loading}
+              title="Last page"
+              className="pagination-nav"
+            >
+              <ChevronsRight size={16} />
+            </button>
+          </div>
           
-          <button
-            onClick={() => updatePage(Math.min(totalPages, displayPage + 1))}
-            disabled={displayPage === totalPages || loading}
-          >
-            <ChevronRight size={16} />
-          </button>
+          <div className="pagination-goto">
+            <span className="pagination-goto-label">go to</span>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              placeholder="#"
+              className="pagination-goto-input"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const page = parseInt(e.target.value, 10)
+                  if (page >= 1 && page <= totalPages) {
+                    updatePage(page)
+                    e.target.value = ''
+                    e.target.blur()
+                  }
+                }
+              }}
+            />
+          </div>
         </div>
       )}
       
