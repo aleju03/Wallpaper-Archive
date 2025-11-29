@@ -113,6 +113,11 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
   // This is the single source of truth for UI highlighting
   const [displayPage, setDisplayPage] = useState(currentPage)
 
+  // Sync displayPage when currentPage changes externally (e.g., from modal navigation)
+  useEffect(() => {
+    setDisplayPage(currentPage)
+  }, [currentPage])
+
   const [providers, setProviders] = useState([])
   const [folders, setFolders] = useState([])
   const [resolutions, setResolutions] = useState([])

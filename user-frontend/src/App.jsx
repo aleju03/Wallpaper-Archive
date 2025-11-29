@@ -120,6 +120,21 @@ function App() {
     window.history.replaceState({}, '', newUrl)
   }, [selectedWallpaper])
 
+  // Handle modal navigation across pages
+  useEffect(() => {
+    if (browseState._modalNavDirection && !browseState.loading && browseState.wallpapers.length > 0) {
+      if (browseState._modalNavDirection === 'next') {
+        // Show first wallpaper of new page
+        setSelectedWallpaper(browseState.wallpapers[0])
+      } else if (browseState._modalNavDirection === 'prev') {
+        // Show last wallpaper of new page
+        setSelectedWallpaper(browseState.wallpapers[browseState.wallpapers.length - 1])
+      }
+      // Clear the direction flag
+      setBrowseState(prev => ({ ...prev, _modalNavDirection: null }))
+    }
+  }, [browseState.wallpapers, browseState.loading, browseState._modalNavDirection])
+
   const renderContent = () => {
     switch (activeTab) {
       case 'browse':
@@ -217,16 +232,34 @@ function App() {
             const currentIndex = browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id)
             if (currentIndex > 0) {
               setSelectedWallpaper(browseState.wallpapers[currentIndex - 1])
+            } else if (browseState.currentPage > 1) {
+              // Go to previous page and show last wallpaper
+              setBrowseState(prev => ({
+                ...prev,
+                currentPage: prev.currentPage - 1,
+                loading: true,
+                initialized: false,
+                _modalNavDirection: 'prev'
+              }))
             }
           }}
           onNext={() => {
             const currentIndex = browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id)
             if (currentIndex < browseState.wallpapers.length - 1) {
               setSelectedWallpaper(browseState.wallpapers[currentIndex + 1])
+            } else if (browseState.currentPage < browseState.totalPages) {
+              // Go to next page and show first wallpaper
+              setBrowseState(prev => ({
+                ...prev,
+                currentPage: prev.currentPage + 1,
+                loading: true,
+                initialized: false,
+                _modalNavDirection: 'next'
+              }))
             }
           }}
-          hasPrev={browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id) > 0}
-          hasNext={browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id) < browseState.wallpapers.length - 1}
+          hasPrev={browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id) > 0 || browseState.currentPage > 1}
+          hasNext={browseState.wallpapers.findIndex(w => w.id === selectedWallpaper.id) < browseState.wallpapers.length - 1 || browseState.currentPage < browseState.totalPages}
         />
       )}
     </div>
