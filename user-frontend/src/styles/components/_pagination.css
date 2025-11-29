@@ -64,9 +64,9 @@
 }
 
 .pagination button.active {
-  background: var(--color-text-primary);
+  background: var(--color-bg-active);
   color: var(--color-bg-primary);
-  border-color: var(--color-text-primary);
+  border-color: var(--color-bg-active);
   opacity: 1;
   transition: none;
 }

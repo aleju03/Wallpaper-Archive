@@ -54,8 +54,8 @@
 
 .nav-button.active {
   color: var(--color-bg-primary);
-  background: var(--color-text-primary);
-  border-color: var(--color-text-primary);
+  background: var(--color-bg-active);
+  border-color: var(--color-bg-active);
 }
 
 /* Theme Toggle Button */
@@ -89,7 +89,7 @@
 }
 
 .download-btn:hover {
-  background: var(--color-text-primary);
+  background: var(--color-bg-active);
   color: var(--color-bg-primary);
 }
 
@@ -209,9 +209,9 @@
 }
 
 .toggle-btn.active {
-  background: var(--color-text-primary);
+  background: var(--color-bg-active);
   color: var(--color-bg-primary);
-  border-color: var(--color-text-primary);
+  border-color: var(--color-bg-active);
 }
 
 .toggle-btn:not(.active):hover {
@@ -243,8 +243,8 @@
 
 .grid-control-btn.active {
   color: var(--color-bg-primary);
-  background: var(--color-text-primary);
-  border-color: var(--color-text-primary);
+  background: var(--color-bg-active);
+  border-color: var(--color-bg-active);
 }
 
 /* Empty State Button */

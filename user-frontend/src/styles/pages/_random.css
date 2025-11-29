@@ -40,7 +40,7 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-lg);
-  background: var(--color-text-primary);
+  background: var(--color-bg-active);
   color: var(--color-bg-primary);
   border: none;
   font-size: var(--font-size-md);
@@ -282,7 +282,7 @@
 }
 
 .random-download-btn:hover {
-  background: var(--color-text-primary);
+  background: var(--color-bg-active);
   color: var(--color-bg-primary);
 }
 

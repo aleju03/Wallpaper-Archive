@@ -108,7 +108,7 @@
 }
 
 .resolution-option.selected {
-  background: var(--color-text-primary);
+  background: var(--color-bg-active);
   color: var(--color-bg-primary);
 }
 

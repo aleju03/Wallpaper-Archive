@@ -8,6 +8,7 @@
   --color-bg-secondary: #111111;
   --color-bg-tertiary: #222222;
   --color-bg-hover: #1a1a1a;
+  --color-bg-active: #ffffff;
 
   /* Colors - Text */
   --color-text-primary: #ffffff;
@@ -87,6 +88,7 @@
   --color-bg-secondary: #f0ece2;
   --color-bg-tertiary: #e8e2d0;
   --color-bg-hover: #f5f1e6;
+  --color-bg-active: #a68b5b;
 
   /* Colors - Text */
   --color-text-primary: #111111;
@@ -98,7 +100,7 @@
   /* Colors - Border */
   --color-border-primary: #cccccc;
   --color-border-secondary: #999999;
-  --color-border-hover: #111111;
+  --color-border-hover: #a68b5b;
 
   /* Colors - Accent (adjusted for light mode visibility) */
   --color-accent-gold: #d4a800;
