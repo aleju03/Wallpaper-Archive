@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Search, Images, Grid, Heart, Download, Swords, Trophy, Shuffle, Sun, Moon } from 'lucide-react'
 import { OverlayScrollbars } from 'overlayscrollbars'
+import axios from 'axios'
 import Browse from './components/Browse'
 import Arena from './components/Arena'
 import Leaderboard from './components/Leaderboard'
 import Random from './components/Random'
 import WallpaperModal from './components/WallpaperModal'
+import { API_BASE } from './config'
 import './App.css'
 
 function App() {
@@ -79,9 +81,43 @@ function App() {
     searchQuery: '',
     selectedProvider: '',
     selectedResolution: '',
+    selectedAspect: '',
     loading: true,
     initialized: false
   })
+
+  // Deep link support: open a wallpaper by id from the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const wallpaperId = params.get('wallpaper')
+    if (wallpaperId) {
+      axios.get(`${API_BASE}/api/wallpapers/${wallpaperId}`)
+        .then((response) => {
+          if (response.data?.wallpaper) {
+            setSelectedWallpaper({
+              ...response.data.wallpaper,
+              image_url: response.data.wallpaper.download_url
+            })
+          }
+        })
+        .catch(() => {
+          // Ignore failures; user can still browse normally
+        })
+    }
+  }, [])
+
+  // Keep the shareable link in sync with the currently open wallpaper
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (selectedWallpaper?.id) {
+      params.set('wallpaper', selectedWallpaper.id)
+    } else {
+      params.delete('wallpaper')
+    }
+    const query = params.toString()
+    const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname
+    window.history.replaceState({}, '', newUrl)
+  }, [selectedWallpaper])
 
   const renderContent = () => {
     switch (activeTab) {

@@ -129,34 +129,44 @@ function findSimilarImages(targetHash, wallpapers, threshold = 10) {
  * @returns {Array} - Array of duplicate groups
  */
 function findDuplicateGroups(wallpapers, threshold = 10) {
-  console.log(`🚀 Starting hybrid duplicate detection for ${wallpapers.length} wallpapers...`);
   const startTime = Date.now();
-  
   const validWallpapers = wallpapers.filter(w => w.perceptual_hash);
-  console.log(`📊 Processing ${validWallpapers.length} wallpapers with hashes...`);
-  
+
+  // Bucket by prefix to cut comparisons while keeping similar hashes close
+  const PREFIX_LENGTH = 4; // hex chars (16 bits)
+  const buckets = new Map();
+  const bucketGroups = new Map(); // shared prefix of length-1 => buckets
+
+  for (const wallpaper of validWallpapers) {
+    const bucketKey = (wallpaper.perceptual_hash || '').slice(0, PREFIX_LENGTH);
+    if (!bucketKey) continue;
+    if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
+    buckets.get(bucketKey).push(wallpaper);
+
+    const groupKey = bucketKey.slice(0, Math.max(1, PREFIX_LENGTH - 1));
+    if (!bucketGroups.has(groupKey)) bucketGroups.set(groupKey, new Set());
+    bucketGroups.get(groupKey).add(bucketKey);
+  }
+
   const duplicateGroups = [];
   const processed = new Set();
-  
-  // Process in chunks to avoid memory issues and show progress
-  const CHUNK_SIZE = 500;
-  let processedCount = 0;
-  
-  for (let i = 0; i < validWallpapers.length; i += CHUNK_SIZE) {
-    const chunk = validWallpapers.slice(i, i + CHUNK_SIZE);
-    const chunkStartTime = Date.now();
-    
-    for (const wallpaper of chunk) {
+
+  const getNearbyBuckets = (bucketKey) => {
+    const groupKey = bucketKey.slice(0, Math.max(1, PREFIX_LENGTH - 1));
+    const related = Array.from(bucketGroups.get(groupKey) || []);
+    return related.map(key => buckets.get(key)).filter(Boolean);
+  };
+
+  for (const [bucketKey, bucketWallpapers] of buckets.entries()) {
+    const candidates = getNearbyBuckets(bucketKey).flat();
+
+    for (const wallpaper of bucketWallpapers) {
       if (processed.has(wallpaper.id)) continue;
-      
+
       const similar = [];
-      
-      // Compare with ALL remaining wallpapers (but optimized)
-      for (let j = i; j < validWallpapers.length; j++) {
-        const other = validWallpapers[j];
-        
+      for (const other of candidates) {
         if (other.id === wallpaper.id || processed.has(other.id)) continue;
-        
+
         const distance = hammingDistance(wallpaper.perceptual_hash, other.perceptual_hash);
         if (distance <= threshold) {
           similar.push({
@@ -166,28 +176,21 @@ function findDuplicateGroups(wallpapers, threshold = 10) {
           });
         }
       }
-      
+
       if (similar.length > 0) {
-        // Sort by similarity (most similar first)
         similar.sort((a, b) => a.similarity_distance - b.similarity_distance);
-        
         const group = [wallpaper, ...similar];
-        duplicateGroups.push(group);
-        
-        // Mark all in this group as processed
         group.forEach(w => processed.add(w.id));
+        duplicateGroups.push(group);
+      } else {
+        processed.add(wallpaper.id);
       }
-      
-      processedCount++;
     }
-    
-    const chunkTime = Date.now() - chunkStartTime;
-    console.log(`📦 Processed chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(validWallpapers.length/CHUNK_SIZE)} in ${chunkTime}ms (${processedCount}/${validWallpapers.length} images)`);
   }
-  
+
   const totalTime = Date.now() - startTime;
-  console.log(`✅ Hybrid duplicate detection completed in ${totalTime}ms (found ${duplicateGroups.length} groups)`);
-  
+  console.log(`✅ Duplicate detection completed in ${totalTime}ms (processed ${validWallpapers.length} items, found ${duplicateGroups.length} groups)`);
+
   return duplicateGroups;
 }
 

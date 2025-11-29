@@ -19,6 +19,7 @@ const db = new Database();
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10); // 1 minute
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || '120', 10); // 120 requests/ip/minute
+const RATE_LIMIT_DRIVER = (process.env.RATE_LIMIT_DRIVER || 'memory').toLowerCase();
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
@@ -38,9 +39,24 @@ const getClientId = (request) => {
   return request.ip || 'unknown';
 };
 
-fastify.addHook('onRequest', (request, reply, done) => {
+fastify.addHook('onRequest', async (request, reply) => {
   const now = Date.now();
   const clientId = getClientId(request);
+
+  if (RATE_LIMIT_DRIVER === 'database') {
+    try {
+      const result = await db.consumeRateLimit(clientId, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX);
+      if (!result.allowed) {
+        reply.code(429).send({ success: false, error: 'Too many requests' });
+        return;
+      }
+      reply.header('X-RateLimit-Reset', result.resetAt);
+      return;
+    } catch (error) {
+      fastify.log.warn({ err: error }, 'Database rate limit failed, falling back to in-memory buckets');
+    }
+  }
+
   const bucket = rateBuckets.get(clientId) || { count: 0, reset: now + RATE_LIMIT_WINDOW_MS };
 
   if (now > bucket.reset) {
@@ -55,12 +71,14 @@ fastify.addHook('onRequest', (request, reply, done) => {
     reply.code(429).send({ success: false, error: 'Too many requests' });
     return;
   }
-
-  done();
 });
 
 // Basic helpers
-const sanitizeFilename = (name = '') => name.replace(/[^a-zA-Z0-9._-]/g, '_');
+const sanitizeFilename = (name = '') => name
+  .normalize('NFKC')
+  .replace(/[^\p{L}\p{N}._-]+/gu, '_')
+  .replace(/_+/g, '_')
+  .replace(/^_+|_+$/g, '');
 const ensureDir = async (dirPath) => fsPromises.mkdir(dirPath, { recursive: true });
 const streamToBuffer = async (stream) => {
   const chunks = [];
@@ -175,6 +193,12 @@ const requireAdminKey = (request, reply) => {
   return true;
 };
 
+const adminAuthHook = async (request, reply) => {
+  if (!requireAdminKey(request, reply)) {
+    return reply;
+  }
+};
+
 // Pagination + cache helpers
 const normalizePagination = (limit, page, maxLimit = 100) => {
   const safeLimit = Math.min(Math.max(parseInt(limit) || 0, 1), maxLimit);
@@ -209,7 +233,7 @@ const deleteFromR2 = async (keys = []) => {
         Key: key
       }));
     } catch (error) {
-      // Silently ignore R2 delete failures
+      fastify.log.warn({ err: error, key }, 'Failed to delete object from R2');
     }
   }
 };
@@ -264,6 +288,11 @@ const getImageBuffer = async (wallpaperOrUrl) => {
   if (!urlStr) {
     throw new Error('No source available to fetch image buffer');
   }
+
+  fastify.log.warn({
+    filename: filename || null,
+    localPathAttempted: candidatePaths.length > 0
+  }, 'Falling back to remote image fetch');
 
   const downloader = urlStr.startsWith('https') ? require('https') : require('http');
   return new Promise((resolve, reject) => {
@@ -371,9 +400,12 @@ fastify.get('/', async (request, reply) => {
 
 fastify.get('/api/resolutions', async (request, reply) => {
   try {
-    const resolutions = await db.getUniqueResolutions();
+    const [resolutions, aspects] = await Promise.all([
+      db.getUniqueResolutions(),
+      db.getAspectBreakdown()
+    ]);
     setCache(reply, 600);
-    return { resolutions };
+    return { resolutions, aspects };
   } catch (error) {
     return reply.status(500).send({ error: 'Failed to fetch resolutions' });
   }
@@ -388,6 +420,12 @@ fastify.get('/api/download/:id', async (request, reply) => {
     if (!wallpaper) {
       reply.code(404);
       return { success: false, error: 'Wallpaper not found' };
+    }
+
+    try {
+      await db.incrementDownloadCount(wallpaper.id);
+    } catch (err) {
+      fastify.log.warn({ err, id }, 'Failed to increment download count');
     }
 
     const imageUrl = wallpaper.download_url;
@@ -437,7 +475,7 @@ fastify.get('/api/download/:id', async (request, reply) => {
 
 fastify.get('/api/wallpapers', async (request, reply) => {
   try {
-    const { provider, folder, search, resolution, limit = 50, page = 1 } = request.query;
+    const { provider, folder, search, resolution, aspect, limit = 50, page = 1 } = request.query;
     const { limit: safeLimit, page: safePage, offset } = normalizePagination(limit, page);
     
     const filters = {};
@@ -445,6 +483,7 @@ fastify.get('/api/wallpapers', async (request, reply) => {
     if (folder) filters.folder = folder;
     if (search) filters.search = search;
     if (resolution) filters.resolution = resolution;
+    if (aspect) filters.aspect = aspect;
     filters.limit = safeLimit;
     filters.offset = offset;
 
@@ -533,14 +572,26 @@ fastify.get('/api/wallpapers/:id', async (request, reply) => {
 
 fastify.get('/api/stats', async (request, reply) => {
   try {
-    const [baseStats, providerBreakdownRaw, folderBreakdownRaw, resolutionRows, fileSizeBuckets, filenames, r2BucketSize] = await Promise.all([
+    const [
+      baseStats,
+      providerBreakdownRaw,
+      folderBreakdownRaw,
+      resolutionRows,
+      fileSizeBuckets,
+      filenames,
+      r2BucketSize,
+      aspectBreakdown,
+      totalDownloads
+    ] = await Promise.all([
       db.getStats(),
       db.getProviderBreakdown(),
       db.getFolderBreakdown(25),
       db.getUniqueResolutions(),
       db.getFileSizeBuckets(),
       db.getAllFilenames(),
-      getR2BucketSize()
+      getR2BucketSize(),
+      db.getAspectBreakdown(),
+      db.getDownloadTotals()
     ]);
 
     const providerBreakdown = providerBreakdownRaw.map((item) => ({
@@ -598,7 +649,9 @@ fastify.get('/api/stats', async (request, reply) => {
       folder_breakdown: folderBreakdown,
       dimensions,
       file_types,
-      file_size_buckets: normalizedBuckets
+      file_size_buckets: normalizedBuckets,
+      aspects: aspectBreakdown,
+      total_downloads: totalDownloads
     };
   } catch (error) {
     reply.code(500);
@@ -608,41 +661,24 @@ fastify.get('/api/stats', async (request, reply) => {
 
 fastify.get('/api/providers', async (request, reply) => {
   try {
-    // Optimized to not fetch all rows if possible, but reusing existing logic for now
-    const wallpapers = await db.getWallpapers({ limit: 5000 });
-    const folders = [...new Set(wallpapers.map(w => w.folder).filter(Boolean))];
-    
-    const providerStats = {};
-    wallpapers.forEach(wallpaper => {
-      if (!providerStats[wallpaper.provider]) {
-        providerStats[wallpaper.provider] = {
-          name: wallpaper.provider,
-          count: 0,
-          lastUpdated: null
-        };
-      }
-      providerStats[wallpaper.provider].count++;
-      
-      const wallpaperDate = new Date(wallpaper.created_at);
-      if (!providerStats[wallpaper.provider].lastUpdated || 
-          wallpaperDate > providerStats[wallpaper.provider].lastUpdated) {
-        providerStats[wallpaper.provider].lastUpdated = wallpaperDate;
-      }
-    });
-    
-    const providers = Object.values(providerStats).map(provider => {
-      const daysSinceUpdate = provider.lastUpdated ? 
-        Math.floor((new Date() - provider.lastUpdated) / (1000 * 60 * 60 * 24)) : null;
-      
+    const { providers: providerRows, folders } = await db.getProvidersAndFolders();
+    const providers = providerRows.map((provider) => {
+      const lastUpdated = provider.last_created_at ? new Date(provider.last_created_at) : null;
+      const daysSinceUpdate = lastUpdated
+        ? Math.floor((Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
       let status = 'unknown';
       if (daysSinceUpdate !== null) {
         if (daysSinceUpdate <= 1) status = 'active';
         else if (daysSinceUpdate <= 7) status = 'recent';
         else status = 'stale';
       }
-      
+
       return {
-        ...provider,
+        name: provider.provider,
+        count: Number(provider.count || 0),
+        lastUpdated,
         status,
         daysSinceUpdate
       };
@@ -751,7 +787,7 @@ fastify.get('/api/arena/leaderboard', async (request, reply) => {
 });
 
 // Admin: upload new wallpapers (stores file, thumbnail, DB row, and hash)
-fastify.post('/api/upload', async (request, reply) => {
+fastify.post('/api/upload', { onRequest: [adminAuthHook] }, async (request, reply) => {
   try {
     if (!requireAdminKey(request, reply)) return;
 
@@ -845,7 +881,7 @@ fastify.post('/api/upload', async (request, reply) => {
 });
 
 // Admin: GitHub import preview (top-level folder strategy)
-fastify.post('/api/import/repo/preview', async (request, reply) => {
+fastify.post('/api/import/repo/preview', { onRequest: [adminAuthHook] }, async (request, reply) => {
   try {
     if (!requireAdminKey(request, reply)) return;
     const { repoUrl, branch, limit = 10 } = request.body || {};
@@ -897,7 +933,7 @@ fastify.post('/api/import/repo/preview', async (request, reply) => {
 });
 
 // Admin: GitHub import (downloads -> hash -> thumbnail -> storage -> DB)
-fastify.post('/api/import/repo/import', async (request, reply) => {
+fastify.post('/api/import/repo/import', { onRequest: [adminAuthHook] }, async (request, reply) => {
   try {
     if (!requireAdminKey(request, reply)) return;
     const { repoUrl, branch, provider, folderStrategy = 'top-level' } = request.body || {};
@@ -980,7 +1016,7 @@ fastify.post('/api/import/repo/import', async (request, reply) => {
 });
 
 // Admin: duplicate detection helpers
-fastify.get('/api/duplicates/status', async (request, reply) => {
+fastify.get('/api/duplicates/status', { onRequest: [adminAuthHook] }, async (request, reply) => {
   try {
     if (!requireAdminKey(request, reply)) return;
     const status = await db.getHashStatus();
@@ -992,7 +1028,7 @@ fastify.get('/api/duplicates/status', async (request, reply) => {
   }
 });
 
-fastify.get('/api/duplicates', async (request, reply) => {
+fastify.get('/api/duplicates', { onRequest: [adminAuthHook] }, async (request, reply) => {
   try {
     if (!requireAdminKey(request, reply)) return;
     const threshold = Math.max(1, Math.min(parseInt(request.query.threshold) || 10, 64));
@@ -1019,7 +1055,7 @@ fastify.get('/api/duplicates', async (request, reply) => {
   }
 });
 
-fastify.post('/api/duplicates/generate-hashes', async (request, reply) => {
+fastify.post('/api/duplicates/generate-hashes', { onRequest: [adminAuthHook] }, async (request, reply) => {
   try {
     if (!requireAdminKey(request, reply)) return;
     const missing = await db.getAllWallpapersWithoutHashes();
@@ -1045,7 +1081,7 @@ fastify.post('/api/duplicates/generate-hashes', async (request, reply) => {
 });
 
 // Admin: delete wallpaper (optional R2 delete)
-fastify.delete('/api/wallpapers/:id', async (request, reply) => {
+fastify.delete('/api/wallpapers/:id', { onRequest: [adminAuthHook] }, async (request, reply) => {
   try {
     if (!requireAdminKey(request, reply)) return;
 

@@ -1,8 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify, MonitorSmartphone, Smartphone, Minimize2, RefreshCcw } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 import References from './References'
+
+const withRetry = async (fn, attempts = 3, delayMs = 200) => {
+  let lastError;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) {
+        await new Promise(res => setTimeout(res, delayMs));
+      }
+    }
+  }
+  throw lastError;
+};
 
 function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -88,6 +103,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     searchQuery,
     selectedProvider,
     selectedResolution,
+    selectedAspect,
     loading,
     initialized
   } = browseState
@@ -98,6 +114,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
 
   const [providers, setProviders] = useState([])
   const [resolutions, setResolutions] = useState([])
+  const [aspects, setAspects] = useState([])
   const [error, setError] = useState(null)
   
   const [gridColumns, setGridColumns] = useState(() => {
@@ -116,7 +133,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
 
   const fetchProviders = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/providers`)
+      const response = await withRetry(() => axios.get(`${API_BASE}/api/providers`))
       const providersData = response.data.providers || []
       const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
       setProviders(providerNames)
@@ -127,12 +144,14 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
 
   const fetchResolutions = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/resolutions`)
+      const response = await withRetry(() => axios.get(`${API_BASE}/api/resolutions`))
       setResolutions(response.data.resolutions || [])
+      setAspects(response.data.aspects || [])
     } catch (err) {
       console.error('Failed to fetch resolutions:', err)
       // Fallback to empty array if API not available yet
       setResolutions([])
+      setAspects([])
     }
   }
 
@@ -150,10 +169,11 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       if (searchQuery) params.append('search', searchQuery)
       if (selectedProvider) params.append('provider', selectedProvider)
       if (selectedResolution) params.append('resolution', selectedResolution)
+      if (selectedAspect) params.append('aspect', selectedAspect)
       params.append('limit', itemsPerPage.toString())
       params.append('page', pageToLoad.toString())
       
-      const response = await axios.get(`${API_BASE}/api/wallpapers?${params}`)
+      const response = await withRetry(() => axios.get(`${API_BASE}/api/wallpapers?${params}`))
       
       setBrowseState(prev => ({
         ...prev,
@@ -173,7 +193,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
         initialized: true
       }))
     }
-  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, initialized, setBrowseState])
+  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, selectedAspect, initialized, setBrowseState])
 
   useEffect(() => {
     fetchProviders()
@@ -267,6 +287,18 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     if (!selectedResolution) return 'all resolutions'
     const res = resolutions.find(r => r.dimensions === selectedResolution)
     return res ? `${res.dimensions} (${res.count.toLocaleString()})` : selectedResolution
+  }
+
+  const aspectPresets = [
+    { label: 'desktop (16:9)', value: '16:9', icon: <MonitorSmartphone size={14} /> },
+    { label: 'ultrawide (21:9)', value: '21:9', icon: <AlignJustify size={14} /> },
+    { label: 'mobile (9:16)', value: '9:16', icon: <Smartphone size={14} /> },
+    { label: 'square (1:1)', value: '1:1', icon: <Minimize2 size={14} /> }
+  ]
+
+  const getAspectCount = (value) => {
+    const match = aspects.find(a => a.aspect_ratio === value)
+    return match ? Number(match.count || 0) : null
   }
 
   const getGridClass = () => {
@@ -364,6 +396,34 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
               )}
             </div>
             
+            <div className="aspect-presets">
+              {aspectPresets.map(preset => {
+                const count = getAspectCount(preset.value)
+                const isActive = selectedAspect === preset.value
+                return (
+                  <button
+                    key={preset.value}
+                    className={`aspect-chip ${isActive ? 'active' : ''}`}
+                    onClick={() => updateFilter('selectedAspect', isActive ? '' : preset.value)}
+                    title={preset.label}
+                  >
+                    {preset.icon}
+                    <span>{preset.label}</span>
+                    {count !== null && <span className="aspect-count">{count.toLocaleString()}</span>}
+                  </button>
+                )
+              })}
+              {selectedAspect && (
+                <button
+                  className="aspect-chip reset"
+                  onClick={() => updateFilter('selectedAspect', '')}
+                >
+                  <RefreshCcw size={12} />
+                  <span>reset</span>
+                </button>
+              )}
+            </div>
+
             <div className="grid-controls">
               <button
                 className={`grid-control-btn ${gridColumns === 2 ? 'active' : ''}`}

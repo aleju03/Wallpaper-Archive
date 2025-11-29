@@ -1,7 +1,22 @@
-import { useState, useEffect } from 'react'
-import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle, Maximize2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle, Maximize2, Minimize2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
+
+const withRetry = async (fn, attempts = 2, delayMs = 200) => {
+  let lastError
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      if (i < attempts - 1) {
+        await new Promise(res => setTimeout(res, delayMs))
+      }
+    }
+  }
+  throw lastError
+}
 
 function Arena() {
   const [battlePair, setBattlePair] = useState(null)
@@ -14,6 +29,31 @@ function Arena() {
   const [previewImageLoaded, setPreviewImageLoaded] = useState(false)
   const [eloResult, setEloResult] = useState(null)
   const [seenIds, setSeenIds] = useState([])
+  const [prefetchedPair, setPrefetchedPair] = useState(null)
+  const previewContainerRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  const requestBattlePair = async () => {
+    const excludeIds = seenIds.length > 0 ? seenIds.slice(-50) : []
+    const excludeParam = excludeIds.length > 0 ? `?exclude=${excludeIds.join(',')}` : ''
+    const response = await withRetry(() => axios.get(`${API_BASE}/api/arena/battle${excludeParam}`))
+    if (response.data.success) {
+      return response.data.wallpapers
+    }
+    return null
+  }
+
+  const prefetchNextBattle = async () => {
+    try {
+      const pair = await requestBattlePair()
+      if (pair && pair.length >= 2) {
+        setPrefetchedPair(pair)
+      }
+    } catch (error) {
+      // Prefetch failures should not block the main flow
+      console.warn('Prefetch battle failed', error)
+    }
+  }
 
   const fetchBattle = async (isInitial = false) => {
     try {
@@ -24,16 +64,19 @@ function Arena() {
       setEloResult(null)
       setImagesLoaded({ left: false, right: false })
       
-      // Pass seen IDs to avoid repetition (limit to last 50 to keep URL reasonable)
-      const excludeParam = seenIds.length > 0 ? `?exclude=${seenIds.slice(-50).join(',')}` : ''
-      const response = await axios.get(`${API_BASE}/api/arena/battle${excludeParam}`)
-      
-      if (response.data.success) {
-        setBattlePair(response.data.wallpapers)
+      let pair = prefetchedPair
+      if (pair && pair.length >= 2) {
+        setPrefetchedPair(null)
+      } else {
+        pair = await requestBattlePair()
+      }
+
+      if (pair && pair.length >= 2) {
+        setBattlePair(pair)
         setBattleStartTime(Date.now())
-        // Track these wallpapers as seen
-        const newIds = response.data.wallpapers.map(w => w.id)
+        const newIds = pair.map(w => w.id)
         setSeenIds(prev => [...prev, ...newIds])
+        prefetchNextBattle()
       }
     } catch (error) {
       console.error('Failed to fetch battle:', error)
@@ -51,11 +94,11 @@ function Arena() {
       // Calculate voting time
       const voteTimeMs = battleStartTime ? Date.now() - battleStartTime : null
       
-      const response = await axios.post(`${API_BASE}/api/arena/vote`, {
+      const response = await withRetry(() => axios.post(`${API_BASE}/api/arena/vote`, {
         winnerId,
         loserId,
         voteTimeMs
-      })
+      }))
       if (response.data.success) {
         setBattleCount(prev => prev + 1)
         
@@ -98,6 +141,12 @@ function Arena() {
     };
   }, [previewWallpaper]);
 
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
   const handlePreview = (wallpaper, event) => {
     event.preventDefault()
     event.stopPropagation()
@@ -109,6 +158,29 @@ function Arena() {
     setPreviewWallpaper(null)
   }
 
+  const handlePreviewFullscreen = async () => {
+    if (previewContainerRef.current && previewContainerRef.current.requestFullscreen) {
+      try {
+        await previewContainerRef.current.requestFullscreen()
+        return
+      } catch (error) {
+        console.warn('Fullscreen request failed', error)
+      }
+    }
+    if (previewWallpaper) {
+      window.open(resolveAssetUrl(previewWallpaper.image_url), '_blank')
+    }
+  }
+
+  const handleExitFullscreen = async () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      try {
+        await document.exitFullscreen()
+      } catch (error) {
+        // ignore
+      }
+    }
+  }
 
   if (initialLoading) {
     return (
@@ -323,12 +395,18 @@ function Arena() {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">{previewWallpaper.filename}</div>
+              {isFullscreen && (
+                <button className="modal-action" onClick={handleExitFullscreen}>
+                  <Minimize2 size={14} />
+                  exit fullscreen
+                </button>
+              )}
               <button className="modal-close" onClick={closePreview}>
                 <X size={16} />
               </button>
             </div>
             <div className="modal-body">
-              <div className="modal-image-container">
+              <div className="modal-image-container" ref={previewContainerRef}>
                 {!previewImageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
                 <img
                   src={resolveAssetUrl(previewWallpaper.image_url)}
@@ -355,7 +433,7 @@ function Arena() {
                 <div className="download-section">
                   <button
                     className="download-btn fullscreen-btn"
-                    onClick={() => window.open(resolveAssetUrl(previewWallpaper.image_url), '_blank')}
+                    onClick={handlePreviewFullscreen}
                   >
                     <Maximize2 size={16} />
                     view fullscreen

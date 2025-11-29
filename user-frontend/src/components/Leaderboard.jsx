@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, RefreshCw, Download, Swords, AlertCircle, Maximize2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
@@ -11,6 +11,8 @@ function Leaderboard({ onNavigateToArena }) {
   const [showBottom, setShowBottom] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
   const [modalImageLoaded, setModalImageLoaded] = useState(false)
+  const modalContainerRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const fetchLeaderboard = async (bottom = false) => {
     try {
@@ -48,6 +50,12 @@ function Leaderboard({ onNavigateToArena }) {
     };
   }, [selectedWallpaper]);
 
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
   const getRankIcon = (rank) => {
     switch (rank) {
       case 1: return <Crown size={20} className="rank-icon gold" />
@@ -73,6 +81,30 @@ function Leaderboard({ onNavigateToArena }) {
   const handleImageClick = (wallpaper) => {
     setSelectedWallpaper(wallpaper)
     setModalImageLoaded(false)
+  }
+
+  const handleFullscreen = async () => {
+    if (modalContainerRef.current && modalContainerRef.current.requestFullscreen) {
+      try {
+        await modalContainerRef.current.requestFullscreen()
+        return
+      } catch (error) {
+        console.warn('Fullscreen request failed', error)
+      }
+    }
+    if (selectedWallpaper) {
+      window.open(resolveAssetUrl(selectedWallpaper.image_url), '_blank')
+    }
+  }
+
+  const handleExitFullscreen = async () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      try {
+        await document.exitFullscreen()
+      } catch (error) {
+        // ignore
+      }
+    }
   }
 
   const closeModal = () => {
@@ -204,6 +236,7 @@ function Leaderboard({ onNavigateToArena }) {
                     src={resolveAssetUrl(wallpaper.thumbnail_url)}
                     alt={wallpaper.filename}
                     className="preview-image clickable"
+                    loading="lazy"
                     style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
                     onLoad={(e) => e.target.style.opacity = 1}
                     onError={(e) => {
@@ -262,17 +295,23 @@ function Leaderboard({ onNavigateToArena }) {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">{selectedWallpaper.filename}</div>
+              {isFullscreen && (
+                <button className="modal-action" onClick={handleExitFullscreen}>
+                  <X size={14} />
+                  exit fullscreen
+                </button>
+              )}
               <button className="modal-close" onClick={closeModal}>
                 <X size={16} />
               </button>
             </div>
-            <div className="modal-body">
-              <div className="modal-image-container">
-                {!modalImageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
-                <img
-                  src={resolveAssetUrl(selectedWallpaper.image_url)}
-                  alt={selectedWallpaper.filename}
-                  className={`modal-image ${modalImageLoaded ? 'loaded' : ''}`}
+              <div className="modal-body">
+                <div className="modal-image-container" ref={modalContainerRef}>
+                  {!modalImageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
+                  <img
+                    src={resolveAssetUrl(selectedWallpaper.image_url)}
+                    alt={selectedWallpaper.filename}
+                    className={`modal-image ${modalImageLoaded ? 'loaded' : ''}`}
                   loading="eager"
                   onError={e => {
                     e.target.src = resolveAssetUrl(selectedWallpaper.thumbnail_url)
@@ -295,7 +334,7 @@ function Leaderboard({ onNavigateToArena }) {
                 <div className="download-section">
                   <button
                     className="download-btn fullscreen-btn"
-                    onClick={() => window.open(resolveAssetUrl(selectedWallpaper.image_url), '_blank')}
+                    onClick={handleFullscreen}
                   >
                     <Maximize2 size={16} />
                     view fullscreen

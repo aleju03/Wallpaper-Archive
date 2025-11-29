@@ -1,14 +1,18 @@
-import { X, Download, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
+import { X, Download, ChevronLeft, ChevronRight, Maximize2, Share2, Minimize2 } from 'lucide-react'
 import { resolveAssetUrl, API_BASE } from '../config'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }) {
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [shareStatus, setShareStatus] = useState('')
+  const imageContainerRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
     if (wallpaper) {
       document.body.style.overflow = 'hidden';
       setImageLoaded(false)
+      setShareStatus('')
     } else {
       document.body.style.overflow = '';
     }
@@ -16,6 +20,14 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
       document.body.style.overflow = '';
     };
   }, [wallpaper]);
+
+  useEffect(() => {
+    const handler = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
 
   // Keyboard navigation
   useEffect(() => {
@@ -40,14 +52,44 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     return mb > 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
   }
 
-  const handleViewFullscreen = () => {
-    window.open(resolveAssetUrl(wallpaper.image_url), '_blank')
+  const handleViewFullscreen = async () => {
+    if (imageContainerRef.current && imageContainerRef.current.requestFullscreen) {
+      try {
+        await imageContainerRef.current.requestFullscreen()
+      } catch {
+        window.open(resolveAssetUrl(wallpaper.image_url), '_blank')
+      }
+    } else {
+      window.open(resolveAssetUrl(wallpaper.image_url), '_blank')
+    }
   }
 
   const handleDownload = () => {
     // Use the server-side download proxy that sets Content-Disposition header
     const downloadUrl = `${API_BASE}/api/download/${wallpaper.id}`
     window.open(downloadUrl, '_blank')
+  }
+
+  const handleExitFullscreen = async () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      try {
+        await document.exitFullscreen()
+      } catch (error) {
+        // no-op
+      }
+    }
+  }
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?wallpaper=${wallpaper.id}`
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareStatus('copied!')
+    } catch (error) {
+      setShareStatus('copy failed')
+    } finally {
+      setTimeout(() => setShareStatus(''), 1500)
+    }
   }
 
   const handleOverlayClick = (e) => {
@@ -71,13 +113,19 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
       <div className="modal-content">
         <div className="modal-header">
           <div className="modal-title">wallpaper preview</div>
+          {isFullscreen && (
+            <button className="modal-action" onClick={handleExitFullscreen}>
+              <Minimize2 size={14} />
+              exit fullscreen
+            </button>
+          )}
           <button className="modal-close" onClick={onClose}>
             <X size={16} />
           </button>
         </div>
         
         <div className="modal-body">
-          <div className="modal-image-container">
+          <div className="modal-image-container" ref={imageContainerRef}>
             {!imageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
             <img
               src={resolveAssetUrl(wallpaper.image_url)}
@@ -104,6 +152,10 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
             </div>
             
             <div className="download-section">
+              <button className="download-btn" onClick={handleShare}>
+                <Share2 size={16} />
+                share link
+              </button>
               <button className="download-btn fullscreen-btn" onClick={handleViewFullscreen}>
                 <Maximize2 size={16} />
                 view fullscreen
@@ -112,6 +164,7 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
                 <Download size={16} />
                 direct download
               </button>
+              {shareStatus && <div className="share-status">{shareStatus}</div>}
             </div>
           </div>
         </div>
