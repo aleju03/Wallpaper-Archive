@@ -11,7 +11,7 @@ const KNOWN_ASPECTS = [
   { label: '1:1', value: 1 },
   { label: '9:16', value: 9 / 16 }
 ];
-const ASPECT_TOLERANCE = 0.06; // ~6% wiggle room for near-matches
+const ASPECT_TOLERANCE = 0.06;
 
 const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
 
@@ -113,12 +113,7 @@ class Database {
     }
   }
 
-  // Migration method removed as we are creating the full schema in init() for this "serverless" version.
-  // If you need to migrate existing data, you would likely use a separate script.
-
   async insertWallpaper(wallpaper) {
-    // Hash generation removed from DB layer for serverless purity. 
-    // It should be done by the admin tool before insertion.
     const aspectRatio = wallpaper.aspect_ratio || computeAspectRatio(wallpaper.dimensions);
 
     const sql = `
@@ -459,14 +454,11 @@ class Database {
     return result.rowsAffected;
   }
 
-  // Arena-specific methods
   async getRandomWallpaperPair(excludeIds = []) {
-    // Build exclusion clause if we have IDs to exclude
     const hasExclusions = excludeIds.length > 0;
     const excludePlaceholders = hasExclusions ? excludeIds.map(() => '?').join(',') : '';
     const excludeClause = hasExclusions ? `AND id NOT IN (${excludePlaceholders})` : '';
     
-    // Step 1: Pick first wallpaper truly randomly (no bias - for variety)
     const firstSql = `
       SELECT * FROM wallpapers 
       WHERE download_url IS NOT NULL AND download_url != ''
@@ -480,7 +472,6 @@ class Database {
       args: hasExclusions ? [...excludeIds] : []
     });
     
-    // If no wallpapers found with exclusions, try without them
     if (firstResult.rows.length === 0 && hasExclusions) {
       const fallbackFirstSql = `
         SELECT * FROM wallpapers 
@@ -498,7 +489,6 @@ class Database {
     const firstWallpaper = firstResult.rows[0];
     const firstElo = firstWallpaper.elo_rating || 1000;
     
-    // Step 2: Try to find second wallpaper within ±400 Elo (excluding seen ones)
     const secondExcludeIds = hasExclusions ? [...excludeIds, firstWallpaper.id] : [firstWallpaper.id];
     const secondExcludePlaceholders = secondExcludeIds.map(() => '?').join(',');
     
@@ -516,7 +506,6 @@ class Database {
       args: [...secondExcludeIds, firstElo - 400, firstElo + 400]
     });
     
-    // Step 3: Fallback to any random wallpaper if no Elo-matched one found
     let secondWallpaper;
     if (matchedResult.rows.length > 0) {
       secondWallpaper = matchedResult.rows[0];
@@ -533,7 +522,6 @@ class Database {
         args: secondExcludeIds
       });
       
-      // If still nothing, try without any exclusions except first wallpaper
       if (fallbackResult.rows.length === 0) {
         const lastResortSql = `
           SELECT * FROM wallpapers 
@@ -569,9 +557,6 @@ class Database {
   }
 
   async updateArenaResults(winnerId, loserId, voteTimeMs = null) {
-    // Transaction-like logic handled manually or via batch if possible.
-    // We'll do separate lookups and updates for simplicity with HTTP driver.
-    
     const getEloSql = `
       SELECT id, 
         COALESCE(elo_rating, 1000) as elo_rating,
@@ -585,37 +570,26 @@ class Database {
     });
     const rows = result.rows;
 
-    // Since rows are returned as generic objects in LibSQL (e.g., {id: 1, elo_rating: 1000})
-    // Note: depending on the driver version/config, it might be an array of arrays or objects. 
-    // The standard @libsql/client returns objects { col: val }.
-    
-    const winner = rows.find(r => r.id == winnerId); // Loose equality for string/int safety
+    const winner = rows.find(r => r.id == winnerId);
     const loser = rows.find(r => r.id == loserId);
 
     if (!winner || !loser) {
       throw new Error('Wallpapers not found');
     }
 
-    // Get total battles for each wallpaper to determine if provisional
     const winnerBattles = (winner.battles_won || 0) + (winner.battles_lost || 0);
     const loserBattles = (loser.battles_won || 0) + (loser.battles_lost || 0);
     
-    // Provisional K-factor: K=64 for first 10 battles, then K=32
-    // Use average of both wallpapers' provisional status
     const winnerK = winnerBattles < 10 ? 64 : 32;
     const loserK = loserBattles < 10 ? 64 : 32;
     let K = (winnerK + loserK) / 2;
     
-    // Time-based weighting (fixed: penalize spam, reward thoughtful votes)
     if (voteTimeMs !== null) {
       if (voteTimeMs < 800) {
-        // Spam protection: very fast votes are likely not thoughtful
         K = Math.round(K * 0.5);
       } else if (voteTimeMs > 10000) {
-        // Slightly reduce for very slow votes (distracted user)
         K = Math.round(K * 0.9);
       }
-      // 800ms - 10s: standard multiplier (1.0x), no change needed
     }
     
     const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo_rating - winner.elo_rating) / 400));
@@ -624,7 +598,6 @@ class Database {
     const newWinnerElo = Math.round(winner.elo_rating + K * (1 - expectedWinner));
     const newLoserElo = Math.round(loser.elo_rating + K * (0 - expectedLoser));
 
-    // Perform updates atomically using batch
     const updateSql = `
       UPDATE wallpapers 
       SET elo_rating = ?, battles_won = COALESCE(battles_won, 0) + ?, battles_lost = COALESCE(battles_lost, 0) + ?
@@ -689,8 +662,7 @@ class Database {
   }
 
   close() {
-    // LibSQL client doesn't explicitly require closing for HTTP, but good practice
-    // this.client.close(); 
+    // LibSQL client doesn't explicitly require closing for HTTP
   }
 
   async ensureColumns() {
@@ -746,7 +718,7 @@ class Database {
       if (!alreadyExists) {
         await this.rebuildFtsIndex();
       }
-      // Verify FTS is actually queryable (Turso can disable FTS depending on plan)
+
       try {
         await this.client.execute('SELECT count(*) as c FROM wallpapers_fts LIMIT 1');
         this.ftsReady = true;
@@ -810,7 +782,6 @@ class Database {
       const count = Number(row.count || 0);
       const reset = Number(row.reset_at || resetAt);
 
-      // Opportunistic cleanup
       if (Math.random() < 0.02) {
         this.client.execute({
           sql: 'DELETE FROM rate_limits WHERE reset_at <= ?',
