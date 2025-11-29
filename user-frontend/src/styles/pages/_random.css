@@ -122,6 +122,7 @@
   gap: var(--spacing-xl);
   background: var(--color-bg-primary);
   min-height: 85px;
+  overflow: hidden;
 }
 
 .random-info-content {
@@ -129,10 +130,14 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: var(--spacing-md);
+  overflow: hidden;
 }
 
 .random-info-details {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .random-filename {
@@ -141,6 +146,8 @@
   margin-bottom: var(--spacing-sm);
   color: var(--color-text-primary);
   word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .random-meta {
@@ -148,6 +155,7 @@
   gap: var(--spacing-lg);
   font-size: var(--font-size-base);
   color: var(--color-text-muted);
+  flex-wrap: wrap;
 }
 
 .random-download-btn {
@@ -164,6 +172,41 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: all var(--transition-fast);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Mobile responsive for random info */
+@media (max-width: 600px) {
+  .random-info {
+    padding: var(--spacing-lg);
+    gap: var(--spacing-md);
+  }
+
+  .random-info-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .random-info-details {
+    width: 100%;
+  }
+
+  .random-filename {
+    font-size: var(--font-size-md);
+  }
+
+  .random-meta {
+    font-size: var(--font-size-sm);
+    gap: var(--spacing-md);
+  }
+
+  .random-download-btn {
+    width: 100%;
+    justify-content: center;
+    padding: var(--spacing-md);
+  }
 }
 
 .random-download-btn:hover {
