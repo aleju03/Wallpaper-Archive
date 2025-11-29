@@ -107,73 +107,32 @@
   50% { opacity: 0.7; }
 }
 
-.filter-badge {
-  background: var(--color-text-primary);
-  color: var(--color-bg-primary);
-  padding: 2px 6px;
-  font-size: var(--font-size-xs);
-  margin-left: var(--spacing-xs);
+/* Inline Filters */
+.filters-inline {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
 }
 
-/* Filter Panel */
-.filter-panel {
-  display: flex;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-lg);
+.inline-filter {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-primary);
-  margin-bottom: var(--spacing-lg);
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.filter-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.filter-row label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  text-transform: lowercase;
-}
-
-.filter-row select {
-  background: var(--color-bg-primary);
-  border: 1px solid var(--color-border-primary);
-  color: var(--color-text-primary);
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  min-width: 150px;
-  cursor: pointer;
-}
-
-.filter-row select:hover {
-  border-color: var(--color-border-secondary);
-}
-
-.filter-row select:focus {
-  outline: none;
-  border-color: var(--color-text-primary);
-}
-
-.clear-filters-btn {
-  background: transparent;
-  border: 1px solid var(--color-accent-error);
-  color: var(--color-accent-error);
-  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
   font-family: inherit;
   font-size: var(--font-size-sm);
   cursor: pointer;
-  text-transform: lowercase;
   transition: all var(--transition-fast);
 }
 
-.clear-filters-btn:hover {
-  background: var(--color-accent-error);
-  color: var(--color-bg-primary);
+.inline-filter:hover {
+  border-color: var(--color-border-secondary);
+  color: var(--color-text-primary);
+}
+
+.inline-filter:focus {
+  outline: none;
+  border-color: var(--color-text-primary);
 }
 
 /* Battle Instructions */
@@ -252,7 +211,18 @@
 .arena-footer {
   display: flex;
   justify-content: center;
+  gap: var(--spacing-md);
   margin-top: var(--spacing-3xl);
+}
+
+/* Hide mobile undo button on desktop */
+.undo-mobile {
+  display: none;
+}
+
+.undo-mobile.active {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
 }
 
 /* Elo Indicators - Subtle corner display */
@@ -498,10 +468,21 @@
   
   .filter-panel {
     flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-row {
+    justify-content: space-between;
   }
   
   .filter-row select {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .clear-filters-btn {
+    margin-left: 0;
+    margin-top: var(--spacing-xs);
   }
   
   .compare-body {
@@ -515,6 +496,51 @@
 }
 
 @media (max-width: 768px) {
+  /* Reduce overall padding on mobile */
+  .arena {
+    padding: var(--spacing-sm);
+  }
+  
+  /* Compact header */
+  .arena-header {
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+  }
+  
+  .arena-title h1 {
+    font-size: var(--font-size-lg);
+  }
+  
+  .arena-title svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .stat {
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Compact controls */
+  .arena-controls {
+    margin-bottom: var(--spacing-sm);
+    gap: var(--spacing-xs);
+  }
+  
+  .control-btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+  
+  /* Hide filters on mobile */
+  .filters-inline {
+    display: none;
+  }
+  
+  /* Hide battle instructions text on mobile - just show the images */
+  .battle-instructions {
+    display: none;
+  }
+  
   /* Hide desktop-only features on mobile */
   .keyboard-hint {
     display: none;
@@ -527,12 +553,76 @@
   .compare-hint {
     display: none;
   }
+  
+  /* Smaller VS divider */
+  .vs-divider {
+    padding-top: 0;
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Compact battle cards */
+  .battle-arena {
+    gap: var(--spacing-sm);
+  }
+  
+  .battle-info {
+    padding: var(--spacing-sm);
+  }
+  
+  .wallpaper-name {
+    font-size: var(--font-size-xs);
+  }
+  
+  .wallpaper-details {
+    font-size: 10px;
+  }
+  
+  .battle-record {
+    font-size: 10px;
+  }
+  
+  .preview-btn {
+    padding: var(--spacing-xs);
+    font-size: 10px;
+  }
+  
+  /* Compact footer with undo */
+  .arena-footer {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    gap: var(--spacing-sm);
+  }
+  
+  .skip-battle {
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--font-size-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+  
+  /* Show mobile undo, hide desktop undo */
+  .undo-mobile {
+    display: flex;
+  }
+  
+  .undo-desktop {
+    display: none;
+  }
 }
 
 @media (max-width: 600px) {
   .arena-header {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    text-align: center;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+  }
+  
+  .arena-title {
+    gap: var(--spacing-xs);
+  }
+  
+  .arena-stats {
+    gap: var(--spacing-sm);
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle, Maximize2, Minimize2, Undo2, Filter, TrendingUp, BarChart3, Columns } from 'lucide-react'
+import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle, Maximize2, Minimize2, Undo2, TrendingUp, BarChart3, Columns } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 
@@ -39,10 +39,9 @@ function Arena() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   
   // New feature states
-  const [filters, setFilters] = useState({ provider: '', aspect: '', mode: '' })
-  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState({ category: '', provider: '', mode: '' })
   const [availableProviders, setAvailableProviders] = useState([])
-  const [availableAspects, setAvailableAspects] = useState([])
+  const [availableCategories, setAvailableCategories] = useState([])
   const [lastVote, setLastVote] = useState(null) // For undo functionality
   const [undoTimeout, setUndoTimeout] = useState(null)
   const [canUndo, setCanUndo] = useState(false)
@@ -60,12 +59,9 @@ function Arena() {
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const [providersRes, resolutionsRes] = await Promise.all([
-          axios.get(`${API_BASE}/api/providers`),
-          axios.get(`${API_BASE}/api/resolutions`)
-        ])
-        setAvailableProviders(providersRes.data.providers?.map(p => typeof p === 'string' ? p : p.name) || [])
-        setAvailableAspects(resolutionsRes.data.aspects || [])
+        const response = await axios.get(`${API_BASE}/api/providers`)
+        setAvailableProviders(response.data.providers?.map(p => typeof p === 'string' ? p : p.name) || [])
+        setAvailableCategories(response.data.folders?.map(f => f.name).filter(Boolean) || [])
       } catch (error) {
         console.warn('Failed to fetch filter options:', error)
       }
@@ -80,7 +76,7 @@ function Arena() {
     
     if (excludeIds.length > 0) params.append('exclude', excludeIds.join(','))
     if (filters.provider) params.append('provider', filters.provider)
-    if (filters.aspect) params.append('aspect', filters.aspect)
+    if (filters.category) params.append('folder', filters.category)
     if (filters.mode) params.append('mode', filters.mode)
     
     const queryString = params.toString()
@@ -313,7 +309,6 @@ function Arena() {
           }
           break
         case 'Escape':
-          if (showFilters) setShowFilters(false)
           if (showRecap) setShowRecap(false)
           break
       }
@@ -322,7 +317,7 @@ function Arena() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voting, eloResult, imagesLoaded, battlePair, previewWallpaper, showCompareMode, showFilters, showRecap, canUndo])
+  }, [voting, eloResult, imagesLoaded, battlePair, previewWallpaper, showCompareMode, showRecap, canUndo])
 
   useEffect(() => {
     fetchBattle(true)
@@ -415,17 +410,17 @@ function Arena() {
           <h3 className="empty-state-title">not enough combatants</h3>
           <p className="empty-state-description">
             there aren't enough wallpapers in the collection to form a battle pair.
-            {(filters.provider || filters.aspect || filters.mode) && (
+            {(filters.category || filters.provider || filters.mode) && (
               <> try removing some filters or </>
             )}
             try downloading more wallpapers from the "browse" tab or check back later.
           </p>
           <button onClick={() => {
-            setFilters({ provider: '', aspect: '', mode: '' })
+            setFilters({ category: '', provider: '', mode: '' })
             fetchBattle(true)
           }} className="empty-state-button">
             <RefreshCw size={16} />
-            {filters.provider || filters.aspect || filters.mode ? 'clear filters & retry' : 'try again'}
+            {filters.category || filters.provider || filters.mode ? 'clear filters & retry' : 'try again'}
           </button>
         </div>
       </div>
@@ -448,22 +443,43 @@ function Arena() {
         </div>
       </div>
 
-      {/* Control bar */}
+      {/* Control bar with inline filters */}
       <div className="arena-controls">
-        <div className="control-group">
-          <button 
-            className={`control-btn ${showFilters ? 'active' : ''}`}
-            onClick={() => setShowFilters(!showFilters)}
+        <div className="control-group filters-inline">
+          <select 
+            className="inline-filter"
+            value={filters.category} 
+            onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
           >
-            <Filter size={14} />
-            filters
-            {(filters.provider || filters.aspect || filters.mode) && (
-              <span className="filter-badge">
-                {[filters.provider, filters.aspect, filters.mode].filter(Boolean).length}
-              </span>
-            )}
-          </button>
+            <option value="">all categories</option>
+            {availableCategories.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
           
+          <select 
+            className="inline-filter"
+            value={filters.provider} 
+            onChange={(e) => setFilters(prev => ({ ...prev, provider: e.target.value }))}
+          >
+            <option value="">all providers</option>
+            {availableProviders.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          
+          <select 
+            className="inline-filter"
+            value={filters.mode} 
+            onChange={(e) => setFilters(prev => ({ ...prev, mode: e.target.value }))}
+          >
+            <option value="">standard</option>
+            <option value="newcomers">newcomers</option>
+            <option value="underdog">underdog</option>
+          </select>
+        </div>
+        
+        <div className="control-group">
           {battleCount >= 5 && (
             <button 
               className="control-btn"
@@ -474,11 +490,8 @@ function Arena() {
               recap
             </button>
           )}
-        </div>
-        
-        <div className="control-group">
           <button 
-            className={`control-btn undo-btn ${canUndo ? 'active' : ''}`}
+            className={`control-btn undo-btn undo-desktop ${canUndo ? 'active' : ''}`}
             onClick={handleUndo}
             disabled={!canUndo}
             title="Undo last vote"
@@ -488,58 +501,6 @@ function Arena() {
           </button>
         </div>
       </div>
-
-      {/* Filter panel */}
-      {showFilters && (
-        <div className="filter-panel">
-          <div className="filter-row">
-            <label>provider:</label>
-            <select 
-              value={filters.provider} 
-              onChange={(e) => setFilters(prev => ({ ...prev, provider: e.target.value }))}
-            >
-              <option value="">all providers</option>
-              {availableProviders.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="filter-row">
-            <label>aspect ratio:</label>
-            <select 
-              value={filters.aspect} 
-              onChange={(e) => setFilters(prev => ({ ...prev, aspect: e.target.value }))}
-            >
-              <option value="">all aspects</option>
-              {availableAspects.map(a => (
-                <option key={a.aspect_ratio} value={a.aspect_ratio}>{a.aspect_ratio}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="filter-row">
-            <label>battle mode:</label>
-            <select 
-              value={filters.mode} 
-              onChange={(e) => setFilters(prev => ({ ...prev, mode: e.target.value }))}
-            >
-              <option value="">standard</option>
-              <option value="newcomers">newcomers ({"<"}5 battles)</option>
-              <option value="underdog">underdog matchups</option>
-            </select>
-          </div>
-          
-          {(filters.provider || filters.aspect || filters.mode) && (
-            <button 
-              className="clear-filters-btn"
-              onClick={() => setFilters({ provider: '', aspect: '', mode: '' })}
-            >
-              clear all filters
-            </button>
-          )}
-        </div>
-      )}
 
       <div className="battle-instructions">
         <p>choose the better wallpaper to help rank them!</p>
@@ -709,6 +670,14 @@ function Arena() {
       </div>
 
       <div className="arena-footer">
+        <button 
+          className={`skip-battle undo-mobile ${canUndo ? 'active' : ''}`}
+          onClick={handleUndo}
+          disabled={!canUndo}
+        >
+          <Undo2 size={14} />
+          undo
+        </button>
         <button 
           className="skip-battle" 
           onClick={() => fetchBattle()}

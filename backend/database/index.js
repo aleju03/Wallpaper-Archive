@@ -848,7 +848,7 @@ class Database {
 
   // Get filtered battle pair based on mode
   async getFilteredBattlePair(filters = {}, excludeIds = []) {
-    const { provider, aspect, mode } = filters;
+    const { provider, folder, mode } = filters;
     const hasExclusions = excludeIds.length > 0;
     
     let whereClause = "WHERE download_url IS NOT NULL AND download_url != ''";
@@ -859,9 +859,9 @@ class Database {
       args.push(provider);
     }
     
-    if (aspect) {
-      whereClause += ' AND aspect_ratio = ?';
-      args.push(aspect);
+    if (folder) {
+      whereClause += ' AND folder = ?';
+      args.push(folder);
     }
     
     // Mode-specific filters

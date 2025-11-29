@@ -18,12 +18,12 @@ async function registerArenaRoutes(fastify, db) {
       // Parse filter parameters
       const filters = {
         provider: request.query.provider || null,
-        aspect: request.query.aspect || null,
+        folder: request.query.folder || null,
         mode: request.query.mode || null // 'newcomers', 'underdog', or null for standard
       };
       
       // Use filtered query if any filters are active
-      const hasFilters = filters.provider || filters.aspect || filters.mode;
+      const hasFilters = filters.provider || filters.folder || filters.mode;
       const wallpapers = hasFilters 
         ? await db.getFilteredBattlePair(filters, excludeIds)
         : await db.getRandomWallpaperPair(excludeIds);
