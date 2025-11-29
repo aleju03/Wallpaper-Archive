@@ -11,6 +11,8 @@
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
+  overflow-y: scroll; /* Always show scrollbar track to prevent layout shift */
+  scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent content jump */
 }
 
 body {
