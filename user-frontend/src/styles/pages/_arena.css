@@ -514,11 +514,22 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  /* Hide desktop-only features on mobile */
   .keyboard-hint {
     display: none;
   }
   
+  .compare-btn {
+    display: none;
+  }
+  
+  .compare-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
   .arena-header {
     flex-direction: column;
     gap: var(--spacing-md);

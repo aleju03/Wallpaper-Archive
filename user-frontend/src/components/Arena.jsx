@@ -481,7 +481,7 @@ function Arena() {
             className={`control-btn undo-btn ${canUndo ? 'active' : ''}`}
             onClick={handleUndo}
             disabled={!canUndo}
-            title="Undo last vote (Ctrl+Z)"
+            title="Undo last vote"
           >
             <Undo2 size={14} />
             undo
