@@ -136,6 +136,12 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
               }}
               onLoad={() => setImageLoaded(true)}
             />
+            {isFullscreen && (
+              <button className="fullscreen-exit-btn" onClick={handleExitFullscreen} aria-label="Exit fullscreen">
+                <Minimize2 size={20} />
+                <span>exit fullscreen</span>
+              </button>
+            )}
           </div>
           
           <div className="modal-sidebar">
