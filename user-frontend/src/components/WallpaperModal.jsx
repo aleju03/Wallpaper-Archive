@@ -1,18 +1,159 @@
 import { X, Download, ChevronLeft, ChevronRight, Maximize2, Share2, Minimize2 } from 'lucide-react'
 import { resolveAssetUrl, API_BASE } from '../config'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+
+// Custom fullscreen viewer with pinch-to-zoom support
+function FullscreenViewer({ imageUrl, onClose }) {
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const containerRef = useRef(null)
+  const imageRef = useRef(null)
+  const lastTouchRef = useRef(null)
+  const lastPinchDistRef = useRef(null)
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 })
+
+  const resetTransform = useCallback(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+  }, [])
+
+  // Handle pinch zoom
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault()
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      lastPinchDistRef.current = dist
+    } else if (e.touches.length === 1 && scale > 1) {
+      setIsDragging(true)
+      dragStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        posX: position.x,
+        posY: position.y
+      }
+    }
+    lastTouchRef.current = e.touches
+  }, [scale, position])
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2 && lastPinchDistRef.current) {
+      e.preventDefault()
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      const delta = dist / lastPinchDistRef.current
+      setScale(prev => Math.min(Math.max(prev * delta, 1), 5))
+      lastPinchDistRef.current = dist
+    } else if (e.touches.length === 1 && isDragging && scale > 1) {
+      e.preventDefault()
+      const deltaX = e.touches[0].clientX - dragStartRef.current.x
+      const deltaY = e.touches[0].clientY - dragStartRef.current.y
+      setPosition({
+        x: dragStartRef.current.posX + deltaX,
+        y: dragStartRef.current.posY + deltaY
+      })
+    }
+  }, [isDragging, scale])
+
+  const handleTouchEnd = useCallback((e) => {
+    if (e.touches.length < 2) {
+      lastPinchDistRef.current = null
+    }
+    if (e.touches.length === 0) {
+      setIsDragging(false)
+      // Reset position if zoomed out
+      if (scale <= 1) {
+        resetTransform()
+      }
+    }
+  }, [scale, resetTransform])
+
+  // Double-tap to zoom
+  const lastTapRef = useRef(0)
+  const handleDoubleTap = useCallback((e) => {
+    const now = Date.now()
+    if (now - lastTapRef.current < 300) {
+      e.preventDefault()
+      if (scale > 1) {
+        resetTransform()
+      } else {
+        setScale(2.5)
+        // Center zoom on tap position
+        const rect = containerRef.current.getBoundingClientRect()
+        const tapX = e.changedTouches?.[0]?.clientX || e.clientX
+        const tapY = e.changedTouches?.[0]?.clientY || e.clientY
+        const centerX = rect.width / 2
+        const centerY = rect.height / 2
+        setPosition({
+          x: (centerX - tapX) * 1.5,
+          y: (centerY - tapY) * 1.5
+        })
+      }
+    }
+    lastTapRef.current = now
+  }, [scale, resetTransform])
+
+  // Keyboard escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div 
+      className="fullscreen-viewer"
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClick={handleDoubleTap}
+    >
+      <img
+        ref={imageRef}
+        src={imageUrl}
+        alt="Fullscreen view"
+        className="fullscreen-viewer-image"
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+        }}
+        draggable={false}
+      />
+      <button className="fullscreen-exit-btn" onClick={onClose} aria-label="Exit fullscreen">
+        <Minimize2 size={20} />
+        <span>exit fullscreen</span>
+      </button>
+      {scale > 1 && (
+        <button className="fullscreen-reset-btn" onClick={resetTransform} aria-label="Reset zoom">
+          reset zoom
+        </button>
+      )}
+      <div className="fullscreen-hint">
+        {scale === 1 ? 'pinch or double-tap to zoom' : `${Math.round(scale * 100)}%`}
+      </div>
+    </div>
+  )
+}
 
 function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [shareStatus, setShareStatus] = useState('')
-  const imageContainerRef = useRef(null)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showFullscreen, setShowFullscreen] = useState(false)
 
   useEffect(() => {
     if (wallpaper) {
       document.body.style.overflow = 'hidden';
       setImageLoaded(false)
       setShareStatus('')
+      setShowFullscreen(false)
     } else {
       document.body.style.overflow = '';
     }
@@ -21,17 +162,10 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     };
   }, [wallpaper]);
 
-  useEffect(() => {
-    const handler = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-    document.addEventListener('fullscreenchange', handler)
-    return () => document.removeEventListener('fullscreenchange', handler)
-  }, [])
-
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (showFullscreen) return // Let fullscreen viewer handle its own keys
       if (e.key === 'ArrowLeft' && hasPrev) {
         onPrev()
       } else if (e.key === 'ArrowRight' && hasNext) {
@@ -42,7 +176,7 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasPrev, hasNext, onPrev, onNext, onClose]);
+  }, [hasPrev, hasNext, onPrev, onNext, onClose, showFullscreen]);
 
   if (!wallpaper) return null
 
@@ -52,16 +186,12 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     return mb > 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
   }
 
-  const handleViewFullscreen = async () => {
-    if (imageContainerRef.current && imageContainerRef.current.requestFullscreen) {
-      try {
-        await imageContainerRef.current.requestFullscreen()
-      } catch {
-        window.open(resolveAssetUrl(wallpaper.image_url), '_blank')
-      }
-    } else {
-      window.open(resolveAssetUrl(wallpaper.image_url), '_blank')
-    }
+  const handleViewFullscreen = () => {
+    setShowFullscreen(true)
+  }
+
+  const handleExitFullscreen = () => {
+    setShowFullscreen(false)
   }
 
   const handleDownload = () => {
@@ -70,22 +200,12 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     window.open(downloadUrl, '_blank')
   }
 
-  const handleExitFullscreen = async () => {
-    if (document.fullscreenElement && document.exitFullscreen) {
-      try {
-        await document.exitFullscreen()
-      } catch (error) {
-        // no-op
-      }
-    }
-  }
-
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?wallpaper=${wallpaper.id}`
     try {
       await navigator.clipboard.writeText(shareUrl)
       setShareStatus('copied!')
-    } catch (error) {
+    } catch {
       setShareStatus('copy failed')
     } finally {
       setTimeout(() => setShareStatus(''), 1500)
@@ -96,6 +216,16 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     if (e.target === e.currentTarget) {
       onClose()
     }
+  }
+
+  // Show custom fullscreen viewer
+  if (showFullscreen) {
+    return (
+      <FullscreenViewer
+        imageUrl={resolveAssetUrl(wallpaper.image_url)}
+        onClose={handleExitFullscreen}
+      />
+    )
   }
 
   return (
@@ -113,19 +243,13 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
       <div className="modal-content">
         <div className="modal-header">
           <div className="modal-title">wallpaper preview</div>
-          {isFullscreen && (
-            <button className="modal-action" onClick={handleExitFullscreen}>
-              <Minimize2 size={14} />
-              exit fullscreen
-            </button>
-          )}
           <button className="modal-close" onClick={onClose}>
             <X size={16} />
           </button>
         </div>
         
         <div className="modal-body">
-          <div className="modal-image-container" ref={imageContainerRef}>
+          <div className="modal-image-container">
             {!imageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
             <img
               src={resolveAssetUrl(wallpaper.image_url)}
@@ -136,12 +260,6 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
               }}
               onLoad={() => setImageLoaded(true)}
             />
-            {isFullscreen && (
-              <button className="fullscreen-exit-btn" onClick={handleExitFullscreen} aria-label="Exit fullscreen">
-                <Minimize2 size={20} />
-                <span>exit fullscreen</span>
-              </button>
-            )}
           </div>
           
           <div className="modal-sidebar">
