@@ -207,6 +207,9 @@
 /* Download Section */
 .download-section {
   background: var(--color-bg-primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
 .share-status {
