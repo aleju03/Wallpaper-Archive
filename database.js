@@ -618,25 +618,17 @@ class Database {
     const newWinnerElo = Math.round(winner.elo_rating + K * (1 - expectedWinner));
     const newLoserElo = Math.round(loser.elo_rating + K * (0 - expectedLoser));
 
-    // Perform updates sequentially
+    // Perform updates atomically using batch
     const updateSql = `
       UPDATE wallpapers 
       SET elo_rating = ?, battles_won = COALESCE(battles_won, 0) + ?, battles_lost = COALESCE(battles_lost, 0) + ?
       WHERE id = ?
     `;
 
-    // We can use batch for atomicity if supported, or just await both.
-    // await this.client.batch([ ... ])
-    
-    await this.client.execute({
-      sql: updateSql,
-      args: [newWinnerElo, 1, 0, winnerId]
-    });
-
-    await this.client.execute({
-      sql: updateSql,
-      args: [newLoserElo, 0, 1, loserId]
-    });
+    await this.client.batch([
+      { sql: updateSql, args: [newWinnerElo, 1, 0, winnerId] },
+      { sql: updateSql, args: [newLoserElo, 0, 1, loserId] }
+    ], 'write');
 
     return {
       winner: { id: winnerId, oldElo: winner.elo_rating, newElo: newWinnerElo },
