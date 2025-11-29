@@ -94,7 +94,7 @@ function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
   )
 }
 
-function Browse({ onWallpaperClick, browseState, setBrowseState }) {
+function Browse({ onWallpaperClick, browseState, setBrowseState, filterData }) {
   const {
     wallpapers,
     totalCount,
@@ -109,6 +109,13 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     initialized
   } = browseState
 
+  // Use prefetched filter data from App.jsx
+  const providers = filterData?.providers || []
+  const folders = filterData?.folders || []
+  const resolutions = filterData?.resolutions || []
+  const aspects = filterData?.aspects || []
+  const filtersLoading = filterData?.loading ?? true
+
   // Local display state so the active page flips immediately on click
   // This is the single source of truth for UI highlighting
   const [displayPage, setDisplayPage] = useState(currentPage)
@@ -118,10 +125,6 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     setDisplayPage(currentPage)
   }, [currentPage])
 
-  const [providers, setProviders] = useState([])
-  const [folders, setFolders] = useState([])
-  const [resolutions, setResolutions] = useState([])
-  const [aspects, setAspects] = useState([])
   const [error, setError] = useState(null)
   
   const [gridColumns, setGridColumns] = useState(() => {
@@ -140,33 +143,6 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
   const [categorySearch, setCategorySearch] = useState('')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-
-  const fetchProviders = async () => {
-    try {
-      const response = await withRetry(() => axios.get(`${API_BASE}/api/providers`))
-      const providersData = response.data.providers || []
-      const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
-      setProviders(providerNames)
-      
-      const foldersData = response.data.folders || []
-      setFolders(foldersData)
-    } catch (err) {
-      console.error('Failed to fetch providers:', err)
-    }
-  }
-
-  const fetchResolutions = async () => {
-    try {
-      const response = await withRetry(() => axios.get(`${API_BASE}/api/resolutions`))
-      setResolutions(response.data.resolutions || [])
-      setAspects(response.data.aspects || [])
-    } catch (err) {
-      console.error('Failed to fetch resolutions:', err)
-      // Fallback to empty array if API not available yet
-      setResolutions([])
-      setAspects([])
-    }
-  }
 
   const fetchWallpapers = useCallback(async (force = false) => {
     // If already initialized and not forced (e.g. by filter change), don't refetch
@@ -210,11 +186,6 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       }))
     }
   }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedFolders, selectedResolution, selectedAspect, initialized, setBrowseState])
-
-  useEffect(() => {
-    fetchProviders()
-    fetchResolutions()
-  }, [])
 
   useEffect(() => {
     // Initial fetch only if not initialized
@@ -381,11 +352,11 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
 
   // Count active filters for mobile badge
   const activeFilterCount = [
-    selectedProvider,
-    selectedFolders.length > 0,
-    selectedResolution,
-    selectedAspect
-  ].filter(Boolean).length
+    selectedProvider ? 1 : 0,
+    selectedFolders.length,  // Count each selected folder
+    selectedResolution ? 1 : 0,
+    selectedAspect ? 1 : 0
+  ].reduce((a, b) => a + b, 0)
 
   const clearAllFilters = () => {
     setBrowseState(prev => ({
@@ -503,59 +474,68 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
             {/* Category chips */}
             <div className="category-chips">
               <span className="chips-label">category:</span>
-              {getTopCategories().map(folder => {
-                const isActive = selectedFolders.includes(folder.name)
-                return (
-                  <button
-                    key={folder.name}
-                    className={`category-chip ${isActive ? 'active' : ''}`}
-                    onClick={() => toggleCategory(folder.name)}
-                  >
-                    <span>{folder.name}</span>
-                    <span className="chip-count">{folder.count}</span>
-                  </button>
-                )
-              })}
-              {folders.length > 8 && (
-                <button
-                  className="category-chip more-chip"
-                  onClick={() => setCategoryDropdownOpen(true)}
-                >
-                  <span>more...</span>
-                  <span className="chip-count">+{folders.length - 8}</span>
-                </button>
-              )}
-              {/* Show selected categories that aren't in top 8 */}
-              {selectedFolders
-                .filter(f => !getTopCategories().find(top => top.name === f))
-                .map(folderName => (
-                  <button
-                    key={folderName}
-                    className="category-chip active"
-                    onClick={() => toggleCategory(folderName)}
-                  >
-                    <span>{folderName}</span>
-                    <X size={12} />
-                  </button>
+              {filtersLoading ? (
+                // Skeleton placeholders while loading
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="category-chip-skeleton" />
                 ))
-              }
-              {selectedFolders.length > 0 && (
-                <button
-                  className="category-chip reset-chip"
-                  onClick={() => {
-                    setDisplayPage(1)
-                    setBrowseState(prev => ({
-                      ...prev,
-                      selectedFolders: [],
-                      currentPage: 1,
-                      loading: true,
-                      initialized: false
-                    }))
-                  }}
-                >
-                  <span>clear</span>
-                  <X size={12} />
-                </button>
+              ) : (
+                <>
+                  {getTopCategories().map((folder) => {
+                    const isActive = selectedFolders.includes(folder.name)
+                    return (
+                      <button
+                        key={folder.name}
+                        className={`category-chip ${isActive ? 'active' : ''}`}
+                        onClick={() => toggleCategory(folder.name)}
+                      >
+                        <span>{folder.name}</span>
+                        <span className="chip-count">{folder.count}</span>
+                      </button>
+                    )
+                  })}
+                  {folders.length > 8 && (
+                    <button
+                      className="category-chip more-chip"
+                      onClick={() => setCategoryDropdownOpen(true)}
+                    >
+                      <span>more...</span>
+                      <span className="chip-count">+{folders.length - 8}</span>
+                    </button>
+                  )}
+                  {/* Show selected categories that aren't in top 8 */}
+                  {selectedFolders
+                    .filter(f => !getTopCategories().find(top => top.name === f))
+                    .map((folderName) => (
+                      <button
+                        key={folderName}
+                        className="category-chip active"
+                        onClick={() => toggleCategory(folderName)}
+                      >
+                        <span>{folderName}</span>
+                        <X size={12} />
+                      </button>
+                    ))
+                  }
+                  {selectedFolders.length > 0 && (
+                    <button
+                      className="category-chip reset-chip"
+                      onClick={() => {
+                        setDisplayPage(1)
+                        setBrowseState(prev => ({
+                          ...prev,
+                          selectedFolders: [],
+                          currentPage: 1,
+                          loading: true,
+                          initialized: false
+                        }))
+                      }}
+                    >
+                      <span>clear</span>
+                      <X size={12} />
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -611,7 +591,9 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
                   >
                     {preset.icon}
                     <span>{preset.label}</span>
-                    {count !== null && <span className="aspect-count">{count.toLocaleString()}</span>}
+                    <span className={`aspect-count ${filtersLoading ? 'skeleton' : ''}`}>
+                      {filtersLoading ? '' : (count !== null ? count.toLocaleString() : '0')}
+                    </span>
                   </button>
                 )
               })}

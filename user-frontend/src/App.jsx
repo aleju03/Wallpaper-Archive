@@ -10,6 +10,21 @@ import WallpaperModal from './components/WallpaperModal'
 import { API_BASE } from './config'
 import './App.css'
 
+const withRetry = async (fn, attempts = 3, delayMs = 200) => {
+  let lastError;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) {
+        await new Promise(res => setTimeout(res, delayMs));
+      }
+    }
+  }
+  throw lastError;
+};
+
 function App() {
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
   const [activeTab, setActiveTab] = useState('browse')
@@ -87,6 +102,43 @@ function App() {
     initialized: false
   })
 
+  // Prefetched filter data - loaded once at app start
+  const [filterData, setFilterData] = useState({
+    providers: [],
+    folders: [],
+    resolutions: [],
+    aspects: [],
+    loading: true
+  })
+
+  // Prefetch providers, folders, and resolutions immediately on app load
+  useEffect(() => {
+    const fetchFilterData = async () => {
+      try {
+        const [providersResponse, resolutionsResponse] = await Promise.all([
+          withRetry(() => axios.get(`${API_BASE}/api/providers`)),
+          withRetry(() => axios.get(`${API_BASE}/api/resolutions`))
+        ])
+
+        const providersData = providersResponse.data.providers || []
+        const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
+        const foldersData = providersResponse.data.folders || []
+
+        setFilterData({
+          providers: providerNames,
+          folders: foldersData,
+          resolutions: resolutionsResponse.data.resolutions || [],
+          aspects: resolutionsResponse.data.aspects || [],
+          loading: false
+        })
+      } catch (err) {
+        console.error('Failed to prefetch filter data:', err)
+        setFilterData(prev => ({ ...prev, loading: false }))
+      }
+    }
+    fetchFilterData()
+  }, [])
+
   // Deep link support: open a wallpaper by id from the URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -143,6 +195,7 @@ function App() {
             onWallpaperClick={setSelectedWallpaper} 
             browseState={browseState}
             setBrowseState={setBrowseState}
+            filterData={filterData}
           />
         )
       case 'arena':
@@ -157,6 +210,7 @@ function App() {
             onWallpaperClick={setSelectedWallpaper} 
             browseState={browseState}
             setBrowseState={setBrowseState}
+            filterData={filterData}
           />
         )
     }

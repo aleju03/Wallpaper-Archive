@@ -151,6 +151,43 @@
   padding: 2px 6px;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+  min-width: 32px;
+  text-align: center;
+}
+
+.aspect-chip .aspect-count.skeleton {
+  background: var(--color-bg-secondary);
+  color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.aspect-chip .aspect-count.skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+}
+
+[data-theme="light"] .aspect-chip .aspect-count.skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0.04) 20%,
+    rgba(0, 0, 0, 0.08) 60%,
+    rgba(0, 0, 0, 0)
+  );
 }
 
 .aspect-chip.reset {
@@ -181,14 +218,30 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: 4px 10px;
+  padding: 0 10px;
+  height: 22px;
+  box-sizing: border-box;
   border: 1px solid var(--color-border-primary);
   background: var(--color-bg-secondary);
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   font-family: inherit;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.category-chip > span {
+  animation: chip-text-fade-in 0.3s ease-out both;
+}
+
+@keyframes chip-text-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .category-chip:hover {
@@ -222,6 +275,57 @@
   border-color: var(--color-text-primary);
   color: var(--color-text-primary);
 }
+
+/* Category Chip Skeleton - matches .category-chip dimensions exactly */
+.category-chip-skeleton {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  position: relative;
+  overflow: hidden;
+}
+
+.category-chip-skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+}
+
+[data-theme="light"] .category-chip-skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0.04) 20%,
+    rgba(0, 0, 0, 0.08) 60%,
+    rgba(0, 0, 0, 0)
+  );
+}
+
+/* Varying widths to simulate different category names */
+.category-chip-skeleton:nth-child(2) { width: 70px; }
+.category-chip-skeleton:nth-child(3) { width: 120px; }
+.category-chip-skeleton:nth-child(4) { width: 55px; }
+.category-chip-skeleton:nth-child(5) { width: 80px; }
+.category-chip-skeleton:nth-child(6) { width: 65px; }
+.category-chip-skeleton:nth-child(7) { width: 90px; }
+.category-chip-skeleton:nth-child(8) { width: 75px; }
+.category-chip-skeleton:nth-child(9) { width: 60px; }
 
 /* ==========================================================================
    Category Modal

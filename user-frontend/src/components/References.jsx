@@ -1,6 +1,9 @@
-import { Github } from 'lucide-react';
+import { useState } from 'react';
+import { Github, ChevronDown } from 'lucide-react';
 
 function References() {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   const providers = [
     { name: 'BitterSweetcandyshop', url: 'https://github.com/BitterSweetcandyshop/wallpapers' },
     { name: 'D3Ext', url: 'https://github.com/D3Ext/aesthetic-wallpapers' },
@@ -12,22 +15,30 @@ function References() {
 
   return (
     <div className="references">
-      <span className="references-label">got the wallpapers from:</span>
-      <div className="provider-list">
-        {providers.map((provider) => (
-          <a 
-            key={provider.name} 
-            href={provider.url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="provider-link"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Github size={16} />
-            {provider.name}
-          </a>
-        ))}
-      </div>
+      <button 
+        className="references-toggle"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <span>view sources ({providers.length})</span>
+        <ChevronDown size={14} className={`toggle-icon ${isExpanded ? 'expanded' : ''}`} />
+      </button>
+      
+      {isExpanded && (
+        <div className="provider-list">
+          {providers.map((provider) => (
+            <a 
+              key={provider.name} 
+              href={provider.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="provider-link"
+            >
+              <Github size={14} />
+              {provider.name}
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
