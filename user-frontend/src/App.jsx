@@ -102,6 +102,15 @@ function App() {
     initialized: false
   })
 
+  // Lifted state for Leaderboard component to persist data between tab switches
+  const [leaderboardState, setLeaderboardState] = useState({
+    leaderboard: [],
+    totalCount: 0,
+    showBottom: false,
+    loading: true,
+    initialized: false
+  })
+
   // Prefetched filter data - loaded once at app start
   const [filterData, setFilterData] = useState({
     providers: [],
@@ -204,7 +213,13 @@ function App() {
       case 'arena':
         return <Arena />
       case 'leaderboard':
-        return <Leaderboard onNavigateToArena={() => setActiveTab('arena')} />
+        return (
+          <Leaderboard 
+            onNavigateToArena={() => setActiveTab('arena')}
+            leaderboardState={leaderboardState}
+            setLeaderboardState={setLeaderboardState}
+          />
+        )
       case 'random':
         return <Random />
       default:

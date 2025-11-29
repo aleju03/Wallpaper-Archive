@@ -3,41 +3,57 @@ import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, 
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 
-function Leaderboard({ onNavigateToArena }) {
-  const [leaderboard, setLeaderboard] = useState([])
-  const [loading, setLoading] = useState(true)
+function Leaderboard({ onNavigateToArena, leaderboardState, setLeaderboardState }) {
+  // Use lifted state from App.jsx for caching, with local fallbacks for standalone use
+  const leaderboard = leaderboardState?.leaderboard ?? []
+  const totalCount = leaderboardState?.totalCount ?? 0
+  const showBottom = leaderboardState?.showBottom ?? false
+  const loading = leaderboardState?.loading ?? true
+  const initialized = leaderboardState?.initialized ?? false
+
   const [error, setError] = useState(null)
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
-  const [showBottom, setShowBottom] = useState(false)
-  const [totalCount, setTotalCount] = useState(0)
   const [modalImageLoaded, setModalImageLoaded] = useState(false)
   const modalContainerRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  const updateState = (updates) => {
+    if (setLeaderboardState) {
+      setLeaderboardState(prev => ({ ...prev, ...updates }))
+    }
+  }
+
   const fetchLeaderboard = async (bottom = false) => {
     try {
-      setLoading(true)
+      updateState({ loading: true, showBottom: bottom })
       const params = bottom ? '?bottom=true' : ''
       const response = await axios.get(`${API_BASE}/api/arena/leaderboard${params}`)
       
       if (response.data.success) {
-        setLeaderboard(response.data.leaderboard)
-        setTotalCount(response.data.totalCount)
+        updateState({
+          leaderboard: response.data.leaderboard,
+          totalCount: response.data.totalCount,
+          loading: false,
+          initialized: true
+        })
         setError(null)
       } else {
+        updateState({ loading: false })
         setError('Failed to load leaderboard')
       }
     } catch (err) {
+      updateState({ loading: false })
       setError('Failed to load leaderboard')
       console.error('Leaderboard error:', err)
-    } finally {
-      setLoading(false)
     }
   }
 
+  // Only fetch on mount if not already initialized (cached)
   useEffect(() => {
-    fetchLeaderboard()
-  }, [])
+    if (!initialized) {
+      fetchLeaderboard(showBottom)
+    }
+  }, [initialized])
 
   useEffect(() => {
     if (selectedWallpaper) {
@@ -172,7 +188,6 @@ function Leaderboard({ onNavigateToArena }) {
             <button 
               className={`toggle-btn nav-button ${!showBottom ? 'active' : ''}`}
               onClick={() => {
-                setShowBottom(false)
                 fetchLeaderboard(false)
               }}
             >
@@ -181,7 +196,6 @@ function Leaderboard({ onNavigateToArena }) {
             <button 
               className={`toggle-btn nav-button ${showBottom ? 'active' : ''}`}
               onClick={() => {
-                setShowBottom(true)
                 fetchLeaderboard(true)
               }}
             >
