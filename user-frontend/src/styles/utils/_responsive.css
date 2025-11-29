@@ -290,10 +290,14 @@
   }
 
   .modal-nav {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     top: auto;
-    bottom: calc(40vh + var(--spacing-lg));
+    bottom: auto;
     transform: none;
+    /* Position in the image area, above sidebar */
+    position: fixed;
+    top: calc(50px + 30vh);
+    z-index: calc(var(--z-modal) + 2);
   }
 
   .modal-nav svg {
@@ -589,7 +593,7 @@
 
   .modal-nav {
     padding: var(--spacing-sm);
-    bottom: calc(35vh + var(--spacing-md));
+    top: calc(50px + 25vh);
   }
 
   .modal-nav-prev {
