@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle, Maximize2, Minimize2, Undo2, TrendingUp, BarChart3, Columns } from 'lucide-react'
+import { Trophy, Zap, Crown, Swords, Eye, X, Download, RefreshCw, AlertCircle, Maximize2, Undo2, TrendingUp, BarChart3, Columns } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
+import { FullscreenViewer } from './WallpaperModal'
 
 const withRetry = async (fn, attempts = 2, delayMs = 200) => {
   let lastError
@@ -35,8 +36,7 @@ function Arena() {
   const [eloResult, setEloResult] = useState(null)
   const [seenIds, setSeenIds] = useState([])
   const [prefetchedPair, setPrefetchedPair] = useState(null)
-  const previewContainerRef = useRef(null)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showFullscreen, setShowFullscreen] = useState(false)
   
   // New feature states
   const [filters, setFilters] = useState({ category: '', provider: '', mode: '' })
@@ -335,12 +335,6 @@ function Arena() {
     };
   }, [previewWallpaper]);
 
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement)
-    document.addEventListener('fullscreenchange', handler)
-    return () => document.removeEventListener('fullscreenchange', handler)
-  }, [])
-
   const handlePreview = (wallpaper, event) => {
     event.preventDefault()
     event.stopPropagation()
@@ -352,28 +346,8 @@ function Arena() {
     setPreviewWallpaper(null)
   }
 
-  const handlePreviewFullscreen = async () => {
-    if (previewContainerRef.current && previewContainerRef.current.requestFullscreen) {
-      try {
-        await previewContainerRef.current.requestFullscreen()
-        return
-      } catch (error) {
-        console.warn('Fullscreen request failed', error)
-      }
-    }
-    if (previewWallpaper) {
-      window.open(resolveAssetUrl(previewWallpaper.image_url), '_blank')
-    }
-  }
-
-  const handleExitFullscreen = async () => {
-    if (document.fullscreenElement && document.exitFullscreen) {
-      try {
-        await document.exitFullscreen()
-      } catch {
-        // ignore
-      }
-    }
+  const handleViewFullscreen = () => {
+    setShowFullscreen(true)
   }
 
   // Generate recap data
@@ -781,23 +755,24 @@ function Arena() {
         </div>
       )}
 
-      {previewWallpaper && (
+      {showFullscreen && previewWallpaper && (
+        <FullscreenViewer
+          imageUrl={resolveAssetUrl(previewWallpaper.image_url)}
+          onClose={() => setShowFullscreen(false)}
+        />
+      )}
+
+      {previewWallpaper && !showFullscreen && (
         <div className="modal-overlay" onClick={closePreview}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">{previewWallpaper.filename}</div>
-              {isFullscreen && (
-                <button className="modal-action" onClick={handleExitFullscreen}>
-                  <Minimize2 size={14} />
-                  exit fullscreen
-                </button>
-              )}
               <button className="modal-close" onClick={closePreview}>
                 <X size={16} />
               </button>
             </div>
             <div className="modal-body">
-              <div className="modal-image-container" ref={previewContainerRef}>
+              <div className="modal-image-container">
                 {!previewImageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
                 <img
                   src={resolveAssetUrl(previewWallpaper.image_url)}
@@ -824,7 +799,7 @@ function Arena() {
                 <div className="download-section">
                   <button
                     className="download-btn fullscreen-btn"
-                    onClick={handlePreviewFullscreen}
+                    onClick={handleViewFullscreen}
                   >
                     <Maximize2 size={16} />
                     view fullscreen

@@ -3,7 +3,7 @@ import { resolveAssetUrl, API_BASE } from '../config'
 import { useEffect, useRef, useState, useCallback } from 'react'
 
 // Custom fullscreen viewer with pinch-to-zoom and mouse wheel zoom support
-function FullscreenViewer({ imageUrl, onClose }) {
+export function FullscreenViewer({ imageUrl, onClose }) {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)

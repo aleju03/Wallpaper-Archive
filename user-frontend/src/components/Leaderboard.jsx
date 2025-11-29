@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
-import { Trophy, Crown, Medal, Award, TrendingUp, X, ChevronLeft, ChevronRight, RefreshCw, Download, Swords, AlertCircle, Maximize2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Trophy, Crown, Medal, Award, TrendingUp, X, RefreshCw, Download, Swords, AlertCircle, Maximize2 } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
+import { FullscreenViewer } from './WallpaperModal'
 
 function Leaderboard({ onNavigateToArena, leaderboardState, setLeaderboardState }) {
   // Use lifted state from App.jsx for caching, with local fallbacks for standalone use
@@ -14,8 +15,7 @@ function Leaderboard({ onNavigateToArena, leaderboardState, setLeaderboardState 
   const [error, setError] = useState(null)
   const [selectedWallpaper, setSelectedWallpaper] = useState(null)
   const [modalImageLoaded, setModalImageLoaded] = useState(false)
-  const modalContainerRef = useRef(null)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showFullscreen, setShowFullscreen] = useState(false)
 
   const updateState = (updates) => {
     if (setLeaderboardState) {
@@ -66,12 +66,6 @@ function Leaderboard({ onNavigateToArena, leaderboardState, setLeaderboardState 
     };
   }, [selectedWallpaper]);
 
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement)
-    document.addEventListener('fullscreenchange', handler)
-    return () => document.removeEventListener('fullscreenchange', handler)
-  }, [])
-
   const getRankIcon = (rank) => {
     switch (rank) {
       case 1: return <Crown size={20} className="rank-icon gold" />
@@ -97,30 +91,11 @@ function Leaderboard({ onNavigateToArena, leaderboardState, setLeaderboardState 
   const handleImageClick = (wallpaper) => {
     setSelectedWallpaper(wallpaper)
     setModalImageLoaded(false)
+    setShowFullscreen(false)
   }
 
-  const handleFullscreen = async () => {
-    if (modalContainerRef.current && modalContainerRef.current.requestFullscreen) {
-      try {
-        await modalContainerRef.current.requestFullscreen()
-        return
-      } catch (error) {
-        console.warn('Fullscreen request failed', error)
-      }
-    }
-    if (selectedWallpaper) {
-      window.open(resolveAssetUrl(selectedWallpaper.image_url), '_blank')
-    }
-  }
-
-  const handleExitFullscreen = async () => {
-    if (document.fullscreenElement && document.exitFullscreen) {
-      try {
-        await document.exitFullscreen()
-      } catch (error) {
-        // ignore
-      }
-    }
+  const handleViewFullscreen = () => {
+    setShowFullscreen(true)
   }
 
   const closeModal = () => {
@@ -304,23 +279,24 @@ function Leaderboard({ onNavigateToArena, leaderboardState, setLeaderboardState 
         </div>
       )}
 
-      {selectedWallpaper && (
+      {showFullscreen && selectedWallpaper && (
+        <FullscreenViewer
+          imageUrl={resolveAssetUrl(selectedWallpaper.image_url)}
+          onClose={() => setShowFullscreen(false)}
+        />
+      )}
+
+      {selectedWallpaper && !showFullscreen && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">{selectedWallpaper.filename}</div>
-              {isFullscreen && (
-                <button className="modal-action" onClick={handleExitFullscreen}>
-                  <X size={14} />
-                  exit fullscreen
-                </button>
-              )}
               <button className="modal-close" onClick={closeModal}>
                 <X size={16} />
               </button>
             </div>
               <div className="modal-body">
-                <div className="modal-image-container" ref={modalContainerRef}>
+                <div className="modal-image-container">
                   {!modalImageLoaded && <div className="modal-image-skeleton" aria-hidden="true" />}
                   <img
                     src={resolveAssetUrl(selectedWallpaper.image_url)}
@@ -348,7 +324,7 @@ function Leaderboard({ onNavigateToArena, leaderboardState, setLeaderboardState 
                 <div className="download-section">
                   <button
                     className="download-btn fullscreen-btn"
-                    onClick={handleFullscreen}
+                    onClick={handleViewFullscreen}
                   >
                     <Maximize2 size={16} />
                     view fullscreen
