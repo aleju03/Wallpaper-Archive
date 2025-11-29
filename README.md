@@ -1,16 +1,19 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/69bb5f6d-51c9-4d13-b753-4606f9d8cf11" width="100%">
+  <img src="https://github.com/user-attachments/assets/6596c24d-4919-477b-bfd2-327c5e2ebd56" width="100%">
+  <img src="https://github.com/user-attachments/assets/34116e2b-65b5-468e-b265-33abc072bfbd" width="100%">
   <br/><br/>
-  
+
   <table>
     <tr>
-      <td width="65%"><img src="https://github.com/user-attachments/assets/38babe57-b6ae-4d9e-bf2e-5b48e51b32c8" width="100%"></td>
-      <td width="35%"><img src="https://github.com/user-attachments/assets/7f1d2c41-62b1-4671-83ef-73a9e394dc39" width="100%"></td>
+      <td width="50%"><img src="https://github.com/user-attachments/assets/160973f2-1f10-4491-9700-408548589906" width="100%"></td>
+      <td width="50%"><img src="https://github.com/user-attachments/assets/247b3d6d-cf21-4974-acc2-5bc15a38e115" width="100%"></td>
     </tr>
   </table>
 </div>
 
-Wallpaper gallery I built by scraping various GitHub wallpaper repositories (and my local osu backgrounds) to get a faster way to view and download some wallpapers for myself. Includes a backend for data handling, an admin panel for curation, and a frontend for browsing. Now hosted on Vercel for others to use.
+Wallpaper gallery app I built to get a faster way to view and download some wallpapers for myself. Now hosted on Vercel for others to use.
+
+Got the wallpapers by scraping various GitHub wallpaper repositories (and my local osu backgrounds).
 
 ## Features
 
@@ -20,7 +23,7 @@ The backend handles the heavy lifting like thumbnail generation, duplicate detec
 
 ## Architecture
 
-The system runs three things: a Node/Fastify backend deployed on Vercel, and two React/Vite frontends (Admin and User). Uses Turso for the database and Cloudflare R2 for image storage.
+Local build runs three things: a Node/Fastify backend deployed on Vercel, and two React/Vite frontends (Admin and User). Uses Turso for the database and Cloudflare R2 for image storage.
 
 ## Branches
 
