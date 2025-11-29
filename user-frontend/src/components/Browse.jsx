@@ -245,16 +245,13 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       if (!event.target.closest('.resolution-dropdown-container')) {
         setResolutionDropdownOpen(false)
       }
-      if (!event.target.closest('.category-dropdown-container')) {
-        setCategoryDropdownOpen(false)
-      }
     }
 
-    if (resolutionDropdownOpen || categoryDropdownOpen) {
+    if (resolutionDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [resolutionDropdownOpen, categoryDropdownOpen])
+  }, [resolutionDropdownOpen])
 
   const formatFileSize = (bytes) => {
     if (!bytes) return 'Unknown'
@@ -312,27 +309,21 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       )
     }
 
-    // If no search, show only the most popular ones (top 15)
-    if (!categorySearch) {
-      filtered = filtered.slice(0, 15)
-    } else {
-      // If searching, limit to top 20 results
-      filtered = filtered.slice(0, 20)
-    }
+    // Limit results
+    filtered = filtered.slice(0, 20)
 
     return filtered
+  }
+
+  // Get top categories for chips display
+  const getTopCategories = () => {
+    return folders.slice(0, 8)
   }
 
   const handleCategorySelect = (category) => {
     updateFilter('selectedFolder', category)
     setCategoryDropdownOpen(false)
     setCategorySearch('')
-  }
-
-  const getSelectedCategoryDisplay = () => {
-    if (!selectedFolder) return 'all categories'
-    const folder = folders.find(f => f.name === selectedFolder)
-    return folder ? `${folder.name} (${folder.count.toLocaleString()})` : selectedFolder
   }
 
   const aspectPresets = [
@@ -486,54 +477,80 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
               )}
             </div>
 
-            <div className="category-dropdown-container">
-              <button
-                className="resolution-dropdown-trigger"
-                onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-              >
-                <span>{getSelectedCategoryDisplay()}</span>
-                <ChevronDown size={14} className={`dropdown-arrow ${categoryDropdownOpen ? 'open' : ''}`} />
-              </button>
-              
-              {categoryDropdownOpen && (
-                <div className="resolution-dropdown-menu">
-                  <div className="resolution-search">
+            {/* Category chips */}
+            <div className="category-chips">
+              <span className="chips-label">category:</span>
+              {getTopCategories().map(folder => {
+                const isActive = selectedFolder === folder.name
+                return (
+                  <button
+                    key={folder.name}
+                    className={`category-chip ${isActive ? 'active' : ''}`}
+                    onClick={() => updateFilter('selectedFolder', isActive ? '' : folder.name)}
+                  >
+                    <span>{folder.name}</span>
+                    <span className="chip-count">{folder.count}</span>
+                  </button>
+                )
+              })}
+              {folders.length > 8 && (
+                <button
+                  className="category-chip more-chip"
+                  onClick={() => setCategoryDropdownOpen(true)}
+                >
+                  <span>more...</span>
+                  <span className="chip-count">+{folders.length - 8}</span>
+                </button>
+              )}
+              {selectedFolder && !getTopCategories().find(f => f.name === selectedFolder) && (
+                <button
+                  className="category-chip active"
+                  onClick={() => updateFilter('selectedFolder', '')}
+                >
+                  <span>{selectedFolder}</span>
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Category search modal */}
+            {categoryDropdownOpen && (
+              <div className="category-modal-overlay" onClick={() => setCategoryDropdownOpen(false)}>
+                <div className="category-modal" onClick={e => e.stopPropagation()}>
+                  <div className="category-modal-header">
+                    <span>all categories</span>
+                    <button onClick={() => setCategoryDropdownOpen(false)}>
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="category-modal-search">
                     <Search size={14} className="search-icon" />
                     <input
                       type="text"
                       placeholder="search categories..."
                       value={categorySearch}
                       onChange={(e) => setCategorySearch(e.target.value)}
+                      autoFocus
                     />
                   </div>
-                  
-                  <div className="resolution-options">
-                    <div 
-                      className={`resolution-option ${selectedFolder === '' ? 'selected' : ''}`}
-                      onClick={() => handleCategorySelect('')}
-                    >
-                      all categories
-                    </div>
-                    
+                  <div className="category-modal-list">
                     {getFilteredCategories().map(folder => (
-                      <div
+                      <button
                         key={folder.name}
-                        className={`resolution-option ${selectedFolder === folder.name ? 'selected' : ''}`}
+                        className={`category-modal-item ${selectedFolder === folder.name ? 'active' : ''}`}
                         onClick={() => handleCategorySelect(folder.name)}
                       >
-                        {folder.name} ({folder.count.toLocaleString()})
-                      </div>
+                        <span>{folder.name}</span>
+                        <span className="item-count">{folder.count.toLocaleString()}</span>
+                      </button>
                     ))}
-                    
-                    {!categorySearch && folders.length > 15 && (
-                      <div className="resolution-option-hint">
-                        type to search all {folders.length} categories...
-                      </div>
+                    {getFilteredCategories().length === 0 && (
+                      <div className="category-modal-empty">no categories found</div>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             
             <div className="aspect-presets">
               {aspectPresets.map(preset => {
