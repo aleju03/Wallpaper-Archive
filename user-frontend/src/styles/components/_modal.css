@@ -8,13 +8,21 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  height: 100dvh;
+  height: 100vh; /* Fallback for older browsers */
   background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
   padding: var(--spacing-xl);
+  overscroll-behavior: contain; /* Prevent scroll chaining on mobile */
+}
+
+@supports (height: 100dvh) {
+  .modal-overlay {
+    height: 100dvh;
+  }
 }
 
 [data-theme="light"] .modal-overlay {
@@ -247,7 +255,8 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  height: 100dvh;
+  height: 100vh; /* Fallback */
   background: #000;
   z-index: calc(var(--z-modal) + 10);
   display: flex;
@@ -257,6 +266,12 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+@supports (height: 100dvh) {
+  .fullscreen-viewer {
+    height: 100dvh;
+  }
 }
 
 .fullscreen-viewer-image {
