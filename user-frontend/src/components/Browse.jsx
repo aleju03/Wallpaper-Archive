@@ -94,7 +94,7 @@ function WallpaperCard({ wallpaper, onClick, formatFileSize }) {
   )
 }
 
-function Browse({ onWallpaperClick, browseState, setBrowseState, filterData }) {
+function Browse({ onWallpaperClick, browseState, setBrowseState, filterData, setFilterData }) {
   const {
     wallpapers,
     totalCount,
@@ -115,6 +115,18 @@ function Browse({ onWallpaperClick, browseState, setBrowseState, filterData }) {
   const resolutions = filterData?.resolutions || []
   const aspects = filterData?.aspects || []
   const filtersLoading = filterData?.loading ?? true
+  const shouldAnimateChips = !filterData?.hasAnimated
+
+  // Mark animation as complete after chips have rendered for the first time
+  useEffect(() => {
+    if (!filtersLoading && shouldAnimateChips && setFilterData) {
+      // Wait for animation to complete (300ms) then mark as animated
+      const timer = setTimeout(() => {
+        setFilterData(prev => ({ ...prev, hasAnimated: true }))
+      }, 350)
+      return () => clearTimeout(timer)
+    }
+  }, [filtersLoading, shouldAnimateChips, setFilterData])
 
   // Local display state so the active page flips immediately on click
   // This is the single source of truth for UI highlighting
@@ -486,7 +498,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState, filterData }) {
                     return (
                       <button
                         key={folder.name}
-                        className={`category-chip ${isActive ? 'active' : ''}`}
+                        className={`category-chip ${isActive ? 'active' : ''} ${shouldAnimateChips ? 'animate' : ''}`}
                         onClick={() => toggleCategory(folder.name)}
                       >
                         <span>{folder.name}</span>

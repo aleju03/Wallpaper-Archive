@@ -231,7 +231,9 @@
   transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 
-.category-chip > span {
+
+
+.category-chip.animate > span {
   animation: chip-text-fade-in 0.3s ease-out both;
 }
 

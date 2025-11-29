@@ -108,7 +108,8 @@ function App() {
     folders: [],
     resolutions: [],
     aspects: [],
-    loading: true
+    loading: true,
+    hasAnimated: false  // Track if chips have animated (first load only)
   })
 
   // Prefetch providers, folders, and resolutions immediately on app load
@@ -124,13 +125,14 @@ function App() {
         const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
         const foldersData = providersResponse.data.folders || []
 
-        setFilterData({
+        setFilterData(prev => ({
           providers: providerNames,
           folders: foldersData,
           resolutions: resolutionsResponse.data.resolutions || [],
           aspects: resolutionsResponse.data.aspects || [],
-          loading: false
-        })
+          loading: false,
+          hasAnimated: prev.hasAnimated  // Preserve animation state
+        }))
       } catch (err) {
         console.error('Failed to prefetch filter data:', err)
         setFilterData(prev => ({ ...prev, loading: false }))
@@ -196,6 +198,7 @@ function App() {
             browseState={browseState}
             setBrowseState={setBrowseState}
             filterData={filterData}
+            setFilterData={setFilterData}
           />
         )
       case 'arena':
@@ -211,6 +214,7 @@ function App() {
             browseState={browseState}
             setBrowseState={setBrowseState}
             filterData={filterData}
+            setFilterData={setFilterData}
           />
         )
     }
