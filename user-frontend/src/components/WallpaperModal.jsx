@@ -2,7 +2,7 @@ import { X, Download, ChevronLeft, ChevronRight, Maximize2, Share2, Minimize2 } 
 import { resolveAssetUrl, API_BASE } from '../config'
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-// Custom fullscreen viewer with pinch-to-zoom support
+// Custom fullscreen viewer with pinch-to-zoom and mouse wheel zoom support
 function FullscreenViewer({ imageUrl, onClose }) {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -18,7 +18,65 @@ function FullscreenViewer({ imageUrl, onClose }) {
     setPosition({ x: 0, y: 0 })
   }, [])
 
-  // Handle pinch zoom
+  // Handle mouse wheel zoom (desktop)
+  const handleWheel = useCallback((e) => {
+    e.preventDefault()
+    const zoomFactor = 0.1
+    const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor
+    
+    setScale(prev => {
+      const newScale = Math.min(Math.max(prev + delta, 1), 5)
+      // Reset position if zooming back to 1
+      if (newScale <= 1) {
+        setPosition({ x: 0, y: 0 })
+      }
+      return newScale
+    })
+  }, [])
+
+  // Handle mouse drag (desktop)
+  const handleMouseDown = useCallback((e) => {
+    if (scale > 1 && e.button === 0) {
+      e.preventDefault()
+      setIsDragging(true)
+      dragStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        posX: position.x,
+        posY: position.y
+      }
+    }
+  }, [scale, position])
+
+  const handleMouseMove = useCallback((e) => {
+    if (isDragging && scale > 1) {
+      e.preventDefault()
+      const deltaX = e.clientX - dragStartRef.current.x
+      const deltaY = e.clientY - dragStartRef.current.y
+      setPosition({
+        x: dragStartRef.current.posX + deltaX,
+        y: dragStartRef.current.posY + deltaY
+      })
+    }
+  }, [isDragging, scale])
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  // Add/remove mouse event listeners for drag
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp])
+
+  // Handle pinch zoom (touch)
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length === 2) {
       e.preventDefault()
@@ -73,7 +131,7 @@ function FullscreenViewer({ imageUrl, onClose }) {
     }
   }, [scale, resetTransform])
 
-  // Double-tap to zoom
+  // Double-tap/double-click to zoom
   const lastTapRef = useRef(0)
   const handleDoubleTap = useCallback((e) => {
     const now = Date.now()
@@ -83,7 +141,7 @@ function FullscreenViewer({ imageUrl, onClose }) {
         resetTransform()
       } else {
         setScale(2.5)
-        // Center zoom on tap position
+        // Center zoom on tap/click position
         const rect = containerRef.current.getBoundingClientRect()
         const tapX = e.changedTouches?.[0]?.clientX || e.clientX
         const tapY = e.changedTouches?.[0]?.clientY || e.clientY
@@ -114,7 +172,10 @@ function FullscreenViewer({ imageUrl, onClose }) {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
       onClick={handleDoubleTap}
+      style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
     >
       <img
         ref={imageRef}
@@ -137,7 +198,7 @@ function FullscreenViewer({ imageUrl, onClose }) {
         </button>
       )}
       <div className="fullscreen-hint">
-        {scale === 1 ? 'pinch or double-tap to zoom' : `${Math.round(scale * 100)}%`}
+        {scale === 1 ? 'scroll or double-click to zoom • drag to pan' : `${Math.round(scale * 100)}% • drag to pan`}
       </div>
     </div>
   )
