@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify, MonitorSmartphone, Smartphone, Minimize2, RefreshCcw, SlidersHorizontal, X } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify, MonitorSmartphone, Smartphone, Minimize2, SlidersHorizontal, X } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 import References from './References'
@@ -323,7 +323,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
   }
 
   // Toggle category selection (multi-select)
-  const toggleCategory = (category) => {
+  const toggleCategory = (category, closeModal = false) => {
     const isSelected = selectedFolders.includes(category)
     const newFolders = isSelected
       ? selectedFolders.filter(f => f !== category)
@@ -337,12 +337,11 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       loading: true,
       initialized: false
     }))
-  }
-
-  const handleCategorySelect = (category) => {
-    toggleCategory(category)
-    setCategoryDropdownOpen(false)
-    setCategorySearch('')
+    
+    if (closeModal) {
+      setCategoryDropdownOpen(false)
+      setCategorySearch('')
+    }
   }
 
   const aspectPresets = [
@@ -611,15 +610,6 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
                   </button>
                 )
               })}
-              {selectedAspect && (
-                <button
-                  className="aspect-chip reset"
-                  onClick={() => updateFilter('selectedAspect', '')}
-                >
-                  <RefreshCcw size={12} />
-                  <span>reset</span>
-                </button>
-              )}
             </div>
 
             <div className="grid-controls">
