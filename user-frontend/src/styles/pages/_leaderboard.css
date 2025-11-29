@@ -163,6 +163,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  text-shadow: none;
 }
 
 /* Battle Stats */
