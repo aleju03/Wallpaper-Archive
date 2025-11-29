@@ -427,13 +427,15 @@ class Database {
       ORDER BY provider ASC
     `);
     const foldersResult = await this.client.execute(`
-      SELECT DISTINCT folder FROM wallpapers 
+      SELECT folder, COUNT(*) as count
+      FROM wallpapers 
       WHERE folder IS NOT NULL AND folder != '' 
-      ORDER BY folder ASC
+      GROUP BY folder
+      ORDER BY count DESC
     `);
     return {
       providers: providersResult.rows,
-      folders: foldersResult.rows.map(row => row.folder)
+      folders: foldersResult.rows
     };
   }
 

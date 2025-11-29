@@ -3,7 +3,8 @@
    ========================================================================== */
 
 /* Resolution Dropdown Container */
-.resolution-dropdown-container {
+.resolution-dropdown-container,
+.category-dropdown-container {
   position: relative;
   display: inline-block;
 }

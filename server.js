@@ -661,7 +661,7 @@ fastify.get('/api/stats', async (request, reply) => {
 
 fastify.get('/api/providers', async (request, reply) => {
   try {
-    const { providers: providerRows, folders } = await db.getProvidersAndFolders();
+    const { providers: providerRows, folders: folderRows } = await db.getProvidersAndFolders();
     const providers = providerRows.map((provider) => {
       const lastUpdated = provider.last_created_at ? new Date(provider.last_created_at) : null;
       const daysSinceUpdate = lastUpdated
@@ -683,6 +683,11 @@ fastify.get('/api/providers', async (request, reply) => {
         daysSinceUpdate
       };
     });
+
+    const folders = folderRows.map((folder) => ({
+      name: folder.folder,
+      count: Number(folder.count || 0)
+    }));
     
     setCache(reply, 600);
 

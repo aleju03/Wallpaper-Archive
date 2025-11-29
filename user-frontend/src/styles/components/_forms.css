@@ -2,10 +2,19 @@
    Form Components
    ========================================================================== */
 
+/* Search Row - wrapper for search bar and mobile filter toggle */
+.search-row {
+  margin-bottom: var(--spacing-lg);
+}
+
 /* Search Bar */
 .search-bar {
   position: relative;
   margin-bottom: var(--spacing-lg);
+}
+
+.search-row .search-bar {
+  margin-bottom: 0;
 }
 
 .search-bar input {
@@ -147,4 +156,24 @@
 .aspect-chip.reset {
   border-style: dashed;
   opacity: 0.9;
+}
+
+/* Mobile Filter Toggle Button - Hidden on desktop */
+.mobile-filter-toggle {
+  display: none;
+}
+
+/* Mobile Filter Header - Hidden on desktop */
+.mobile-filter-header {
+  display: none;
+}
+
+/* Mobile Filter Actions - Hidden on desktop */
+.mobile-filter-actions {
+  display: none;
+}
+
+/* Mobile Filter Overlay - Hidden on desktop */
+.mobile-filter-overlay {
+  display: none;
 }

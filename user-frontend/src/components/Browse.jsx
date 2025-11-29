@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify, MonitorSmartphone, Smartphone, Minimize2, RefreshCcw } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Grid3X3, Grid2X2, AlignJustify, MonitorSmartphone, Smartphone, Minimize2, RefreshCcw, SlidersHorizontal, X } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl } from '../config'
 import References from './References'
@@ -102,6 +102,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     currentPage,
     searchQuery,
     selectedProvider,
+    selectedFolder,
     selectedResolution,
     selectedAspect,
     loading,
@@ -113,6 +114,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
   const [displayPage, setDisplayPage] = useState(currentPage)
 
   const [providers, setProviders] = useState([])
+  const [folders, setFolders] = useState([])
   const [resolutions, setResolutions] = useState([])
   const [aspects, setAspects] = useState([])
   const [error, setError] = useState(null)
@@ -130,6 +132,9 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
   // Custom dropdown state
   const [resolutionDropdownOpen, setResolutionDropdownOpen] = useState(false)
   const [resolutionSearch, setResolutionSearch] = useState('')
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
+  const [categorySearch, setCategorySearch] = useState('')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   const fetchProviders = async () => {
     try {
@@ -137,6 +142,9 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       const providersData = response.data.providers || []
       const providerNames = providersData.map(p => typeof p === 'string' ? p : p.name)
       setProviders(providerNames)
+      
+      const foldersData = response.data.folders || []
+      setFolders(foldersData)
     } catch (err) {
       console.error('Failed to fetch providers:', err)
     }
@@ -168,6 +176,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       
       if (searchQuery) params.append('search', searchQuery)
       if (selectedProvider) params.append('provider', selectedProvider)
+      if (selectedFolder) params.append('folder', selectedFolder)
       if (selectedResolution) params.append('resolution', selectedResolution)
       if (selectedAspect) params.append('aspect', selectedAspect)
       params.append('limit', itemsPerPage.toString())
@@ -193,7 +202,7 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
         initialized: true
       }))
     }
-  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedResolution, selectedAspect, initialized, setBrowseState])
+  }, [currentPage, itemsPerPage, searchQuery, selectedProvider, selectedFolder, selectedResolution, selectedAspect, initialized, setBrowseState])
 
   useEffect(() => {
     fetchProviders()
@@ -236,13 +245,16 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
       if (!event.target.closest('.resolution-dropdown-container')) {
         setResolutionDropdownOpen(false)
       }
+      if (!event.target.closest('.category-dropdown-container')) {
+        setCategoryDropdownOpen(false)
+      }
     }
 
-    if (resolutionDropdownOpen) {
+    if (resolutionDropdownOpen || categoryDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [resolutionDropdownOpen])
+  }, [resolutionDropdownOpen, categoryDropdownOpen])
 
   const formatFileSize = (bytes) => {
     if (!bytes) return 'Unknown'
@@ -289,6 +301,40 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     return res ? `${res.dimensions} (${res.count.toLocaleString()})` : selectedResolution
   }
 
+  // Get filtered categories for the custom dropdown
+  const getFilteredCategories = () => {
+    let filtered = folders
+
+    // Filter by search query
+    if (categorySearch) {
+      filtered = filtered.filter(folder => 
+        folder.name.toLowerCase().includes(categorySearch.toLowerCase())
+      )
+    }
+
+    // If no search, show only the most popular ones (top 15)
+    if (!categorySearch) {
+      filtered = filtered.slice(0, 15)
+    } else {
+      // If searching, limit to top 20 results
+      filtered = filtered.slice(0, 20)
+    }
+
+    return filtered
+  }
+
+  const handleCategorySelect = (category) => {
+    updateFilter('selectedFolder', category)
+    setCategoryDropdownOpen(false)
+    setCategorySearch('')
+  }
+
+  const getSelectedCategoryDisplay = () => {
+    if (!selectedFolder) return 'all categories'
+    const folder = folders.find(f => f.name === selectedFolder)
+    return folder ? `${folder.name} (${folder.count.toLocaleString()})` : selectedFolder
+  }
+
   const aspectPresets = [
     { label: 'desktop (16:9)', value: '16:9', icon: <MonitorSmartphone size={14} /> },
     { label: 'ultrawide (21:9)', value: '21:9', icon: <AlignJustify size={14} /> },
@@ -319,22 +365,67 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
     }
   }
 
+  // Count active filters for mobile badge
+  const activeFilterCount = [
+    selectedProvider,
+    selectedFolder,
+    selectedResolution,
+    selectedAspect
+  ].filter(Boolean).length
+
+  const clearAllFilters = () => {
+    setBrowseState(prev => ({
+      ...prev,
+      selectedProvider: '',
+      selectedFolder: '',
+      selectedResolution: '',
+      selectedAspect: '',
+      currentPage: 1,
+      loading: true,
+      initialized: false
+    }))
+    setDisplayPage(1)
+    setMobileFiltersOpen(false)
+  }
+
 
   return (
     <div className="browse">
       <div className="browse-controls">
         <div className="search-section">
-          <div className="search-bar">
-            <Search className="search-icon" size={16} />
-            <input
-              type="text"
-              placeholder="search wallpapers..."
-              value={searchQuery}
-              onChange={(e) => updateFilter('searchQuery', e.target.value)}
-            />
+          <div className="search-row">
+            <div className="search-bar">
+              <Search className="search-icon" size={16} />
+              <input
+                type="text"
+                placeholder="search wallpapers..."
+                value={searchQuery}
+                onChange={(e) => updateFilter('searchQuery', e.target.value)}
+              />
+            </div>
+
+            {/* Mobile filter toggle */}
+            <button 
+              className="mobile-filter-toggle"
+              onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+            >
+              <SlidersHorizontal size={16} />
+              <span>filters</span>
+              {activeFilterCount > 0 && (
+                <span className="filter-badge">{activeFilterCount}</span>
+              )}
+            </button>
           </div>
           
-          <div className="filters">
+          <div className={`filters ${mobileFiltersOpen ? 'mobile-open' : ''}`}>
+            {/* Mobile filter header */}
+            <div className="mobile-filter-header">
+              <span>filters</span>
+              <button onClick={() => setMobileFiltersOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
             <select 
               className="filter-select"
               value={selectedProvider}
@@ -388,6 +479,55 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
                     {!resolutionSearch && (
                       <div className="resolution-option-hint">
                         type to search all {resolutions.length} resolutions...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="category-dropdown-container">
+              <button
+                className="resolution-dropdown-trigger"
+                onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+              >
+                <span>{getSelectedCategoryDisplay()}</span>
+                <ChevronDown size={14} className={`dropdown-arrow ${categoryDropdownOpen ? 'open' : ''}`} />
+              </button>
+              
+              {categoryDropdownOpen && (
+                <div className="resolution-dropdown-menu">
+                  <div className="resolution-search">
+                    <Search size={14} className="search-icon" />
+                    <input
+                      type="text"
+                      placeholder="search categories..."
+                      value={categorySearch}
+                      onChange={(e) => setCategorySearch(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="resolution-options">
+                    <div 
+                      className={`resolution-option ${selectedFolder === '' ? 'selected' : ''}`}
+                      onClick={() => handleCategorySelect('')}
+                    >
+                      all categories
+                    </div>
+                    
+                    {getFilteredCategories().map(folder => (
+                      <div
+                        key={folder.name}
+                        className={`resolution-option ${selectedFolder === folder.name ? 'selected' : ''}`}
+                        onClick={() => handleCategorySelect(folder.name)}
+                      >
+                        {folder.name} ({folder.count.toLocaleString()})
+                      </div>
+                    ))}
+                    
+                    {!categorySearch && folders.length > 15 && (
+                      <div className="resolution-option-hint">
+                        type to search all {folders.length} categories...
                       </div>
                     )}
                   </div>
@@ -462,7 +602,24 @@ function Browse({ onWallpaperClick, browseState, setBrowseState }) {
             <div className="results-info">
               {totalCount.toLocaleString()} wallpapers found
             </div>
+
+            {/* Mobile filter actions */}
+            <div className="mobile-filter-actions">
+              {activeFilterCount > 0 && (
+                <button className="clear-filters-btn" onClick={clearAllFilters}>
+                  clear all filters
+                </button>
+              )}
+              <button className="apply-filters-btn" onClick={() => setMobileFiltersOpen(false)}>
+                show {totalCount.toLocaleString()} results
+              </button>
+            </div>
           </div>
+
+          {/* Mobile filter overlay */}
+          {mobileFiltersOpen && (
+            <div className="mobile-filter-overlay" onClick={() => setMobileFiltersOpen(false)} />
+          )}
         </div>
       </div>
 
