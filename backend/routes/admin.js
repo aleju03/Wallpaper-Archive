@@ -598,8 +598,53 @@ async function registerAdminRoutes(fastify, db) {
       }
 
       // Sort by title
-      sendEvent('progress', { phase: 'finalizing', message: 'Sorting results...', percent: 98 });
+      sendEvent('progress', { phase: 'finalizing', message: 'Sorting results...', percent: 96 });
       processedBeatmaps.sort((a, b) => a.displayTitle.localeCompare(b.displayTitle));
+
+      // Cross-check for duplicates within the scanned beatmaps themselves
+      sendEvent('progress', { phase: 'finalizing', message: 'Checking for duplicates within scan...', percent: 97 });
+      const SIMILARITY_THRESHOLD = 10;
+      for (let i = 0; i < processedBeatmaps.length; i++) {
+        const beatmap = processedBeatmaps[i];
+        // Skip if already marked as duplicate (matches DB)
+        if (beatmap.hasDuplicate) continue;
+        
+        // Check against all previous beatmaps in the scan
+        for (let j = 0; j < i; j++) {
+          const other = processedBeatmaps[j];
+          if (!beatmap.perceptualHash || !other.perceptualHash) continue;
+          
+          // Calculate hamming distance manually (same logic as image-hash.js)
+          const hash1 = beatmap.perceptualHash;
+          const hash2 = other.perceptualHash;
+          
+          // Convert hex to binary and count differences
+          let distance = 0;
+          for (let k = 0; k < hash1.length; k++) {
+            const b1 = parseInt(hash1[k], 16);
+            const b2 = parseInt(hash2[k], 16);
+            // Count differing bits using XOR and popcount
+            let xor = b1 ^ b2;
+            while (xor) {
+              distance += xor & 1;
+              xor >>= 1;
+            }
+          }
+          
+          if (distance <= SIMILARITY_THRESHOLD) {
+            // Mark as duplicate of the earlier scanned item
+            beatmap.hasDuplicate = true;
+            beatmap.duplicateOf = {
+              id: other.id,
+              filename: other.cleanFilename,
+              displayTitle: other.displayTitle,
+              isFromScan: true // Flag to indicate this is a scan-internal duplicate
+            };
+            beatmap.selected = false;
+            break; // Found a duplicate, no need to check further
+          }
+        }
+      }
 
       // Deduplicate filenames - add suffix only when there are collisions
       sendEvent('progress', { phase: 'finalizing', message: 'Resolving filename conflicts...', percent: 99 });

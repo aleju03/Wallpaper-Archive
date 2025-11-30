@@ -146,11 +146,50 @@ function Upload() {
   }
 
   const selectNonDuplicates = () => {
-    setOsuBeatmaps(prev => prev.map(b => {
-      const creator = (b.metadata?.creator || '').toLowerCase()
-      const isExcluded = excludedMappers.includes(creator)
-      return { ...b, selected: !b.hasDuplicate && !isExcluded }
-    }))
+    setOsuBeatmaps(prev => {
+      // Group duplicates by their perceptual hash or duplicateOf target
+      // We want to keep ONE from each duplicate group, not deselect all
+      const seenHashes = new Set()
+      const seenDuplicateTargets = new Set()
+      
+      return prev.map(b => {
+        const creator = (b.metadata?.creator || '').toLowerCase()
+        const isExcluded = excludedMappers.includes(creator)
+        
+        if (isExcluded) {
+          return { ...b, selected: false }
+        }
+        
+        // If not a duplicate, select it
+        if (!b.hasDuplicate) {
+          // Track this hash so we can identify duplicates of it within the scan
+          if (b.perceptualHash) seenHashes.add(b.perceptualHash)
+          return { ...b, selected: true }
+        }
+        
+        // It's a duplicate - check if we've already selected one from this group
+        // duplicateOf contains info about what existing DB wallpaper it matches
+        const duplicateTargetId = b.duplicateOf?.id || b.duplicateOf?.filename
+        
+        if (duplicateTargetId) {
+          // This matches an existing DB wallpaper
+          if (seenDuplicateTargets.has(duplicateTargetId)) {
+            // Already have one matching this DB entry, skip
+            return { ...b, selected: false }
+          }
+          seenDuplicateTargets.add(duplicateTargetId)
+          return { ...b, selected: true } // Keep first one from this duplicate group
+        }
+        
+        // Check if we've seen this exact hash before (duplicates within scan)
+        if (b.perceptualHash && seenHashes.has(b.perceptualHash)) {
+          return { ...b, selected: false }
+        }
+        
+        if (b.perceptualHash) seenHashes.add(b.perceptualHash)
+        return { ...b, selected: true }
+      })
+    })
   }
 
   const addExcludedMapper = (mapperName) => {
