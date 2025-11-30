@@ -486,6 +486,14 @@ class Database {
     return Number(result.rowsAffected);
   }
 
+  async getWallpapersByProvider(provider) {
+    const result = await this.client.execute({
+      sql: 'SELECT * FROM wallpapers WHERE provider = ?',
+      args: [provider]
+    });
+    return result.rows;
+  }
+
   async getRandomWallpaperPair(excludeIds = []) {
     const hasExclusions = excludeIds.length > 0;
     const excludePlaceholders = hasExclusions ? excludeIds.map(() => '?').join(',') : '';

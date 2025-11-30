@@ -392,6 +392,60 @@ async function registerAdminRoutes(fastify, db) {
     }
   });
 
+  // Admin: delete all wallpapers from a provider
+  fastify.post('/api/wallpapers/delete-by-provider', { onRequest: [adminAuthHook] }, async (request, reply) => {
+    try {
+      const { provider, deleteFiles = true } = request.body || {};
+      
+      if (!provider) {
+        reply.code(400);
+        return { success: false, error: 'Provider is required' };
+      }
+
+      console.log(`=== Deleting all wallpapers from provider: ${provider} ===`);
+
+      // Get all wallpapers from this provider
+      const wallpapers = await db.getWallpapersByProvider(provider);
+      
+      if (wallpapers.length === 0) {
+        return { success: true, deleted: 0, message: 'No wallpapers found for this provider' };
+      }
+
+      console.log(`Found ${wallpapers.length} wallpapers to delete`);
+
+      // Delete from R2 if requested
+      if (deleteFiles && config.R2_ENABLED) {
+        const keysToDelete = [];
+        for (const w of wallpapers) {
+          const mainKey = getKeyFromUrl(w.download_url);
+          const thumbUrl = buildThumbnailUrl(w.download_url);
+          const thumbKey = thumbUrl ? getKeyFromUrl(thumbUrl) : null;
+          if (mainKey) keysToDelete.push(mainKey);
+          if (thumbKey) keysToDelete.push(thumbKey);
+        }
+        console.log(`Deleting ${keysToDelete.length} files from R2`);
+        await deleteFromR2(keysToDelete, fastify.log);
+      }
+
+      // Delete from database
+      const ids = wallpapers.map(w => w.id);
+      const deletedCount = await db.deleteWallpapers(ids);
+
+      console.log(`Deleted ${deletedCount} wallpapers from database`);
+
+      return { 
+        success: true, 
+        deleted: deletedCount,
+        provider,
+        removedFromStorage: deleteFiles && config.R2_ENABLED
+      };
+    } catch (error) {
+      console.error('Delete by provider error:', error);
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Admin: osu! scan - scan Songs directory and return beatmap list with SSE progress
   fastify.get('/api/osu/scan', { onRequest: [adminAuthHook] }, async (request, reply) => {
     const { songsPath, maxFiles } = request.query || {};

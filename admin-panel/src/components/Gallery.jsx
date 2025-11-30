@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronLeft, ChevronRight, Trash2, X, CheckSquare, Square, Loader, Copy, RefreshCw } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Trash2, X, CheckSquare, Square, Loader, Copy, RefreshCw, AlertTriangle } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
 import { useAdminData } from '../context/useAdminData'
@@ -240,6 +240,44 @@ function Gallery() {
     }
   }
 
+  const deleteAllFromProvider = async () => {
+    if (!selectedProvider) return
+    
+    showConfirmModal(
+      'Delete All from Provider',
+      `Are you sure you want to delete ALL wallpapers from provider "${selectedProvider}"? This will delete ${totalCount} wallpapers and cannot be undone!`,
+      async () => {
+        hideConfirmModal()
+        setIsDeleting(true)
+        setStatusMessage({ type: 'info', text: `Deleting all wallpapers from ${selectedProvider}...` })
+        
+        try {
+          const response = await axios.post(
+            `${API_BASE}/api/wallpapers/delete-by-provider`,
+            { provider: selectedProvider, deleteFiles: true },
+            { headers: getAdminHeaders() }
+          )
+          
+          if (response.data.success) {
+            setStatusMessage({ type: 'success', text: `Deleted ${response.data.deleted} wallpapers from ${selectedProvider}` })
+            // Refresh the gallery and providers list
+            await fetchWallpapers()
+            await fetchProviders(true)
+          } else {
+            setStatusMessage({ type: 'error', text: response.data.error || 'Deletion failed' })
+          }
+        } catch (err) {
+          console.error('Error deleting provider wallpapers:', err.message)
+          setStatusMessage({ type: 'error', text: 'Deletion failed. Check console for details.' })
+        } finally {
+          setIsDeleting(false)
+        }
+      },
+      'Delete All',
+      true
+    )
+  }
+
   return (
     <div className="gallery">
       <div className="gallery-controls">
@@ -288,6 +326,18 @@ function Gallery() {
           >
             <RefreshCw size={16} className={loading ? 'spinning' : ''} />
           </button>
+          
+          {selectedProvider && (
+            <button 
+              className="btn-delete-provider" 
+              onClick={deleteAllFromProvider}
+              disabled={loading || isDeleting || totalCount === 0}
+              title={`Delete all ${totalCount} wallpapers from ${selectedProvider}`}
+            >
+              <AlertTriangle size={14} />
+              <span>Delete All from {selectedProvider}</span>
+            </button>
+          )}
         </div>
       </div>
 
