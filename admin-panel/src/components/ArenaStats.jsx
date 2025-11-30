@@ -59,7 +59,10 @@ function ArenaStats() {
   }, [fetchHistory])
 
   const formatTime = (dateString) => {
-    const date = new Date(dateString)
+    // SQLite returns "YYYY-MM-DD HH:MM:SS" format which some browsers don't parse correctly
+    // Replace space with T to make it ISO 8601 compliant, and add Z for UTC
+    const isoString = dateString.replace(' ', 'T') + 'Z'
+    const date = new Date(isoString)
     const now = new Date()
     const diffMs = now - date
     const diffMins = Math.floor(diffMs / 60000)

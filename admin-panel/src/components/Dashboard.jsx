@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Trash2, X } from 'lucide-react'
+import { Trash2, X, Download, Maximize2, Minimize2 } from 'lucide-react'
 import { useAdminData } from '../context/useAdminData'
 import { API_BASE } from '../config'
 
@@ -37,7 +37,12 @@ function formatFileSize(bytes) {
   return `${bytes.toFixed(1)} ${units[i]}`
 }
 
-function ImagePreviewModal({ wallpaper, onClose }) {
+function FullscreenViewer({ imageUrl, onClose }) {
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartRef = { x: 0, y: 0, posX: 0, posY: 0 }
+
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') onClose()
@@ -46,20 +51,166 @@ function ImagePreviewModal({ wallpaper, onClose }) {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [onClose])
 
-  if (!wallpaper) return null
+  const handleWheel = (e) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? -0.1 : 0.1
+    setScale(prev => {
+      const newScale = Math.min(Math.max(prev + delta, 1), 5)
+      if (newScale <= 1) setPosition({ x: 0, y: 0 })
+      return newScale
+    })
+  }
+
+  const handleMouseDown = (e) => {
+    if (scale > 1 && e.button === 0) {
+      e.preventDefault()
+      setIsDragging(true)
+      dragStartRef.x = e.clientX
+      dragStartRef.y = e.clientY
+      dragStartRef.posX = position.x
+      dragStartRef.posY = position.y
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (isDragging && scale > 1) {
+      setPosition({
+        x: dragStartRef.posX + (e.clientX - dragStartRef.x),
+        y: dragStartRef.posY + (e.clientY - dragStartRef.y)
+      })
+    }
+  }
+
+  const handleMouseUp = () => setIsDragging(false)
+
+  const handleDoubleClick = () => {
+    if (scale > 1) {
+      setScale(1)
+      setPosition({ x: 0, y: 0 })
+    } else {
+      setScale(2.5)
+    }
+  }
 
   return (
-    <div className="image-modal" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>
-          <X size={20} />
+    <div 
+      className="fullscreen-viewer"
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onDoubleClick={handleDoubleClick}
+      style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
+    >
+      <img
+        src={imageUrl}
+        alt="Fullscreen view"
+        className="fullscreen-viewer__image"
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+        }}
+        draggable={false}
+      />
+      <button className="fullscreen-viewer__exit" onClick={onClose}>
+        <Minimize2 size={16} />
+        <span>exit fullscreen</span>
+      </button>
+      {scale > 1 && (
+        <button className="fullscreen-viewer__reset" onClick={() => { setScale(1); setPosition({ x: 0, y: 0 }) }}>
+          reset zoom
         </button>
-        <img src={wallpaper.image_url} alt={wallpaper.filename} />
-        <div className="modal-info">
-          <span className="modal-info__name">{wallpaper.filename}</span>
-          <span className="modal-info__meta">
-            {wallpaper.dimensions} · {formatFileSize(wallpaper.file_size)} · {wallpaper.provider}
-          </span>
+      )}
+      <div className="fullscreen-viewer__hint">
+        {scale === 1 ? 'scroll or double-click to zoom' : `${Math.round(scale * 100)}% · drag to pan`}
+      </div>
+    </div>
+  )
+}
+
+function ImagePreviewModal({ wallpaper, onClose, onDelete }) {
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [showFullscreen, setShowFullscreen] = useState(false)
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && !showFullscreen) onClose()
+    }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleEsc)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleEsc)
+    }
+  }, [onClose, showFullscreen])
+
+  if (!wallpaper) return null
+
+  if (showFullscreen) {
+    return <FullscreenViewer imageUrl={wallpaper.image_url} onClose={() => setShowFullscreen(false)} />
+  }
+
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) onClose()
+  }
+
+  const handleDownload = () => {
+    const link = document.createElement('a')
+    link.href = `${API_BASE}/api/download/${wallpaper.id}`
+    link.download = wallpaper.filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  return (
+    <div className="preview-modal-overlay" onClick={handleOverlayClick}>
+      <div className="preview-modal">
+        <div className="preview-modal__header">
+          <span className="preview-modal__title">wallpaper preview</span>
+          <button className="preview-modal__close" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+        
+        <div className="preview-modal__body">
+          <div className="preview-modal__image-container">
+            {!imageLoaded && <div className="preview-modal__skeleton" />}
+            <img
+              src={wallpaper.image_url}
+              alt={wallpaper.filename}
+              className={`preview-modal__image ${imageLoaded ? 'loaded' : ''}`}
+              onLoad={() => setImageLoaded(true)}
+              onError={(e) => { e.target.src = wallpaper.thumbnail_url }}
+            />
+          </div>
+          
+          <div className="preview-modal__sidebar">
+            <div className="preview-modal__details">
+              <h4>details</h4>
+              <p><strong>filename:</strong> {wallpaper.filename}</p>
+              <p><strong>provider:</strong> {wallpaper.provider}</p>
+              {wallpaper.folder && <p><strong>category:</strong> {wallpaper.folder}</p>}
+              {wallpaper.dimensions && <p><strong>resolution:</strong> {wallpaper.dimensions}</p>}
+              <p><strong>file size:</strong> {formatFileSize(wallpaper.file_size)}</p>
+            </div>
+            
+            <div className="preview-modal__actions">
+              <button className="preview-modal__btn" onClick={() => setShowFullscreen(true)}>
+                <Maximize2 size={14} />
+                view fullscreen
+              </button>
+              <button className="preview-modal__btn" onClick={handleDownload}>
+                <Download size={14} />
+                download
+              </button>
+              <button className="preview-modal__btn preview-modal__btn--danger" onClick={() => onDelete(wallpaper.id, wallpaper.filename)}>
+                <Trash2 size={14} />
+                delete
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -226,7 +377,11 @@ function Dashboard() {
       {previewWallpaper && (
         <ImagePreviewModal 
           wallpaper={previewWallpaper} 
-          onClose={() => setPreviewWallpaper(null)} 
+          onClose={() => setPreviewWallpaper(null)}
+          onDelete={(id, filename) => {
+            setPreviewWallpaper(null)
+            handleDelete(id, filename)
+          }}
         />
       )}
     </div>

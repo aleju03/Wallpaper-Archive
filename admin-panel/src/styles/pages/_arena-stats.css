@@ -305,13 +305,13 @@
 }
 
 .battle-meta .time {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
 .battle-meta .vote-time {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
 }
 
 .loading-text,
