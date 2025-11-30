@@ -344,8 +344,18 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
             </div>
             
             {wallpaper.tags && wallpaper.tags.length > 0 && (() => {
-              const allTags = (typeof wallpaper.tags === 'string' ? wallpaper.tags.split(',') : wallpaper.tags)
-                .map(tag => tag.trim())
+              // Parse tags - handle JSON array string or comma-separated string
+              let parsedTags = wallpaper.tags;
+              if (typeof wallpaper.tags === 'string') {
+                try {
+                  parsedTags = JSON.parse(wallpaper.tags);
+                } catch {
+                  parsedTags = wallpaper.tags.split(',');
+                }
+              }
+
+              const allTags = parsedTags
+                .map(tag => tag.trim().replace(/^["']|["']$/g, '')) // Remove quotes
                 .filter(tag => tag);
               const previewCount = 6;
               const hasMoreTags = allTags.length > previewCount;

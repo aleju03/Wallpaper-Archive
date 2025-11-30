@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Skill(frontend-design:frontend-design)"
-    ],
-    "deny": [],
-    "ask": []
-  }
-}
