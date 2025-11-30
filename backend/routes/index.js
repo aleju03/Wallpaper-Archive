@@ -2,6 +2,7 @@ const registerPublicRoutes = require('./public');
 const registerWallpaperRoutes = require('./wallpapers');
 const registerArenaRoutes = require('./arena');
 const registerAdminRoutes = require('./admin');
+const registerAuthRoutes = require('./auth');
 
 /**
  * Register all routes
@@ -9,6 +10,7 @@ const registerAdminRoutes = require('./admin');
  * @param {Object} db - Database instance
  */
 async function registerRoutes(fastify, db) {
+  await registerAuthRoutes(fastify, db);
   await registerPublicRoutes(fastify, db);
   await registerWallpaperRoutes(fastify, db);
   await registerArenaRoutes(fastify, db);
@@ -17,6 +19,7 @@ async function registerRoutes(fastify, db) {
 
 module.exports = {
   registerRoutes,
+  registerAuthRoutes,
   registerPublicRoutes,
   registerWallpaperRoutes,
   registerArenaRoutes,

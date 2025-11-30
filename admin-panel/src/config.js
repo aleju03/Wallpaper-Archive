@@ -20,8 +20,9 @@ export const resolveAssetUrl = (url) => {
     : `${API_BASE}${url}`
 }
 
-// Admin API key (read from Vite env) for protected endpoints
+// Helper to get auth headers (token from localStorage)
+// Note: Components should use useAuth().getAuthHeaders() instead
 export const getAdminHeaders = () => {
-  const key = import.meta.env.VITE_ADMIN_API_KEY;
-  return key ? { Authorization: `Bearer ${key}` } : {};
+  const token = localStorage.getItem('admin_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

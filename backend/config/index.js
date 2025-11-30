@@ -8,6 +8,11 @@ const RATE_LIMIT_DRIVER = (process.env.RATE_LIMIT_DRIVER || 'memory').toLowerCas
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
+// JWT Authentication
+const JWT_SECRET = process.env.JWT_SECRET || '';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || '';
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '';
+
 // R2/Storage config
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
@@ -30,6 +35,9 @@ module.exports = {
   RATE_LIMIT_DRIVER,
   ADMIN_API_KEY,
   GITHUB_TOKEN,
+  JWT_SECRET,
+  ADMIN_USERNAME,
+  ADMIN_PASSWORD_HASH,
   R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY,
   R2_ACCOUNT_ID,

@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { BarChart3, Images, Database, Copy, UploadCloud, Swords, Menu } from 'lucide-react'
+import { BarChart3, Images, Database, Copy, UploadCloud, Swords, Menu, LogOut } from 'lucide-react'
+import { useAuth } from './context/AuthContext'
+import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import Gallery from './components/Gallery'
 import Statistics from './components/Statistics'
@@ -9,8 +11,31 @@ import ArenaStats from './components/ArenaStats'
 import './styles/index.css'
 
 function App() {
+  const { isAuthenticated, loading, login, logout, user } = useAuth()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#0a0a0a',
+        color: '#fff',
+        fontFamily: '"SF Mono", Monaco, monospace'
+      }}>
+        Loading...
+      </div>
+    )
+  }
+
+  // Show login if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={login} />
+  }
 
   const navigation = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -68,13 +93,24 @@ function App() {
           })}
         </nav>
 
-        <button
-          className="sidebar-toggle"
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <Menu size={20} />
-        </button>
+        <div className="sidebar-footer">
+          <button
+            className="nav-item logout-button"
+            onClick={logout}
+            title="Logout"
+          >
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
+
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <Menu size={20} />
+          </button>
+        </div>
       </aside>
 
       <main className="main-content">
