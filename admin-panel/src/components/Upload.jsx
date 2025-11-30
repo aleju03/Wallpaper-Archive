@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import axios from 'axios'
-import { UploadCloud, CheckCircle, AlertCircle, Hash, Shield, Image as ImageIcon } from 'lucide-react'
+import { UploadCloud, CheckCircle, AlertCircle, Hash, Shield, Image as ImageIcon, FolderOpen, Tag, Github } from 'lucide-react'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
 import { useAdminData } from '../context/useAdminData'
 
@@ -19,10 +19,31 @@ function Upload() {
   const [importing, setImporting] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [importError, setImportError] = useState(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef(null)
   const { fetchStats, fetchProviders } = useAdminData()
 
   const handleFiles = (event) => {
     setFiles(Array.from(event.target.files || []))
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(file =>
+      file.type.startsWith('image/')
+    )
+    setFiles(droppedFiles)
   }
 
   const handleUpload = async () => {
@@ -66,111 +87,180 @@ function Upload() {
 
   return (
     <div className="upload">
-      <div className="upload-mode-switch">
-        <button
-          className={`btn btn--neutral ${mode === 'manual' ? 'btn--active' : ''}`}
-          onClick={() => setMode('manual')}
-        >
-          Manual upload
-        </button>
-        <button
-          className={`btn btn--neutral ${mode === 'github' ? 'btn--active' : ''}`}
-          onClick={() => setMode('github')}
-        >
-          Import from GitHub
-        </button>
+      <div className="upload__header">
+        <div className="upload__title-section">
+          <h1 className="upload__title">Asset Upload</h1>
+          <p className="upload__subtitle">Import wallpapers from local files or GitHub repositories</p>
+        </div>
+
+        <div className="upload__mode-switcher">
+          <button
+            className={`mode-tab ${mode === 'manual' ? 'mode-tab--active' : ''}`}
+            onClick={() => setMode('manual')}
+          >
+            <UploadCloud size={14} />
+            <span>Manual Upload</span>
+          </button>
+          <button
+            className={`mode-tab ${mode === 'github' ? 'mode-tab--active' : ''}`}
+            onClick={() => setMode('github')}
+          >
+            <Github size={14} />
+            <span>GitHub Import</span>
+          </button>
+        </div>
       </div>
 
       {mode === 'manual' && (
-        <div className="stat-card">
-          <h3>
-            <UploadCloud size={16} style={{ display: 'inline', marginRight: '8px' }} />
-            Upload new wallpapers
-          </h3>
-          <p style={{ color: '#888', marginBottom: '12px' }}>
-            Files are uploaded to storage, hashed for duplicates, and registered in the database automatically.
-          </p>
+        <div className="upload__content">
+          <div className="upload__section">
+            <h3 className="section-label">Configuration</h3>
+            <div className="input-row">
+              <div className="input-group">
+                <label className="input-label">
+                  <FolderOpen size={12} />
+                  Provider
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="manual"
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                />
+              </div>
 
-          <div className="upload-grid">
-            <div className="upload-field">
-              <label>Provider</label>
-              <input 
-                type="text" 
-                placeholder="e.g. manual, custom-provider"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-              />
-            </div>
-            <div className="upload-field">
-              <label>Folder / Category</label>
-              <input 
-                type="text" 
-                placeholder="Optional folder"
-                value={folder}
-                onChange={(e) => setFolder(e.target.value)}
-              />
-            </div>
-            <div className="upload-field">
-              <label>Tags</label>
-              <input 
-                type="text" 
-                placeholder="Optional tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-              />
+              <div className="input-group">
+                <label className="input-label">
+                  <FolderOpen size={12} />
+                  Category
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Optional"
+                  value={folder}
+                  onChange={(e) => setFolder(e.target.value)}
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">
+                  <Tag size={12} />
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Optional"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="upload-dropzone">
-            <label className="dropzone-label" htmlFor="file-input">
-              <ImageIcon size={20} />
-              <span>{files.length ? `${files.length} file(s) selected` : 'Click to choose images'}</span>
-            </label>
-            <input 
-              id="file-input"
-              type="file" 
-              multiple 
-              accept="image/*" 
-              onChange={handleFiles}
-            />
-            <button 
-              className="btn btn--neutral"
-              disabled={uploading}
+          <div className="upload__section">
+            <h3 className="section-label">Files</h3>
+            <div
+              className={`dropzone ${isDragging ? 'dropzone--active' : ''} ${files.length > 0 ? 'dropzone--has-files' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFiles}
+                style={{ display: 'none' }}
+              />
+
+              <div className="dropzone__content">
+                <div className="dropzone__icon">
+                  <ImageIcon size={32} strokeWidth={1.5} />
+                </div>
+                <div className="dropzone__text">
+                  {files.length > 0 ? (
+                    <>
+                      <span className="dropzone__title">{files.length} file{files.length !== 1 ? 's' : ''} selected</span>
+                      <span className="dropzone__hint">Click or drag to replace</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="dropzone__title">Drop images here</span>
+                      <span className="dropzone__hint">or click to browse</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {files.length > 0 && (
+                <div className="dropzone__files">
+                  {files.slice(0, 3).map((file, i) => (
+                    <div key={i} className="file-chip">
+                      <ImageIcon size={10} />
+                      <span>{file.name}</span>
+                    </div>
+                  ))}
+                  {files.length > 3 && (
+                    <div className="file-chip file-chip--more">
+                      +{files.length - 3} more
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              className="btn-upload"
+              disabled={uploading || files.length === 0}
               onClick={handleUpload}
             >
-              {uploading ? 'Uploading...' : 'Upload'}
+              {uploading ? (
+                <>
+                  <div className="spinner" />
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud size={14} />
+                  <span>Upload {files.length > 0 ? `${files.length} file${files.length !== 1 ? 's' : ''}` : ''}</span>
+                </>
+              )}
             </button>
           </div>
 
           {error && (
-            <div className="error" style={{ marginTop: '12px' }}>
-              <AlertCircle size={16} /> {error}
+            <div className="alert alert--error">
+              <AlertCircle size={14} />
+              <span>{error}</span>
             </div>
           )}
 
           {result && (
-            <div className="upload-result">
-              {result.success ? (
-                <div className="success">
-                  <CheckCircle size={16} /> Uploaded {result.uploaded?.length || 0} file(s)
-                </div>
-              ) : (
-                <div className="error">
-                  <AlertCircle size={16} /> Some files failed
+            <div className="upload__result">
+              {result.success && (
+                <div className="alert alert--success">
+                  <CheckCircle size={14} />
+                  <span>Successfully uploaded {result.uploaded?.length || 0} file{result.uploaded?.length !== 1 ? 's' : ''}</span>
                 </div>
               )}
 
               {result.uploaded?.length > 0 && (
-                <div className="upload-list">
+                <div className="result-grid">
                   {result.uploaded.map((item) => (
-                    <div key={item.filename} className="upload-list__item">
-                      <div className="upload-list__thumb">
+                    <div key={item.filename} className="result-card">
+                      <div className="result-card__thumb">
                         <img src={resolveAssetUrl(item.thumbnail_url)} alt={item.filename} />
                       </div>
-                      <div>
-                        <div className="upload-list__name">{item.filename}</div>
-                        <div className="upload-list__meta">
-                          <Hash size={12} /> hash saved
+                      <div className="result-card__info">
+                        <div className="result-card__name">{item.filename}</div>
+                        <div className="result-card__meta">
+                          <Hash size={10} />
+                          <span>Hashed & stored</span>
                         </div>
                       </div>
                     </div>
@@ -179,61 +269,68 @@ function Upload() {
               )}
 
               {result.errors?.length > 0 && (
-                <div className="error" style={{ marginTop: '8px' }}>
-                  {result.errors.length} error(s) encountered
+                <div className="alert alert--error">
+                  <AlertCircle size={14} />
+                  <span>{result.errors.length} error{result.errors.length !== 1 ? 's' : ''} occurred</span>
                 </div>
               )}
-              <div className="upload-note">
-                <Shield size={12} /> Requires admin key header
-              </div>
             </div>
           )}
         </div>
       )}
 
       {mode === 'github' && (
-        <div className="stat-card">
-          <h3>
-            <UploadCloud size={16} style={{ display: 'inline', marginRight: '8px' }} />
-            Import from GitHub repository
-          </h3>
-          <p style={{ color: '#888', marginBottom: '12px' }}>
-            Paste a repo URL (uses your configured GitHub token), preview images by top-level folder, then import.
-          </p>
+        <div className="upload__content">
+          <div className="upload__section">
+            <h3 className="section-label">Repository Details</h3>
+            <div className="input-row">
+              <div className="input-group input-group--wide">
+                <label className="input-label">
+                  <Github size={12} />
+                  Repository URL
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="https://github.com/owner/repo"
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                />
+              </div>
 
-          <div className="upload-grid">
-            <div className="upload-field">
-              <label>Repository URL</label>
-              <input
-                type="text"
-                placeholder="https://github.com/owner/repo"
-                value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
-              />
-            </div>
-            <div className="upload-field">
-              <label>Branch (optional)</label>
-              <input
-                type="text"
-                placeholder="Defaults to repo default branch"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-              />
-            </div>
-            <div className="upload-field">
-              <label>Provider name (optional)</label>
-              <input
-                type="text"
-                placeholder="Defaults to repo name"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-              />
+              <div className="input-group">
+                <label className="input-label">
+                  <FolderOpen size={12} />
+                  Branch
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Default"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">
+                  <Tag size={12} />
+                  Provider
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Auto-detect"
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="import-actions">
+          <div className="upload__actions">
             <button
-              className="btn btn--neutral"
+              className="btn-secondary"
               disabled={!repoUrl || previewLoading}
               onClick={async () => {
                 setPreviewLoading(true)
@@ -253,11 +350,21 @@ function Upload() {
                 }
               }}
             >
-              {previewLoading ? 'Previewing…' : 'Preview'}
+              {previewLoading ? (
+                <>
+                  <div className="spinner" />
+                  <span>Loading...</span>
+                </>
+              ) : (
+                <>
+                  <FolderOpen size={14} />
+                  <span>Preview</span>
+                </>
+              )}
             </button>
 
             <button
-              className="btn btn--primary"
+              className="btn-upload"
               disabled={!importPreview || importing}
               onClick={async () => {
                 if (!importPreview) return
@@ -282,48 +389,56 @@ function Upload() {
                 }
               }}
             >
-              {importing ? 'Importing…' : 'Import'}
+              {importing ? (
+                <>
+                  <div className="spinner" />
+                  <span>Importing...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud size={14} />
+                  <span>Import</span>
+                </>
+              )}
             </button>
           </div>
 
           {importError && (
-            <div className="error" style={{ marginTop: '12px' }}>
-              <AlertCircle size={16} /> {importError}
+            <div className="alert alert--error">
+              <AlertCircle size={14} />
+              <span>{importError}</span>
             </div>
           )}
 
           {importPreview && (
-            <div className="upload-result" style={{ marginTop: '16px' }}>
-              <div className="success">
-                <CheckCircle size={16} /> Found {importPreview.total_images} images on branch {importPreview.branch}
+            <div className="upload__preview">
+              <div className="alert alert--success">
+                <CheckCircle size={14} />
+                <span>Found {importPreview.total_images} images on branch {importPreview.branch}</span>
               </div>
-              <div className="upload-list">
-                <div className="upload-list__item">
-                  <div>
-                    <div className="upload-list__name">Suggested provider</div>
-                    <div className="upload-list__meta">{importPreview.provider_suggested}</div>
-                  </div>
+
+              <div className="preview-stats">
+                <div className="stat-item">
+                  <span className="stat-item__label">Provider</span>
+                  <span className="stat-item__value">{importPreview.provider_suggested}</span>
                 </div>
-                {Object.entries(importPreview.by_folder || {}).map(([name, count]) => (
-                  <div key={name || 'root'} className="upload-list__item">
-                    <div>
-                      <div className="upload-list__name">{name || '(root)'}</div>
-                      <div className="upload-list__meta">{count} images</div>
-                    </div>
+
+                {Object.entries(importPreview.by_folder || {}).slice(0, 6).map(([name, count]) => (
+                  <div key={name || 'root'} className="stat-item">
+                    <span className="stat-item__label">{name || '(root)'}</span>
+                    <span className="stat-item__value">{count} images</span>
                   </div>
-                )).slice(0, 6)}
+                ))}
               </div>
 
               {importPreview.sample?.length > 0 && (
-                <div style={{ marginTop: '12px' }}>
-                  <div className="upload-list__name">Sample files</div>
-                  <div className="sample-grid">
+                <div className="preview-gallery">
+                  <h3 className="section-label">Sample Images</h3>
+                  <div className="preview-grid">
                     {importPreview.sample.slice(0, 10).map((item) => (
-                      <div key={item.path} className="sample-card">
-                        <div className="sample-thumb">
-                          <img src={item.raw_url} alt={item.filename} loading="lazy" />
-                        </div>
-                        <div className="upload-list__meta">{item.filename}</div>
+                      <div key={item.path} className="preview-card">
+                        <img src={item.raw_url} alt={item.filename} loading="lazy" />
+                        <div className="preview-card__name">{item.filename}</div>
                       </div>
                     ))}
                   </div>
