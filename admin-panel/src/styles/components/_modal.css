@@ -54,6 +54,25 @@
   border-radius: 50%;
 }
 
+.modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-lg) 0;
+  text-align: center;
+}
+
+.modal-info__name {
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  word-break: break-all;
+}
+
+.modal-info__meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 /* ==========================================================================
    Confirmation Modal
    ========================================================================== */

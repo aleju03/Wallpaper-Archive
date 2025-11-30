@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Trash2 } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 import { useAdminData } from '../context/useAdminData'
 import { API_BASE } from '../config'
 
@@ -37,11 +37,41 @@ function formatFileSize(bytes) {
   return `${bytes.toFixed(1)} ${units[i]}`
 }
 
+function ImagePreviewModal({ wallpaper, onClose }) {
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [onClose])
+
+  if (!wallpaper) return null
+
+  return (
+    <div className="image-modal" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>
+          <X size={20} />
+        </button>
+        <img src={wallpaper.image_url} alt={wallpaper.filename} />
+        <div className="modal-info">
+          <span className="modal-info__name">{wallpaper.filename}</span>
+          <span className="modal-info__meta">
+            {wallpaper.dimensions} · {formatFileSize(wallpaper.file_size)} · {wallpaper.provider}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Dashboard() {
   const { stats, fetchStats, providerMeta, fetchProviders, statsLoading, providersLoading, errors } = useAdminData()
   const [largestWallpapers, setLargestWallpapers] = useState([])
   const [largestLoading, setLargestLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
+  const [previewWallpaper, setPreviewWallpaper] = useState(null)
 
   useEffect(() => {
     fetchStats()
@@ -62,11 +92,11 @@ function Dashboard() {
   }
 
   const handleDelete = async (id, filename) => {
-    if (!confirm(`Delete "${filename}"? This cannot be undone.`)) return
+    if (!confirm(`Delete "${filename}"? This will remove it from both database AND storage.`)) return
     
     setDeleting(id)
     try {
-      await axios.delete(`${API_BASE}/api/wallpapers/${id}`, {
+      await axios.delete(`${API_BASE}/api/wallpapers/${id}?deleteFile=true`, {
         headers: { 'X-Admin-Key': ADMIN_API_KEY }
       })
       setLargestWallpapers(prev => prev.filter(w => w.id !== id))
@@ -165,6 +195,7 @@ function Dashboard() {
                   alt={wallpaper.filename}
                   className="largest-item__thumb"
                   loading="lazy"
+                  onClick={() => setPreviewWallpaper(wallpaper)}
                 />
                 <div className="largest-item__info">
                   <span className="largest-item__name" title={wallpaper.filename}>
@@ -190,6 +221,14 @@ function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewWallpaper && (
+        <ImagePreviewModal 
+          wallpaper={previewWallpaper} 
+          onClose={() => setPreviewWallpaper(null)} 
+        />
+      )}
     </div>
   )
 }

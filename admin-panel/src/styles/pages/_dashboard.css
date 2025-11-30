@@ -259,6 +259,12 @@
   height: 40px;
   object-fit: cover;
   background: var(--color-bg-tertiary);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.largest-item__thumb:hover {
+  opacity: 0.8;
 }
 
 .largest-item__info {
