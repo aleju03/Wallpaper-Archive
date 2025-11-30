@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import axios from 'axios'
 import { UploadCloud, CheckCircle, AlertCircle, Hash, Image as ImageIcon, FolderOpen, Tag, Github, Music, Search, X, Check, AlertTriangle } from 'lucide-react'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
@@ -179,29 +179,33 @@ function Upload() {
   }
 
   // Filter beatmaps based on search and duplicate filter
-  const filteredBeatmaps = osuBeatmaps.filter(b => {
-    const matchesSearch = !osuSearchFilter || 
-      b.displayTitle.toLowerCase().includes(osuSearchFilter.toLowerCase()) ||
-      (b.metadata.tags || []).some(t => t.toLowerCase().includes(osuSearchFilter.toLowerCase())) ||
-      (b.metadata.source || '').toLowerCase().includes(osuSearchFilter.toLowerCase())
-    
-    const matchesDuplicateFilter = !showDuplicatesOnly || b.hasDuplicate
-    
-    return matchesSearch && matchesDuplicateFilter
-  })
+  const filteredBeatmaps = useMemo(() => {
+    return osuBeatmaps.filter(b => {
+      const matchesSearch = !osuSearchFilter || 
+        b.displayTitle.toLowerCase().includes(osuSearchFilter.toLowerCase()) ||
+        (b.metadata.tags || []).some(t => t.toLowerCase().includes(osuSearchFilter.toLowerCase())) ||
+        (b.metadata.source || '').toLowerCase().includes(osuSearchFilter.toLowerCase())
+      
+      const matchesDuplicateFilter = !showDuplicatesOnly || b.hasDuplicate === true
+      
+      return matchesSearch && matchesDuplicateFilter
+    })
+  }, [osuBeatmaps, osuSearchFilter, showDuplicatesOnly])
 
-  // Reset to page 1 when filters change
+  // Pagination calculation
   const totalFilteredPages = Math.ceil(filteredBeatmaps.length / OSU_PAGE_SIZE)
-  const safeOsuPage = Math.min(osuPage, totalFilteredPages) || 1
+  const safeOsuPage = Math.min(osuPage, Math.max(1, totalFilteredPages))
   
   // Paginate filtered results
-  const paginatedBeatmaps = filteredBeatmaps.slice(
-    (safeOsuPage - 1) * OSU_PAGE_SIZE,
-    safeOsuPage * OSU_PAGE_SIZE
-  )
+  const paginatedBeatmaps = useMemo(() => {
+    return filteredBeatmaps.slice(
+      (safeOsuPage - 1) * OSU_PAGE_SIZE,
+      safeOsuPage * OSU_PAGE_SIZE
+    )
+  }, [filteredBeatmaps, safeOsuPage])
 
   const selectedCount = osuBeatmaps.filter(b => b.selected).length
-  const duplicateCount = osuBeatmaps.filter(b => b.hasDuplicate).length
+  const duplicateCount = osuBeatmaps.filter(b => b.hasDuplicate === true).length
   
   // Calculate storage size for selected beatmaps
   const selectedBeatmaps = osuBeatmaps.filter(b => b.selected)
@@ -808,11 +812,11 @@ function Upload() {
                 </button>
               </div>
 
-              <div className="osu-grid">
+              <div className="osu-grid" key={`grid-${showDuplicatesOnly}-${osuSearchFilter}-${safeOsuPage}`}>
                 {paginatedBeatmaps.map((beatmap) => (
                   <div
                     key={beatmap.id}
-                    className={`osu-card ${beatmap.selected ? 'osu-card--selected' : ''} ${beatmap.hasDuplicate ? 'osu-card--duplicate' : ''}`}
+                    className={`osu-card ${beatmap.selected ? 'osu-card--selected' : ''} ${beatmap.hasDuplicate === true ? 'osu-card--duplicate' : ''}`}
                     onClick={() => toggleBeatmapSelection(beatmap.id)}
                   >
                     <div className="osu-card__thumb">
@@ -822,7 +826,7 @@ function Upload() {
                           <Check size={24} />
                         </div>
                       )}
-                      {beatmap.hasDuplicate && (
+                      {beatmap.hasDuplicate === true && (
                         <div className="osu-card__duplicate-badge">
                           <AlertTriangle size={12} />
                           <span>Duplicate</span>

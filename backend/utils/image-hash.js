@@ -7,7 +7,9 @@ const sharp = require('sharp');
 async function generatePerceptualHash(imagePath) {
   try {
     // Resize to 9x8 grayscale (we need 9x8 to compute 8x8 differences)
-    const { data } = await sharp(imagePath)
+    // Use failOn: 'none' to be more lenient with slightly malformed images
+    // Sharp auto-detects format from buffer content, not file extension
+    const { data } = await sharp(imagePath, { failOn: 'none' })
       .grayscale()
       .resize(9, 8, { fit: 'fill' })
       .raw()
@@ -32,6 +34,11 @@ async function generatePerceptualHash(imagePath) {
     // Convert binary string to hexadecimal for more compact storage
     return binaryToHex(hash);
   } catch (error) {
+    // Return null for unsupported formats instead of crashing
+    // Common causes: video files, corrupted images, unusual formats
+    if (error.message && error.message.includes('unsupported image format')) {
+      return null;
+    }
     console.error('Error generating perceptual hash:', error);
     throw error;
   }

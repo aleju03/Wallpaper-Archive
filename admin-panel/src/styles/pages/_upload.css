@@ -1011,12 +1011,14 @@
   align-items: center;
   gap: var(--spacing-xxs);
   padding: var(--spacing-xxs) var(--spacing-sm);
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.9);
   border: 1px solid var(--color-accent-yellow);
   color: var(--color-accent-yellow);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  z-index: 10;
+  pointer-events: none;
 }
 
 .osu-card__info {

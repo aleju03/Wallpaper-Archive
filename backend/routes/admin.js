@@ -407,14 +407,21 @@ async function registerAdminRoutes(fastify, db) {
           const buffer = await fsPromises.readFile(beatmap.backgroundPath);
           
           // Run hash, metadata, and thumbnail generation in parallel
+          // Use failOn: 'none' to handle files with mismatched extensions (e.g., BMP saved as .jpg)
           const [hash, sharpMeta, thumbBuffer] = await Promise.all([
             generatePerceptualHash(buffer),
-            sharp(buffer).metadata(),
-            sharp(buffer)
+            sharp(buffer, { failOn: 'none' }).metadata(),
+            sharp(buffer, { failOn: 'none' })
               .resize({ width: 300, height: 200, fit: 'cover' })
               .jpeg({ quality: 70 })
               .toBuffer()
           ]);
+          
+          // Skip if hash generation failed (unsupported format)
+          if (!hash) {
+            console.log(`Skipping ${beatmap.folderName}: unsupported image format`);
+            return null;
+          }
           
           // Check for similar existing images
           const similar = findSimilarImages(hash, existingWallpapers, 10);
