@@ -72,7 +72,7 @@ function Upload() {
 
     // Build URL with query params and admin key
     const params = new URLSearchParams({ songsPath: osuPath })
-    const adminKey = localStorage.getItem('adminApiKey') || ''
+    const adminKey = import.meta.env.VITE_ADMIN_API_KEY || ''
     const url = `${API_BASE}/api/osu/scan?${params}&adminKey=${encodeURIComponent(adminKey)}`
 
     const eventSource = new EventSource(url)
