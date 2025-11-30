@@ -606,7 +606,7 @@ async function registerAdminRoutes(fastify, db) {
           return {
             success: true,
             data: {
-              id: insertedId,
+              id: Number(insertedId), // Convert BigInt to Number for JSON serialization
               displayTitle: beatmap.displayTitle,
               filename: uniqueName,
               download_url: downloadUrl,
