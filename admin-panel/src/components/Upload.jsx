@@ -32,6 +32,7 @@ function Upload() {
   const [osuResult, setOsuResult] = useState(null)
   const [osuSearchFilter, setOsuSearchFilter] = useState('')
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
+  const [osuScanProgress, setOsuScanProgress] = useState(null) // { phase, message, percent }
 
   const handleFiles = (event) => {
     setFiles(Array.from(event.target.files || []))
@@ -67,21 +68,54 @@ function Upload() {
     setOsuError(null)
     setOsuBeatmaps([])
     setOsuResult(null)
+    setOsuScanProgress({ phase: 'connecting', message: 'Connecting...', percent: 0 })
 
-    try {
-      const response = await axios.post(`${API_BASE}/api/osu/scan`, {
-        songsPath: osuPath
-      }, { headers: getAdminHeaders() })
+    // Build URL with query params and admin key
+    const params = new URLSearchParams({ songsPath: osuPath })
+    const adminKey = localStorage.getItem('adminApiKey') || ''
+    const url = `${API_BASE}/api/osu/scan?${params}&adminKey=${encodeURIComponent(adminKey)}`
 
-      if (response.data.success) {
-        setOsuBeatmaps(response.data.beatmaps)
+    const eventSource = new EventSource(url)
+
+    eventSource.addEventListener('progress', (event) => {
+      const data = JSON.parse(event.data)
+      setOsuScanProgress(data)
+    })
+
+    eventSource.addEventListener('complete', (event) => {
+      const data = JSON.parse(event.data)
+      if (data.success) {
+        setOsuBeatmaps(data.beatmaps)
       } else {
-        setOsuError(response.data.error || 'Scan failed')
+        setOsuError(data.error || 'Scan failed')
       }
-    } catch (err) {
-      setOsuError(err.response?.data?.error || 'Failed to scan osu! directory')
-    } finally {
+      setOsuScanProgress(null)
       setOsuScanning(false)
+      eventSource.close()
+    })
+
+    eventSource.addEventListener('error', (event) => {
+      // Check if it's a custom error event with data
+      if (event.data) {
+        const data = JSON.parse(event.data)
+        setOsuError(data.error || 'Scan failed')
+      } else {
+        setOsuError('Connection lost during scan')
+      }
+      setOsuScanProgress(null)
+      setOsuScanning(false)
+      eventSource.close()
+    })
+
+    eventSource.onerror = () => {
+      if (eventSource.readyState === EventSource.CLOSED) {
+        // Normal close, ignore
+        return
+      }
+      setOsuError('Failed to connect to scan endpoint')
+      setOsuScanProgress(null)
+      setOsuScanning(false)
+      eventSource.close()
     }
   }
 
@@ -626,7 +660,7 @@ function Upload() {
               {osuScanning ? (
                 <>
                   <div className="spinner" />
-                  <span>Scanning beatmaps...</span>
+                  <span>Scanning...</span>
                 </>
               ) : (
                 <>
@@ -635,6 +669,21 @@ function Upload() {
                 </>
               )}
             </button>
+
+            {osuScanProgress && (
+              <div className="osu-progress">
+                <div className="osu-progress__bar">
+                  <div 
+                    className="osu-progress__fill" 
+                    style={{ width: `${osuScanProgress.percent}%` }}
+                  />
+                </div>
+                <div className="osu-progress__info">
+                  <span className="osu-progress__message">{osuScanProgress.message}</span>
+                  <span className="osu-progress__percent">{osuScanProgress.percent}%</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {osuError && (

@@ -343,39 +343,78 @@ async function registerAdminRoutes(fastify, db) {
     }
   });
 
-  // Admin: osu! scan - scan Songs directory and return beatmap list
-  fastify.post('/api/osu/scan', { onRequest: [adminAuthHook] }, async (request, reply) => {
+  // Admin: osu! scan - scan Songs directory and return beatmap list with SSE progress
+  fastify.get('/api/osu/scan', { onRequest: [adminAuthHook] }, async (request, reply) => {
+    const { songsPath } = request.query || {};
+    
+    if (!songsPath) {
+      reply.code(400);
+      return { success: false, error: 'Songs path is required' };
+    }
+
+    // Verify the path exists
     try {
-      const { songsPath } = request.body || {};
+      const stats = await fsPromises.stat(songsPath);
+      if (!stats.isDirectory()) {
+        reply.code(400);
+        return { success: false, error: 'Path is not a directory' };
+      }
+    } catch (err) {
+      reply.code(400);
+      return { success: false, error: 'Directory not found or not accessible' };
+    }
+
+    // Set up SSE
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    const sendEvent = (event, data) => {
+      reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      // Phase 1: Scan directories
+      sendEvent('progress', { phase: 'scanning', message: 'Scanning osu! Songs directory...', percent: 0 });
       
-      if (!songsPath) {
-        reply.code(400);
-        return { success: false, error: 'Songs path is required' };
-      }
+      const beatmaps = await scanOsuSongsDirectory(songsPath, (progress) => {
+        sendEvent('progress', { 
+          phase: 'scanning', 
+          message: `Scanning folders: ${progress.current}/${progress.total}`,
+          percent: Math.round((progress.current / progress.total) * 30), // 0-30%
+          found: progress.found
+        });
+      });
 
-      // Verify the path exists
-      try {
-        const stats = await fsPromises.stat(songsPath);
-        if (!stats.isDirectory()) {
-          reply.code(400);
-          return { success: false, error: 'Path is not a directory' };
-        }
-      } catch (err) {
-        reply.code(400);
-        return { success: false, error: 'Directory not found or not accessible' };
-      }
-
-      // Scan the osu! Songs directory
-      const beatmaps = await scanOsuSongsDirectory(songsPath);
+      sendEvent('progress', { phase: 'hashing', message: `Found ${beatmaps.length} beatmaps. Loading existing hashes...`, percent: 30 });
 
       // Get existing wallpapers with hashes for duplicate detection
       const existingWallpapers = await db.getAllWallpapersWithHashes();
       
+      sendEvent('progress', { phase: 'processing', message: 'Processing beatmaps...', percent: 35 });
+
       // Process each beatmap to generate preview data and check for duplicates
       const processedBeatmaps = [];
+      const total = beatmaps.length;
       
-      for (const beatmap of beatmaps) {
+      for (let i = 0; i < beatmaps.length; i++) {
+        const beatmap = beatmaps[i];
         try {
+          // Send progress every 10 beatmaps or on first/last
+          if (i % 10 === 0 || i === total - 1) {
+            const percent = 35 + Math.round((i / total) * 60); // 35-95%
+            sendEvent('progress', { 
+              phase: 'processing', 
+              message: `Processing: ${i + 1}/${total} - ${beatmap.metadata?.title || beatmap.folderName}`,
+              percent,
+              processed: i + 1,
+              total
+            });
+          }
+
           // Read the background image
           const buffer = await fsPromises.readFile(beatmap.backgroundPath);
           
@@ -422,17 +461,21 @@ async function registerAdminRoutes(fastify, db) {
       }
 
       // Sort by title
+      sendEvent('progress', { phase: 'finalizing', message: 'Sorting results...', percent: 98 });
       processedBeatmaps.sort((a, b) => a.displayTitle.localeCompare(b.displayTitle));
 
-      return {
+      // Send final result
+      sendEvent('complete', {
         success: true,
         total: processedBeatmaps.length,
         withDuplicates: processedBeatmaps.filter(b => b.hasDuplicate).length,
         beatmaps: processedBeatmaps
-      };
+      });
+
     } catch (error) {
-      reply.code(500);
-      return { success: false, error: error.message };
+      sendEvent('error', { success: false, error: error.message });
+    } finally {
+      reply.raw.end();
     }
   });
 

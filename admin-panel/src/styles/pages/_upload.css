@@ -649,6 +649,48 @@
   width: fit-content;
 }
 
+/* Scan Progress */
+.osu-progress {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.osu-progress__bar {
+  height: 6px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.osu-progress__fill {
+  height: 100%;
+  background: var(--color-accent-green);
+  transition: width 0.3s ease;
+}
+
+.osu-progress__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-xs);
+}
+
+.osu-progress__message {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
+}
+
+.osu-progress__percent {
+  color: var(--color-accent-green);
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-medium);
+}
+
 .osu-preview {
   display: flex;
   flex-direction: column;
