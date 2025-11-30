@@ -1023,6 +1023,18 @@ class Database {
   }
 
   // Get arena statistics for admin
+  async getLargestWallpapers(limit = 10) {
+    const sql = `
+      SELECT id, filename, provider, folder, file_size, dimensions, download_url
+      FROM wallpapers
+      WHERE file_size IS NOT NULL AND file_size > 0
+      ORDER BY file_size DESC
+      LIMIT ?
+    `;
+    const result = await this.client.execute({ sql, args: [limit] });
+    return result.rows;
+  }
+
   async getArenaStats() {
     const totalBattlesSql = `SELECT COUNT(*) as count FROM battle_history`;
     const todayBattlesSql = `

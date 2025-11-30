@@ -6,6 +6,30 @@ const { setCache, buildThumbnailUrl, normalizePagination } = require('../utils/h
  * @param {Object} db - Database instance
  */
 async function registerWallpaperRoutes(fastify, db) {
+  // Get largest wallpapers by file size (must be before :id route)
+  fastify.get('/api/wallpapers/largest', async (request, reply) => {
+    try {
+      const { limit = 10 } = request.query;
+      const safeLimit = Math.min(Math.max(1, parseInt(limit) || 10), 50);
+      
+      const wallpapers = await db.getLargestWallpapers(safeLimit);
+      
+      setCache(reply, 300);
+      
+      return {
+        success: true,
+        wallpapers: wallpapers.map(w => ({
+          ...w,
+          image_url: w.download_url,
+          thumbnail_url: buildThumbnailUrl(w.download_url)
+        }))
+      };
+    } catch (error) {
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
   fastify.get('/api/wallpapers', async (request, reply) => {
     try {
       const { provider, folder, folders, search, resolution, aspect, limit = 50, page = 1 } = request.query;
