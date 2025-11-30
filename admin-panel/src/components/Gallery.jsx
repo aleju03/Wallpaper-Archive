@@ -71,8 +71,12 @@ function Gallery() {
       if (selectedFolder) params.append('folder', selectedFolder)
       params.append('limit', itemsPerPage.toString())
       params.append('page', currentPage.toString())
+      // Add cache buster to force fresh data
+      params.append('_t', Date.now().toString())
       
-      const response = await axios.get(`${API_BASE}/api/wallpapers?${params}`)
+      const response = await axios.get(`${API_BASE}/api/wallpapers?${params}`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      })
       setWallpapers(response.data.wallpapers || [])
       setTotalCount(response.data.total || 0)
       setTotalPages(Math.ceil((response.data.total || 0) / itemsPerPage))
@@ -184,43 +188,32 @@ function Gallery() {
         setDeleteProgress({ current: 0, total: count })
         
         const idsToDelete = Array.from(selectedIds)
-        const deletedIds = new Set()
-        let successCount = 0
-        let failCount = 0
+        setDeletingIds(new Set(idsToDelete))
         
-        for (let i = 0; i < idsToDelete.length; i++) {
-          const id = idsToDelete[i]
-          setDeletingIds(new Set([id]))
-          setDeleteProgress({ current: i + 1, total: count })
+        try {
+          // Use batch delete endpoint for efficiency
+          const response = await axios.post(
+            `${API_BASE}/api/wallpapers/batch-delete`,
+            { ids: idsToDelete, deleteFiles: deleteFile },
+            { headers: getAdminHeaders() }
+          )
           
-          try {
-            const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
-            const response = await axios.delete(url, { headers: getAdminHeaders() })
-            
-            if (response.data.success) {
-              deletedIds.add(id)
-              successCount++
-            } else {
-              failCount++
-            }
-          } catch (err) {
-            console.error(`Error deleting wallpaper ${id}:`, err.message)
-            failCount++
+          if (response.data.success) {
+            // Remove all deleted items from local state
+            setWallpapers(prev => prev.filter(w => !selectedIds.has(w.id)))
+            setTotalCount(prev => prev - response.data.deleted)
+            setSelectedIds(new Set())
+            setStatusMessage({ type: 'success', text: `Deleted ${response.data.deleted} wallpaper${response.data.deleted > 1 ? 's' : ''}` })
+          } else {
+            setStatusMessage({ type: 'error', text: response.data.error || 'Batch deletion failed' })
           }
-        }
-        
-        // Update local state with all deleted items
-        setWallpapers(prev => prev.filter(w => !deletedIds.has(w.id)))
-        setTotalCount(prev => prev - successCount)
-        setSelectedIds(new Set())
-        setDeletingIds(new Set())
-        setIsDeleting(false)
-        setDeleteProgress({ current: 0, total: 0 })
-        
-        if (failCount === 0) {
-          setStatusMessage({ type: 'success', text: `Deleted ${successCount} wallpaper${successCount > 1 ? 's' : ''}` })
-        } else {
-          setStatusMessage({ type: 'error', text: `Deleted ${successCount}, failed ${failCount}` })
+        } catch (err) {
+          console.error('Error in batch delete:', err.message)
+          setStatusMessage({ type: 'error', text: 'Batch deletion failed. Check console for details.' })
+        } finally {
+          setDeletingIds(new Set())
+          setIsDeleting(false)
+          setDeleteProgress({ current: 0, total: 0 })
         }
       }
     )

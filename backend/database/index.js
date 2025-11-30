@@ -473,7 +473,17 @@ class Database {
       sql: 'DELETE FROM wallpapers WHERE id = ?',
       args: [id]
     });
-    return result.rowsAffected;
+    return Number(result.rowsAffected) > 0;
+  }
+
+  async deleteWallpapers(ids) {
+    if (!ids || ids.length === 0) return 0;
+    const placeholders = ids.map(() => '?').join(',');
+    const result = await this.client.execute({
+      sql: `DELETE FROM wallpapers WHERE id IN (${placeholders})`,
+      args: ids
+    });
+    return Number(result.rowsAffected);
   }
 
   async getRandomWallpaperPair(excludeIds = []) {

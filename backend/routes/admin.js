@@ -343,6 +343,55 @@ async function registerAdminRoutes(fastify, db) {
     }
   });
 
+  // Admin: batch delete wallpapers
+  fastify.post('/api/wallpapers/batch-delete', { onRequest: [adminAuthHook] }, async (request, reply) => {
+    try {
+      const { ids, deleteFiles = true } = request.body || {};
+      
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        reply.code(400);
+        return { success: false, error: 'No wallpaper IDs provided' };
+      }
+
+      // Get all wallpapers first to get their URLs for R2 deletion
+      const wallpapers = await Promise.all(ids.map(id => db.getWallpaperById(id)));
+      const validWallpapers = wallpapers.filter(Boolean);
+      
+      if (validWallpapers.length === 0) {
+        reply.code(404);
+        return { success: false, error: 'No valid wallpapers found' };
+      }
+
+      // Delete from R2 if requested
+      if (deleteFiles && config.R2_ENABLED) {
+        const keysToDelete = [];
+        for (const w of validWallpapers) {
+          const mainKey = getKeyFromUrl(w.download_url);
+          const thumbUrl = buildThumbnailUrl(w.download_url);
+          const thumbKey = thumbUrl ? getKeyFromUrl(thumbUrl) : null;
+          if (mainKey) keysToDelete.push(mainKey);
+          if (thumbKey) keysToDelete.push(thumbKey);
+        }
+        await deleteFromR2(keysToDelete, fastify.log);
+      }
+
+      // Delete from database in one query
+      const validIds = validWallpapers.map(w => w.id);
+      const deletedCount = await db.deleteWallpapers(validIds);
+
+      return { 
+        success: true, 
+        deleted: deletedCount,
+        requested: ids.length,
+        removedFromStorage: deleteFiles && config.R2_ENABLED
+      };
+    } catch (error) {
+      console.error('Batch delete error:', error);
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Admin: osu! scan - scan Songs directory and return beatmap list with SSE progress
   fastify.get('/api/osu/scan', { onRequest: [adminAuthHook] }, async (request, reply) => {
     const { songsPath, maxFiles } = request.query || {};
