@@ -1,7 +1,5 @@
-const fastify = require('fastify')({ 
-  logger: {
-    level: 'info'
-  },
+const fastify = require('fastify')({
+  logger: false,
   disableRequestLogging: true
 });
 

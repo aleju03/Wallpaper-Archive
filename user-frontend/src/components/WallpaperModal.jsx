@@ -215,6 +215,7 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
       setImageLoaded(false)
       setShareStatus('')
       setShowFullscreen(false)
+      setShowAllTags(false)
     } else {
       document.body.style.overflow = '';
     }
@@ -247,6 +248,7 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
     return mb > 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
   }
 
+      const [showAllTags, setShowAllTags] = useState(false)
   const handleViewFullscreen = () => {
     setShowFullscreen(true)
   }
@@ -328,7 +330,7 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
             />
           </div>
           
-          <div className="modal-sidebar">
+            <div className="modal-sidebar">
             <div className="wallpaper-info">
               <h3>details</h3>
               <p><strong>filename:</strong> {wallpaper.filename}</p>
@@ -341,7 +343,32 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
               )}
             </div>
             
-            <div className="download-section">
+            {wallpaper.tags && wallpaper.tags.length > 0 && (() => {
+              const allTags = (typeof wallpaper.tags === 'string' ? wallpaper.tags.split(',') : wallpaper.tags)
+                .map(tag => tag.trim())
+                .filter(tag => tag);
+              const previewCount = 6;
+              const hasMoreTags = allTags.length > previewCount;
+
+              return (
+                <div className="wallpaper-tags">
+                  <h3>tags ({allTags.length})</h3>
+                  <div className={`tags-list ${showAllTags ? 'tags-list-expanded' : 'tags-list-collapsed'}`}>
+                    {allTags.map((tag, index) => (
+                      <span key={index} className="tag-chip">{tag}</span>
+                    ))}
+                  </div>
+                  {hasMoreTags && (
+                    <button
+                      className="tags-toggle-btn"
+                      onClick={() => setShowAllTags(!showAllTags)}
+                    >
+                      {showAllTags ? '− show less' : `+ show ${allTags.length - previewCount} more`}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}            <div className="download-section">
               <button className="download-btn" onClick={handleShare}>
                 <Share2 size={16} />
                 share link
