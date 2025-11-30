@@ -547,6 +547,30 @@ async function registerAdminRoutes(fastify, db) {
       sendEvent('progress', { phase: 'finalizing', message: 'Sorting results...', percent: 98 });
       processedBeatmaps.sort((a, b) => a.displayTitle.localeCompare(b.displayTitle));
 
+      // Deduplicate filenames - add suffix only when there are collisions
+      sendEvent('progress', { phase: 'finalizing', message: 'Resolving filename conflicts...', percent: 99 });
+      const filenameCount = new Map();
+      // First pass: count occurrences of each filename
+      for (const beatmap of processedBeatmaps) {
+        const key = beatmap.cleanFilename.toLowerCase();
+        filenameCount.set(key, (filenameCount.get(key) || 0) + 1);
+      }
+      // Second pass: add suffix to duplicates
+      const filenameUsed = new Map();
+      for (const beatmap of processedBeatmaps) {
+        const key = beatmap.cleanFilename.toLowerCase();
+        if (filenameCount.get(key) > 1) {
+          // This filename has duplicates, add suffix
+          const usedCount = filenameUsed.get(key) || 0;
+          if (usedCount > 0) {
+            // Not the first one, add suffix
+            const suffix = Math.random().toString(36).substring(2, 6);
+            beatmap.cleanFilename = `${beatmap.cleanFilename}_${suffix}`;
+          }
+          filenameUsed.set(key, usedCount + 1);
+        }
+      }
+
       // Send final result
       sendEvent('complete', {
         success: true,

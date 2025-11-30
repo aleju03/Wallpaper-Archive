@@ -278,7 +278,7 @@ function generateDisplayTitle(metadata) {
 function isGenericFilename(filename) {
   if (!filename) return true;
   const base = filename.toLowerCase().replace(/\.[^.]+$/, ''); // Remove extension
-  const genericNames = ['background', 'bg', 'image', 'pic', 'picture', 'wallpaper', 'cover'];
+  const genericNames = ['background', 'bg', 'bga', 'b_g_e', 'title', 'image', 'pic', 'picture', 'wallpaper', 'cover'];
   return genericNames.includes(base) || /^\d+$/.test(base); // Also match pure numbers
 }
 
