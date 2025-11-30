@@ -399,6 +399,15 @@ function Browse({ onWallpaperClick, browseState, setBrowseState, filterData, set
                 value={searchQuery}
                 onChange={(e) => updateFilter('searchQuery', e.target.value)}
               />
+              {searchQuery && (
+                <button 
+                  className="search-clear-btn"
+                  onClick={() => updateFilter('searchQuery', '')}
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
             {/* Mobile filter toggle */}
