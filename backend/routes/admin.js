@@ -15,7 +15,7 @@ const {
 } = require('../utils/helpers');
 const { generatePerceptualHash, findDuplicateGroups, findSimilarImages } = require('../utils/image-hash');
 const { uploadToStorage, deleteFromR2, getKeyFromUrl, getImageBuffer } = require('../services/storage');
-const { scanOsuSongsDirectory, formatTagsForDb, generateDisplayTitle } = require('../utils/osu-parser');
+const { scanOsuSongsDirectory, formatTagsForDb, generateDisplayTitle, generateCleanFilename } = require('../utils/osu-parser');
 
 /**
  * Register admin routes
@@ -444,6 +444,9 @@ async function registerAdminRoutes(fastify, db) {
           // beatmapSetId can be shared across multiple difficulties, so we can't use it alone
           const uniqueId = `${beatmap.folderName}::${beatmap.backgroundFilename}`;
 
+          // Generate clean filename for display and import
+          const cleanFilename = generateCleanFilename(beatmap.metadata, beatmap.backgroundFilename);
+
           return {
             id: uniqueId,
             folderName: beatmap.folderName,
@@ -456,6 +459,7 @@ async function registerAdminRoutes(fastify, db) {
             thumbnail: thumbBase64,
             metadata: beatmap.metadata,
             displayTitle: generateDisplayTitle(beatmap.metadata),
+            cleanFilename,
             hasDuplicate,
             duplicateOf: hasDuplicate ? similar[0] : null,
             selected: !hasDuplicate // Pre-deselect duplicates
@@ -539,24 +543,27 @@ async function registerAdminRoutes(fastify, db) {
           // Read the image file
           const buffer = await fsPromises.readFile(beatmap.backgroundPath);
           
-          // Get metadata
-          const meta = await sharp(buffer).metadata();
+          // Get metadata - use failOn: 'none' to handle files with mismatched extensions
+          const meta = await sharp(buffer, { failOn: 'none' }).metadata();
           const dimensions = meta.width && meta.height ? `${meta.width}x${meta.height}` : null;
           const fileSize = buffer.length;
           const hash = beatmap.perceptualHash || await generatePerceptualHash(buffer);
 
-          // Generate unique filename with index to ensure uniqueness within batch
+          // Generate clean short filename from metadata or original filename
+          // Uses original filename if not generic (bg, background, etc.)
+          // Otherwise generates from artist_title format
+          const cleanBase = beatmap.cleanFilename || generateCleanFilename(beatmap.metadata, beatmap.backgroundFilename);
           const ext = path.extname(beatmap.backgroundFilename) || '.jpg';
-          const safeTitle = sanitizeFilename(beatmap.displayTitle).slice(0, 80);
-          const timestamp = Date.now();
-          const uniqueName = `${timestamp}-${index}-${safeTitle}${ext}`;
+          // Add short random suffix for uniqueness (4 chars)
+          const suffix = Math.random().toString(36).substring(2, 6);
+          const uniqueName = `${cleanBase}_${suffix}${ext}`;
 
           // Upload paths
           const imageKey = `images/${providerSlug}/${uniqueName}`;
           const thumbKey = `thumbnails/${providerSlug}/${path.basename(uniqueName, ext)}.jpg`;
 
-          // Generate thumbnail
-          const thumbBuffer = await sharp(buffer)
+          // Generate thumbnail - use failOn: 'none' to handle files with mismatched extensions
+          const thumbBuffer = await sharp(buffer, { failOn: 'none' })
             .resize({ width: 900, height: 900, fit: 'inside' })
             .jpeg({ quality: 82 })
             .toBuffer();
@@ -596,6 +603,7 @@ async function registerAdminRoutes(fastify, db) {
             }
           };
         } catch (error) {
+          console.error(`Error processing beatmap ${beatmap.displayTitle}:`, error.message);
           return {
             success: false,
             error: { displayTitle: beatmap.displayTitle, error: error.message }
@@ -631,6 +639,7 @@ async function registerAdminRoutes(fastify, db) {
         }
       };
     } catch (error) {
+      console.error('osu! import error:', error);
       reply.code(500);
       return { success: false, error: error.message };
     }

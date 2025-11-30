@@ -1,6 +1,6 @@
 const fastify = require('fastify')({ 
   logger: {
-    level: 'warn'
+    level: 'info'
   },
   disableRequestLogging: true
 });

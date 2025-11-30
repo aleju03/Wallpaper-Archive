@@ -16,8 +16,16 @@ const r2Client = config.R2_ENABLED ? new S3Client({
 
 /**
  * Build R2 URL for a given key
+ * Uses public URL if configured, otherwise falls back to S3 endpoint
  */
-const buildR2Url = (key) => `${config.R2_ENDPOINT}/${config.R2_BUCKET_NAME}/${key}`;
+const buildR2Url = (key) => {
+  if (config.R2_PUBLIC_URL) {
+    // Use the public URL (custom domain or pub-xxx.r2.dev)
+    return `${config.R2_PUBLIC_URL.replace(/\/$/, '')}/${key}`;
+  }
+  // Fallback to S3 endpoint (requires auth - not ideal for public access)
+  return `${config.R2_ENDPOINT}/${config.R2_BUCKET_NAME}/${key}`;
+};
 
 /**
  * Get key from URL string

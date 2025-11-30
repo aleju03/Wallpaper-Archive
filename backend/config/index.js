@@ -14,6 +14,7 @@ const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const R2_ENDPOINT = process.env.R2_ENDPOINT || (R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : null);
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL; // Public access URL (custom domain or pub-xxx.r2.dev)
 const R2_ENABLED = !!(R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME && R2_ENDPOINT);
 
 // Directory paths
@@ -34,6 +35,7 @@ module.exports = {
   R2_ACCOUNT_ID,
   R2_BUCKET_NAME,
   R2_ENDPOINT,
+  R2_PUBLIC_URL,
   R2_ENABLED,
   ROOT_DIR,
   LOCAL_DOWNLOADS_DIR,

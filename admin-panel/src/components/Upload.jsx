@@ -155,8 +155,24 @@ function Upload() {
     setOsuResult(null)
 
     try {
+      // Only send the fields needed for import (exclude large base64 thumbnails)
+      const beatmapsForImport = selectedBeatmaps.map(b => ({
+        id: b.id,
+        folderName: b.folderName,
+        folderPath: b.folderPath,
+        backgroundPath: b.backgroundPath,
+        backgroundFilename: b.backgroundFilename,
+        fileSize: b.fileSize,
+        dimensions: b.dimensions,
+        perceptualHash: b.perceptualHash,
+        metadata: b.metadata,
+        displayTitle: b.displayTitle,
+        cleanFilename: b.cleanFilename,
+        selected: b.selected
+      }))
+      
       const response = await axios.post(`${API_BASE}/api/osu/import`, {
-        beatmaps: selectedBeatmaps,
+        beatmaps: beatmapsForImport,
         provider: provider || 'osu'
       }, { headers: getAdminHeaders() })
 
@@ -854,7 +870,7 @@ function Upload() {
                     </div>
                     <div className="osu-card__info">
                       <div className="osu-card__title" title={beatmap.displayTitle}>
-                        {beatmap.displayTitle}
+                        {beatmap.cleanFilename || beatmap.displayTitle}
                       </div>
                       <div className="osu-card__meta">
                         {beatmap.metadata.source && (

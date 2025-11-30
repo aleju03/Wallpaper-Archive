@@ -270,10 +270,81 @@ function generateDisplayTitle(metadata) {
   return `${artist} - ${title}`;
 }
 
+/**
+ * Check if a filename is generic (like "background", "bg", etc.)
+ * @param {string} filename - The filename to check (without extension)
+ * @returns {boolean} - True if the filename is generic
+ */
+function isGenericFilename(filename) {
+  if (!filename) return true;
+  const base = filename.toLowerCase().replace(/\.[^.]+$/, ''); // Remove extension
+  const genericNames = ['background', 'bg', 'image', 'pic', 'picture', 'wallpaper', 'cover'];
+  return genericNames.includes(base) || /^\d+$/.test(base); // Also match pure numbers
+}
+
+/**
+ * Generate a clean short filename from beatmap metadata
+ * Returns 1-2 words, letters only, separated by underscore
+ * @param {Object} metadata - Beatmap metadata
+ * @param {string} originalFilename - Original background filename
+ * @returns {string} - Clean short filename (without extension)
+ */
+function generateCleanFilename(metadata, originalFilename) {
+  // If original filename is not generic, use it (cleaned up)
+  if (originalFilename && !isGenericFilename(originalFilename)) {
+    const base = originalFilename.replace(/\.[^.]+$/, ''); // Remove extension
+    // Clean: only letters, convert to lowercase, limit length
+    const cleaned = base
+      .replace(/[^a-zA-Z\s_-]/g, '') // Keep only letters, spaces, underscores, hyphens
+      .replace(/[\s_-]+/g, '_')       // Convert spaces/underscores/hyphens to single underscore
+      .toLowerCase()
+      .replace(/^_+|_+$/g, '');       // Trim underscores
+    
+    if (cleaned.length >= 3) {
+      // Take first 2 words max
+      const words = cleaned.split('_').filter(w => w.length > 0).slice(0, 2);
+      return words.join('_');
+    }
+  }
+
+  // Generate from metadata: prefer artist_title or just title
+  const artist = (metadata.artist || '')
+    .replace(/[^a-zA-Z\s]/g, '')  // Only letters and spaces
+    .trim()
+    .split(/\s+/)                  // Split into words
+    .filter(w => w.length > 0)
+    .slice(0, 2)                   // Take first 2 words of artist
+    .join('_')
+    .toLowerCase();
+
+  const title = (metadata.title || '')
+    .replace(/[^a-zA-Z\s]/g, '')  // Only letters and spaces
+    .trim()
+    .split(/\s+/)                  // Split into words
+    .filter(w => w.length > 0)
+    .slice(0, 2)                   // Take first 2 words of title
+    .join('_')
+    .toLowerCase();
+
+  // Combine: artist_title, or just one if the other is empty
+  if (artist && title) {
+    return `${artist}_${title}`;
+  } else if (artist) {
+    return artist;
+  } else if (title) {
+    return title;
+  } else {
+    // Fallback to random short string
+    return `img_${Date.now().toString(36)}`;
+  }
+}
+
 module.exports = {
   parseOsuFile,
   scanBeatmapFolder,
   scanOsuSongsDirectory,
   formatTagsForDb,
-  generateDisplayTitle
+  generateDisplayTitle,
+  generateCleanFilename,
+  isGenericFilename
 };
