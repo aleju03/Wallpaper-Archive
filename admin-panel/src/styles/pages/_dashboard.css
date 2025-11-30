@@ -34,7 +34,74 @@
   white-space: nowrap;
 }
 
-/* Provider Status section */
+/* ==========================================================================
+   Skeleton Loading States
+   ========================================================================== */
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-text {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-tertiary) 25%,
+    var(--color-border) 50%,
+    var(--color-bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+  border-radius: 4px;
+  color: transparent !important;
+  display: inline-block;
+  min-width: 60px;
+}
+
+.skeleton-text--sm { min-width: 80px; height: 1em; }
+.skeleton-text--lg { min-width: 100px; height: 1.5em; }
+.skeleton-text--xs { min-width: 120px; height: 0.9em; }
+
+.skeleton-circle {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-tertiary) 25%,
+    var(--color-border) 50%,
+    var(--color-bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+  border-radius: 50%;
+}
+
+.stat-card--skeleton {
+  pointer-events: none;
+}
+
+.stat-card--skeleton .skeleton-text {
+  margin: var(--spacing-xs) 0;
+}
+
+.provider-chip--skeleton {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.stat-card--error {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--color-error);
+}
+
+.error-text {
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+/* ==========================================================================
+   Provider Status Section
+   ========================================================================== */
+
 .provider-status-section {
   display: flex;
   align-items: center;

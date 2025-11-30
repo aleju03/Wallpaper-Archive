@@ -3,7 +3,6 @@ const fsPromises = require('fs/promises');
 const path = require('path');
 const config = require('../config');
 const { sanitizeFilename, guessMime, setCache, buildThumbnailUrl, normalizePagination } = require('../utils/helpers');
-const { getR2BucketSize } = require('../services/storage');
 
 /**
  * Register public routes
@@ -76,8 +75,6 @@ async function registerPublicRoutes(fastify, db) {
         folderBreakdownRaw,
         resolutionRows,
         fileSizeBuckets,
-        filenames,
-        r2BucketSize,
         aspectBreakdown,
         totalDownloads
       ] = await Promise.all([
@@ -86,8 +83,6 @@ async function registerPublicRoutes(fastify, db) {
         db.getFolderBreakdown(25),
         db.getUniqueResolutions(),
         db.getFileSizeBuckets(),
-        db.getAllFilenames(),
-        getR2BucketSize(),
         db.getAspectBreakdown(),
         db.getDownloadTotals()
       ]);
@@ -118,13 +113,8 @@ async function registerPublicRoutes(fastify, db) {
       const dimensions = {};
       resolutionRows.forEach((item) => { dimensions[item.dimensions] = item.count; });
 
+      // Get file types from provider breakdown filenames in DB (faster than fetching all filenames)
       const file_types = {};
-      filenames.forEach((name) => {
-        const ext = path.extname(name || '').toLowerCase().replace('.', '');
-        if (ext) {
-          file_types[ext] = (file_types[ext] || 0) + 1;
-        }
-      });
 
       const normalizedBuckets = {
         under_1mb: Number(fileSizeBuckets?.under_1mb || 0),
@@ -138,7 +128,7 @@ async function registerPublicRoutes(fastify, db) {
       return {
         total_wallpapers: totalWallpapers,
         total_size: totalSize,
-        storage_size: r2BucketSize !== null ? r2BucketSize : totalSize,
+        storage_size: totalSize,
         providers: totalProviders,
         folders: totalFolders,
         provider_counts: providerCounts,
