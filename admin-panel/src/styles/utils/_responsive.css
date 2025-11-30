@@ -156,6 +156,28 @@
   .search-box {
     min-width: 0;
   }
+
+  .filter-select {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Gallery specific mobile styles */
+  .gallery-controls {
+    padding: var(--spacing-md);
+  }
+
+  .gallery-count {
+    margin-left: 0;
+    text-align: center;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .btn-refresh,
+  .btn-delete-provider {
+    width: 100%;
+    justify-content: center;
+  }
   
   /* Duplicates header */
   .duplicates-header {

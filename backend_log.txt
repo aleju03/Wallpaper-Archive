@@ -1,0 +1,8 @@
+
+> wallpaper-archive@1.0.0 start
+> node backend/server.js
+
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+Database initialized successfully
+Server listening on http://localhost:3000
