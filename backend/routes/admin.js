@@ -516,7 +516,10 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: osu! import - import selected beatmaps
   fastify.post('/api/osu/import', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
+      console.log('=== osu! import started ===');
       const { beatmaps, provider = 'osu' } = request.body || {};
+      
+      console.log(`Received ${beatmaps?.length || 0} beatmaps, provider: ${provider}`);
       
       if (!beatmaps || !Array.isArray(beatmaps) || beatmaps.length === 0) {
         reply.code(400);
@@ -530,10 +533,15 @@ async function registerAdminRoutes(fastify, db) {
       const selectedBeatmaps = beatmaps.filter(b => b.selected);
       const skippedBeatmaps = beatmaps.filter(b => !b.selected);
       
+      console.log(`Selected: ${selectedBeatmaps.length}, Skipped: ${skippedBeatmaps.length}`);
+      
       // Add skipped to results
       skippedBeatmaps.forEach(b => {
         results.skipped.push({ displayTitle: b.displayTitle, reason: 'not selected' });
       });
+
+      // Track used filenames to handle duplicates (only add suffix when needed)
+      const usedFilenames = new Set();
 
       // Process in parallel batches of 5 for optimal speed without overwhelming R2
       const BATCH_SIZE = 5;
@@ -550,13 +558,16 @@ async function registerAdminRoutes(fastify, db) {
           const hash = beatmap.perceptualHash || await generatePerceptualHash(buffer);
 
           // Generate clean short filename from metadata or original filename
-          // Uses original filename if not generic (bg, background, etc.)
-          // Otherwise generates from artist_title format
           const cleanBase = beatmap.cleanFilename || generateCleanFilename(beatmap.metadata, beatmap.backgroundFilename);
           const ext = path.extname(beatmap.backgroundFilename) || '.jpg';
-          // Add short random suffix for uniqueness (4 chars)
-          const suffix = Math.random().toString(36).substring(2, 6);
-          const uniqueName = `${cleanBase}_${suffix}${ext}`;
+          
+          // Only add suffix if filename already exists
+          let uniqueName = `${cleanBase}${ext}`;
+          if (usedFilenames.has(uniqueName.toLowerCase())) {
+            const suffix = Math.random().toString(36).substring(2, 6);
+            uniqueName = `${cleanBase}_${suffix}${ext}`;
+          }
+          usedFilenames.add(uniqueName.toLowerCase());
 
           // Upload paths
           const imageKey = `images/${providerSlug}/${uniqueName}`;
@@ -639,7 +650,8 @@ async function registerAdminRoutes(fastify, db) {
         }
       };
     } catch (error) {
-      console.error('osu! import error:', error);
+      console.error('osu! import error:', error.message);
+      console.error('Stack trace:', error.stack);
       reply.code(500);
       return { success: false, error: error.message };
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronLeft, ChevronRight, Trash2, X, CheckSquare, Square, Loader, Copy } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Trash2, X, CheckSquare, Square, Loader, Copy, RefreshCw } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
 import { useAdminData } from '../context/useAdminData'
@@ -286,6 +286,15 @@ function Gallery() {
           <div className="gallery-count">
             {totalCount} wallpapers found
           </div>
+          
+          <button 
+            className="btn-refresh" 
+            onClick={() => fetchWallpapers()}
+            disabled={loading}
+            title="Refresh gallery"
+          >
+            <RefreshCw size={16} className={loading ? 'spinning' : ''} />
+          </button>
         </div>
       </div>
 
