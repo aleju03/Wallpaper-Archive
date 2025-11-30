@@ -433,8 +433,12 @@ async function registerAdminRoutes(fastify, db) {
 
           const thumbBase64 = `data:image/jpeg;base64,${thumbBuffer.toString('base64')}`;
 
+          // Generate unique ID using folder name + background filename to ensure uniqueness
+          // beatmapSetId can be shared across multiple difficulties, so we can't use it alone
+          const uniqueId = `${beatmap.folderName}::${beatmap.backgroundFilename}`;
+
           return {
-            id: beatmap.metadata.beatmapSetId || beatmap.folderName,
+            id: uniqueId,
             folderName: beatmap.folderName,
             folderPath: beatmap.folderPath,
             backgroundPath: beatmap.backgroundPath,
