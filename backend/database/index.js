@@ -1035,6 +1035,18 @@ class Database {
     return result.rows;
   }
 
+  async getMostDownloadedWallpapers(limit = 20) {
+    const sql = `
+      SELECT id, filename, provider, folder, file_size, dimensions, download_url, download_count
+      FROM wallpapers
+      WHERE download_count IS NOT NULL AND download_count > 0
+      ORDER BY download_count DESC
+      LIMIT ?
+    `;
+    const result = await this.client.execute({ sql, args: [limit] });
+    return result.rows;
+  }
+
   async getArenaStats() {
     const totalBattlesSql = `SELECT COUNT(*) as count FROM battle_history`;
     const todayBattlesSql = `

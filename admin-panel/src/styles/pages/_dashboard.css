@@ -332,3 +332,106 @@
     content: attr(data-size);
   }
 }
+
+/* ==========================================================================
+   Clickable Stat Card
+   ========================================================================== */
+
+.stat-card--clickable {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.stat-card--clickable:hover {
+  border-color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+
+.stat-card--clickable .change {
+  color: var(--color-accent-blue);
+}
+
+/* ==========================================================================
+   Downloads Modal
+   ========================================================================== */
+
+.preview-modal--wide {
+  max-width: 700px;
+  width: 95%;
+}
+
+.downloads-modal__body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.downloads-modal__loading,
+.downloads-modal__empty {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.downloads-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--color-border-subtle);
+}
+
+.downloads-modal__item {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: var(--spacing-lg);
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.downloads-modal__item:hover {
+  background: var(--color-bg-secondary);
+}
+
+.downloads-modal__thumb {
+  width: 64px;
+  height: 40px;
+  object-fit: cover;
+  background: var(--color-bg-tertiary);
+}
+
+.downloads-modal__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.downloads-modal__name {
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.downloads-modal__meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.downloads-modal__count {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.downloads-modal__count svg {
+  opacity: 0.7;
+}

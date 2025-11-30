@@ -217,12 +217,93 @@ function ImagePreviewModal({ wallpaper, onClose, onDelete }) {
   )
 }
 
+function DownloadsModal({ onClose, onPreview }) {
+  const [wallpapers, setWallpapers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleEsc)
+    fetchMostDownloaded()
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleEsc)
+    }
+  }, [onClose])
+
+  const fetchMostDownloaded = async () => {
+    setLoading(true)
+    try {
+      const response = await axios.get(`${API_BASE}/api/wallpapers/most-downloaded?limit=50`)
+      setWallpapers(response.data.wallpapers || [])
+    } catch (error) {
+      console.error('Failed to fetch most downloaded:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) onClose()
+  }
+
+  return (
+    <div className="preview-modal-overlay" onClick={handleOverlayClick}>
+      <div className="preview-modal preview-modal--wide">
+        <div className="preview-modal__header">
+          <span className="preview-modal__title">most downloaded wallpapers</span>
+          <button className="preview-modal__close" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+        
+        <div className="downloads-modal__body">
+          {loading ? (
+            <div className="downloads-modal__loading">Loading...</div>
+          ) : wallpapers.length === 0 ? (
+            <div className="downloads-modal__empty">No downloads yet</div>
+          ) : (
+            <div className="downloads-modal__list">
+              {wallpapers.map((wallpaper) => (
+                <div key={wallpaper.id} className="downloads-modal__item" onClick={() => onPreview(wallpaper)}>
+                  <img 
+                    src={wallpaper.thumbnail_url} 
+                    alt={wallpaper.filename}
+                    className="downloads-modal__thumb"
+                    loading="lazy"
+                  />
+                  <div className="downloads-modal__info">
+                    <span className="downloads-modal__name" title={wallpaper.filename}>
+                      {wallpaper.filename}
+                    </span>
+                    <span className="downloads-modal__meta">
+                      {wallpaper.dimensions} · {wallpaper.provider}
+                    </span>
+                  </div>
+                  <div className="downloads-modal__count">
+                    <Download size={14} />
+                    <span>{wallpaper.download_count}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Dashboard() {
   const { stats, fetchStats, providerMeta, fetchProviders, statsLoading, providersLoading, errors } = useAdminData()
   const [largestWallpapers, setLargestWallpapers] = useState([])
   const [largestLoading, setLargestLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
   const [previewWallpaper, setPreviewWallpaper] = useState(null)
+  const [showDownloadsModal, setShowDownloadsModal] = useState(false)
 
   useEffect(() => {
     fetchStats()
@@ -269,6 +350,7 @@ function Dashboard() {
               <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
+              <StatCardSkeleton />
             </>
           ) : errors.stats ? (
             <div className="stat-card stat-card--error">
@@ -298,6 +380,12 @@ function Dashboard() {
                 <h3>Storage Size</h3>
                 <div className="value">{((stats?.storage_size || 0) / (1000 * 1000 * 1000)).toFixed(2)}GB</div>
                 <div className="change">R2 bucket total</div>
+              </div>
+
+              <div className="stat-card stat-card--clickable" onClick={() => setShowDownloadsModal(true)}>
+                <h3>Total Downloads</h3>
+                <div className="value">{stats?.total_downloads?.toLocaleString() || '0'}</div>
+                <div className="change">Click to view breakdown</div>
               </div>
             </>
           )}
@@ -381,6 +469,17 @@ function Dashboard() {
           onDelete={(id, filename) => {
             setPreviewWallpaper(null)
             handleDelete(id, filename)
+          }}
+        />
+      )}
+
+      {/* Downloads Modal */}
+      {showDownloadsModal && (
+        <DownloadsModal 
+          onClose={() => setShowDownloadsModal(false)}
+          onPreview={(wallpaper) => {
+            setShowDownloadsModal(false)
+            setPreviewWallpaper(wallpaper)
           }}
         />
       )}
