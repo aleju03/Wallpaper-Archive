@@ -14,6 +14,7 @@ function App() {
   const { isAuthenticated, loading, login, logout, user } = useAuth()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Show loading state while checking authentication
   if (loading) {
@@ -65,9 +66,14 @@ function App() {
     }
   }
 
+  const handleNavClick = (id) => {
+    setActiveTab(id)
+    setMobileMenuOpen(false)
+  }
+
   return (
     <div className="app">
-      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img src="/logo.svg" alt="Logo" />
@@ -82,7 +88,7 @@ function App() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleNavClick(item.id)}
                 className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
                 title={sidebarCollapsed ? item.name : ''}
               >
@@ -113,8 +119,21 @@ function App() {
         </div>
       </aside>
 
+      {mobileMenuOpen && (
+        <div
+          className="mobile-overlay"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       <main className="main-content">
         <header className="main-header">
+          <button
+            className="mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu size={24} />
+          </button>
           <h2>
             {navigation.find(item => item.id === activeTab)?.name || 'Dashboard'}
           </h2>
