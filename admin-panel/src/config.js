@@ -1,7 +1,10 @@
 // Dynamic API base URL that works for both local and network access
-export const API_BASE = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000' 
-  : `http://${window.location.hostname}:3000`
+// Use environment variable if set, otherwise fall back to dynamic detection
+export const API_BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL
+  : window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : `http://${window.location.hostname}:3000`
 
 // Helper function to get the current hostname
 export const getCurrentHost = () => window.location.hostname
