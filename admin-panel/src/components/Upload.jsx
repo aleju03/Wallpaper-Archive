@@ -156,6 +156,23 @@ function Upload() {
 
   const selectedCount = osuBeatmaps.filter(b => b.selected).length
   const duplicateCount = osuBeatmaps.filter(b => b.hasDuplicate).length
+  
+  // Calculate storage size for selected beatmaps
+  const selectedBeatmaps = osuBeatmaps.filter(b => b.selected)
+  const totalSelectedBytes = selectedBeatmaps.reduce((sum, b) => sum + (b.fileSize || 0), 0)
+  const totalAllBytes = osuBeatmaps.reduce((sum, b) => sum + (b.fileSize || 0), 0)
+  
+  // Format bytes to human readable
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+  
+  // Estimate total with thumbnails (~10% extra for compressed thumbnails)
+  const estimatedTotalWithThumbs = Math.round(totalSelectedBytes * 1.1)
 
   const handleUpload = async () => {
     if (!files.length) {
@@ -682,6 +699,34 @@ function Upload() {
                     <span>Show duplicates only</span>
                   </label>
                 </div>
+              </div>
+
+              {/* Storage size warning */}
+              <div className="osu-storage-info">
+                <div className="osu-storage-row">
+                  <span className="osu-storage-label">Total scanned:</span>
+                  <span className="osu-storage-value">{formatBytes(totalAllBytes)}</span>
+                </div>
+                <div className="osu-storage-row osu-storage-row--highlight">
+                  <span className="osu-storage-label">Selected for upload:</span>
+                  <span className="osu-storage-value">{formatBytes(totalSelectedBytes)}</span>
+                </div>
+                <div className="osu-storage-row">
+                  <span className="osu-storage-label">Est. with thumbnails:</span>
+                  <span className="osu-storage-value">{formatBytes(estimatedTotalWithThumbs)}</span>
+                </div>
+                {estimatedTotalWithThumbs > 8 * 1024 * 1024 * 1024 && (
+                  <div className="osu-storage-warning">
+                    <AlertTriangle size={14} />
+                    <span>Warning: This exceeds 8GB - close to R2 free tier limit (10GB)!</span>
+                  </div>
+                )}
+                {estimatedTotalWithThumbs > 10 * 1024 * 1024 * 1024 && (
+                  <div className="osu-storage-danger">
+                    <AlertCircle size={14} />
+                    <span>DANGER: This exceeds the 10GB R2 free tier limit!</span>
+                  </div>
+                )}
               </div>
 
               <div className="osu-preview__actions">

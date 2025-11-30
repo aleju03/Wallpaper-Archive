@@ -32,6 +32,7 @@ function Gallery() {
     const handleClickOutside = () => setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -46,6 +47,7 @@ function Gallery() {
 
   useEffect(() => {
     fetchWallpapers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, searchQuery, selectedProvider, selectedFolder])
 
   const fetchWallpapers = async () => {

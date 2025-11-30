@@ -449,17 +449,20 @@ async function registerAdminRoutes(fastify, db) {
       const providerSlug = toSafeSlug(provider);
       const results = { imported: [], skipped: [], failed: [] };
 
-      for (const beatmap of beatmaps) {
-        try {
-          // Skip if not selected
-          if (!beatmap.selected) {
-            results.skipped.push({ 
-              displayTitle: beatmap.displayTitle, 
-              reason: 'not selected' 
-            });
-            continue;
-          }
+      // Filter to only selected beatmaps
+      const selectedBeatmaps = beatmaps.filter(b => b.selected);
+      const skippedBeatmaps = beatmaps.filter(b => !b.selected);
+      
+      // Add skipped to results
+      skippedBeatmaps.forEach(b => {
+        results.skipped.push({ displayTitle: b.displayTitle, reason: 'not selected' });
+      });
 
+      // Process in parallel batches of 5 for optimal speed without overwhelming R2
+      const BATCH_SIZE = 5;
+      
+      const processBeatmap = async (beatmap, index) => {
+        try {
           // Read the image file
           const buffer = await fsPromises.readFile(beatmap.backgroundPath);
           
@@ -469,30 +472,27 @@ async function registerAdminRoutes(fastify, db) {
           const fileSize = buffer.length;
           const hash = beatmap.perceptualHash || await generatePerceptualHash(buffer);
 
-          // Generate unique filename
+          // Generate unique filename with index to ensure uniqueness within batch
           const ext = path.extname(beatmap.backgroundFilename) || '.jpg';
           const safeTitle = sanitizeFilename(beatmap.displayTitle).slice(0, 80);
           const timestamp = Date.now();
-          const uniqueName = `${timestamp}-${safeTitle}${ext}`;
+          const uniqueName = `${timestamp}-${index}-${safeTitle}${ext}`;
 
           // Upload paths
           const imageKey = `images/${providerSlug}/${uniqueName}`;
           const thumbKey = `thumbnails/${providerSlug}/${path.basename(uniqueName, ext)}.jpg`;
 
-          // Upload original image
-          const downloadUrl = await uploadToStorage(
-            imageKey, 
-            buffer, 
-            meta.format ? `image/${meta.format}` : 'application/octet-stream', 
-            false
-          );
-
-          // Generate and upload thumbnail
+          // Generate thumbnail
           const thumbBuffer = await sharp(buffer)
             .resize({ width: 900, height: 900, fit: 'inside' })
             .jpeg({ quality: 82 })
             .toBuffer();
-          const thumbUrl = await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
+
+          // Upload both in parallel
+          const [downloadUrl, thumbUrl] = await Promise.all([
+            uploadToStorage(imageKey, buffer, meta.format ? `image/${meta.format}` : 'application/octet-stream', false),
+            uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true)
+          ]);
 
           // Format tags
           const tags = formatTagsForDb(beatmap.metadata);
@@ -512,19 +512,39 @@ async function registerAdminRoutes(fastify, db) {
 
           const insertedId = await db.insertWallpaper(record);
           
-          results.imported.push({
-            id: insertedId,
-            displayTitle: beatmap.displayTitle,
-            filename: uniqueName,
-            download_url: downloadUrl,
-            thumbnail_url: thumbUrl
-          });
+          return {
+            success: true,
+            data: {
+              id: insertedId,
+              displayTitle: beatmap.displayTitle,
+              filename: uniqueName,
+              download_url: downloadUrl,
+              thumbnail_url: thumbUrl
+            }
+          };
         } catch (error) {
-          results.failed.push({ 
-            displayTitle: beatmap.displayTitle, 
-            error: error.message 
-          });
+          return {
+            success: false,
+            error: { displayTitle: beatmap.displayTitle, error: error.message }
+          };
         }
+      };
+
+      // Process in batches
+      for (let i = 0; i < selectedBeatmaps.length; i += BATCH_SIZE) {
+        const batch = selectedBeatmaps.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map((beatmap, idx) => processBeatmap(beatmap, i + idx))
+        );
+        
+        // Collect results
+        batchResults.forEach(result => {
+          if (result.success) {
+            results.imported.push(result.data);
+          } else {
+            results.failed.push(result.error);
+          }
+        });
       }
 
       return { 

@@ -30,17 +30,6 @@ const CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
 const STATUS_CACHE_EXPIRY = 2 * 60 * 1000 // 2 minutes for status
 
 function Duplicates() {
-  if (!DUPLICATES_ENABLED) {
-    return (
-      <div className="duplicates-disabled">
-        <h3>Duplicates disabled</h3>
-        <p>
-          Duplicate detection relies on local file access and heavy hashing. It is turned off in the serverless/Turso + R2 setup.
-          To use it, run the admin panel against a local backend with files and set VITE_ENABLE_DUPLICATES=true.
-        </p>
-      </div>
-    )
-  }
   const [allDuplicateGroups, setAllDuplicateGroups] = useState([]) // Store all unfiltered data
   const [duplicateGroups, setDuplicateGroups] = useState([]) // Filtered data for display
   const [hashStatus, setHashStatus] = useState(null)
@@ -65,20 +54,38 @@ function Duplicates() {
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
 
   useEffect(() => {
+    if (!DUPLICATES_ENABLED) return
     // Load cached data synchronously first, then fetch fresh data if needed
     loadCachedDataSync()
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
   // Filter groups when threshold changes (reset page)
   useEffect(() => {
+    if (!DUPLICATES_ENABLED) return
     filterGroupsByThreshold(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threshold])
   
   // Filter groups when data changes (preserve page)
   useEffect(() => {
+    if (!DUPLICATES_ENABLED) return
     filterGroupsByThreshold(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allDuplicateGroups])
+
+  if (!DUPLICATES_ENABLED) {
+    return (
+      <div className="duplicates-disabled">
+        <h3>Duplicates disabled</h3>
+        <p>
+          Duplicate detection relies on local file access and heavy hashing. It is turned off in the serverless/Turso + R2 setup.
+          To use it, run the admin panel against a local backend with files and set VITE_ENABLE_DUPLICATES=true.
+        </p>
+      </div>
+    )
+  }
 
   const loadCachedDataSync = () => {
     try {
@@ -639,7 +646,6 @@ function Duplicates() {
 
             {currentGroups.map((group, groupIndex) => {
               const groupSelected = group.every(w => selectedWallpapers.has(w.id))
-              const groupPartiallySelected = group.some(w => selectedWallpapers.has(w.id)) && !groupSelected
               
               return (
                 <div key={startIndex + groupIndex} className="duplicate-group">
