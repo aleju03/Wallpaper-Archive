@@ -1,12 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
+import { Terminal, Lock, ChevronRight } from 'lucide-react'
 import { API_BASE } from '../config'
+import '../styles/pages/login.css'
 
 export default function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [focusedInput, setFocusedInput] = useState(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -20,142 +28,127 @@ export default function Login({ onLoginSuccess }) {
       })
 
       if (response.data.success) {
-        // Store token in localStorage
         localStorage.setItem('admin_token', response.data.token)
         localStorage.setItem('admin_user', JSON.stringify(response.data.user))
-
-        // Notify parent component
         onLoginSuccess(response.data.token, response.data.user)
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.')
+      setError(err.response?.data?.error || 'authentication failed')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#0a0a0a',
-      fontFamily: '"SF Mono", Monaco, monospace'
-    }}>
-      <div style={{
-        background: '#111',
-        border: '1px solid #333',
-        borderRadius: '8px',
-        padding: '2rem',
-        width: '100%',
-        maxWidth: '400px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
-      }}>
-        <h1 style={{
-          color: '#fff',
-          fontSize: '1.5rem',
-          marginBottom: '1.5rem',
-          textAlign: 'center'
-        }}>
-          Admin Login
-        </h1>
+    <div className="login-container">
+      {/* Animated scan lines background */}
+      <div className="scan-lines"></div>
+      <div className="grid-overlay"></div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{
-              display: 'block',
-              color: '#aaa',
-              marginBottom: '0.5rem',
-              fontSize: '0.875rem'
-            }}>
-              Username
-            </label>
+      {/* Vignette effect */}
+      <div className="vignette"></div>
+
+      <div className={`login-terminal ${mounted ? 'mounted' : ''}`}>
+        {/* Terminal chrome */}
+        <div className="terminal-chrome">
+          <div className="chrome-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div className="chrome-title">
+            <Terminal size={12} />
+            <span>secure_auth.sh</span>
+          </div>
+          <div className="chrome-status">
+            <Lock size={10} />
+          </div>
+        </div>
+
+        {/* Terminal header */}
+        <div className="terminal-header">
+          <div className="header-line">
+            <ChevronRight size={14} strokeWidth={1.5} />
+            <span className="typing-text">wallpaper archive v2.0</span>
+          </div>
+          <div className="header-line delay-1">
+            <ChevronRight size={14} strokeWidth={1.5} />
+            <span className="typing-text">admin authentication required</span>
+          </div>
+          <div className="header-line delay-2">
+            <ChevronRight size={14} strokeWidth={1.5} />
+            <span className="typing-text dim">enter credentials to proceed</span>
+          </div>
+        </div>
+
+        {/* Authentication form */}
+        <form onSubmit={handleSubmit} className="terminal-form">
+          <div className={`terminal-input-group ${focusedInput === 'username' ? 'focused' : ''}`}>
+            <div className="input-prompt">
+              <ChevronRight size={14} strokeWidth={2} />
+              <label htmlFor="username">user:</label>
+            </div>
             <input
+              id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              onFocus={() => setFocusedInput('username')}
+              onBlur={() => setFocusedInput(null)}
               required
               autoFocus
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                background: '#1a1a1a',
-                border: '1px solid #333',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '0.875rem',
-                fontFamily: 'inherit'
-              }}
+              autoComplete="username"
+              spellCheck="false"
             />
+            <div className="cursor-blink"></div>
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{
-              display: 'block',
-              color: '#aaa',
-              marginBottom: '0.5rem',
-              fontSize: '0.875rem'
-            }}>
-              Password
-            </label>
+          <div className={`terminal-input-group ${focusedInput === 'password' ? 'focused' : ''}`}>
+            <div className="input-prompt">
+              <ChevronRight size={14} strokeWidth={2} />
+              <label htmlFor="password">pass:</label>
+            </div>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setFocusedInput('password')}
+              onBlur={() => setFocusedInput(null)}
               required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                background: '#1a1a1a',
-                border: '1px solid #333',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '0.875rem',
-                fontFamily: 'inherit'
-              }}
+              autoComplete="current-password"
+              spellCheck="false"
             />
+            <div className="cursor-blink"></div>
           </div>
 
           {error && (
-            <div style={{
-              background: '#2a0a0a',
-              border: '1px solid #ff4444',
-              borderRadius: '4px',
-              padding: '0.75rem',
-              marginBottom: '1rem',
-              color: '#ff6666',
-              fontSize: '0.875rem'
-            }}>
-              {error}
+            <div className="terminal-error">
+              <ChevronRight size={14} strokeWidth={2} />
+              <span className="error-text">error: {error}</span>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              background: loading ? '#333' : '#007AFF',
-              border: 'none',
-              borderRadius: '4px',
-              color: '#fff',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) e.target.style.background = '#0066dd'
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) e.target.style.background = '#007AFF'
-            }}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
+          <div className="terminal-actions">
+            <button
+              type="submit"
+              className="terminal-submit"
+              disabled={loading}
+            >
+              <ChevronRight size={14} strokeWidth={2} />
+              <span>{loading ? 'authenticating' : 'execute'}</span>
+              {loading && <span className="loading-dots">...</span>}
+            </button>
+          </div>
         </form>
+
+        {/* Footer info */}
+        <div className="terminal-footer">
+          <div className="footer-line">
+            <span className="dim">secure connection established</span>
+            <span className="status-indicator"></span>
+          </div>
+        </div>
       </div>
     </div>
   )

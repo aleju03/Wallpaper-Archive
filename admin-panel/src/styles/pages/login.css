@@ -1,0 +1,452 @@
+/* ==========================================================================
+   Terminal Authentication Login
+
+   Secure terminal-style authentication with scan lines, typing animations,
+   and sophisticated visual effects.
+   ========================================================================== */
+
+/* ==========================================================================
+   Container & Background Effects
+   ========================================================================== */
+
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #000000;
+  padding: var(--spacing-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated scan lines */
+.scan-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(255, 255, 255, 0.02) 51%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  animation: scan 8s linear infinite;
+  z-index: 1;
+}
+
+@keyframes scan {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+/* Subtle grid overlay */
+.grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(52, 152, 219, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(52, 152, 219, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+/* Vignette darkening */
+.vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   Terminal Window
+   ========================================================================== */
+
+.login-terminal {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid var(--color-border);
+  position: relative;
+  z-index: 10;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: terminalFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(52, 152, 219, 0.1);
+}
+
+.login-terminal.mounted {
+  animation-play-state: running;
+}
+
+@keyframes terminalFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Terminal chrome bar */
+.terminal-chrome {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chrome-dots {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.chrome-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  opacity: 0.5;
+}
+
+.chrome-dots span:nth-child(1) {
+  background: var(--color-accent-red);
+}
+
+.chrome-dots span:nth-child(2) {
+  background: var(--color-accent-orange);
+}
+
+.chrome-dots span:nth-child(3) {
+  background: var(--color-accent-green);
+}
+
+.chrome-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-disabled);
+  font-family: var(--font-family-mono);
+}
+
+.chrome-status {
+  color: var(--color-accent-blue);
+  opacity: 0.6;
+}
+
+/* ==========================================================================
+   Terminal Header
+   ========================================================================== */
+
+.terminal-header {
+  padding: var(--spacing-2xl) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+}
+
+.header-line {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-primary);
+}
+
+.header-line:last-child {
+  margin-bottom: 0;
+}
+
+.header-line svg {
+  color: var(--color-accent-blue);
+  flex-shrink: 0;
+}
+
+.typing-text.dim {
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Terminal Form
+   ========================================================================== */
+
+.terminal-form {
+  padding: var(--spacing-3xl) var(--spacing-xl);
+  background: var(--color-bg-primary);
+}
+
+/* Input groups */
+.terminal-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-2xl);
+  padding: var(--spacing-md);
+  border: 1px solid transparent;
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.terminal-input-group.focused {
+  border-color: var(--color-accent-blue);
+  background: rgba(52, 152, 219, 0.02);
+  box-shadow: 0 0 20px rgba(52, 152, 219, 0.1);
+}
+
+.input-prompt {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-md);
+}
+
+.input-prompt svg {
+  color: var(--color-accent-blue);
+}
+
+.input-prompt label {
+  color: var(--color-text-secondary);
+  text-transform: lowercase;
+  min-width: 45px;
+}
+
+.terminal-input-group input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: var(--font-family-mono);
+  outline: none;
+  padding: 0;
+  letter-spacing: 0.5px;
+}
+
+.terminal-input-group input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+/* Cursor indicator */
+.cursor-blink {
+  display: none;
+}
+
+/* ==========================================================================
+   Error Display
+   ========================================================================== */
+
+.terminal-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-2xl);
+  border: 1px solid var(--color-accent-red);
+  background: rgba(231, 76, 60, 0.05);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  animation: errorShake 0.4s ease;
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.terminal-error svg {
+  color: var(--color-accent-red);
+  flex-shrink: 0;
+}
+
+.error-text {
+  color: var(--color-accent-red);
+  text-transform: lowercase;
+}
+
+/* ==========================================================================
+   Submit Button
+   ========================================================================== */
+
+.terminal-actions {
+  margin-top: var(--spacing-2xl);
+}
+
+.terminal-submit {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: transparent;
+  border: 1px solid var(--color-accent-blue);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-md);
+  text-transform: lowercase;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-submit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(52, 152, 219, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.terminal-submit:hover::before {
+  left: 100%;
+}
+
+.terminal-submit:hover {
+  background: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
+  box-shadow:
+    0 0 20px rgba(52, 152, 219, 0.3),
+    inset 0 0 20px rgba(52, 152, 219, 0.1);
+  transform: translateY(-1px);
+}
+
+.terminal-submit:active {
+  transform: translateY(0);
+}
+
+.terminal-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.terminal-submit:disabled:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+.terminal-submit svg {
+  flex-shrink: 0;
+  color: var(--color-accent-blue);
+  transition: color var(--transition-fast);
+}
+
+.terminal-submit:hover svg {
+  color: var(--color-text-primary);
+}
+
+.loading-dots {
+  animation: loadingDots 1.4s infinite;
+}
+
+@keyframes loadingDots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
+}
+
+/* ==========================================================================
+   Terminal Footer
+   ========================================================================== */
+
+.terminal-footer {
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.footer-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-disabled);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.dim {
+  color: var(--color-text-disabled);
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent-green);
+  box-shadow: 0 0 10px var(--color-accent-green);
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .login-container {
+    padding: var(--spacing-md);
+  }
+
+  .login-terminal {
+    max-width: 100%;
+  }
+
+  .terminal-header,
+  .terminal-form,
+  .terminal-footer {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+
+  .terminal-chrome {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+
+  .header-line {
+    font-size: var(--font-size-sm);
+  }
+
+  .input-prompt label {
+    min-width: 40px;
+  }
+}
