@@ -33,6 +33,8 @@ function Upload() {
   const [osuSearchFilter, setOsuSearchFilter] = useState('')
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
   const [osuScanProgress, setOsuScanProgress] = useState(null) // { phase, message, percent }
+  const [osuPage, setOsuPage] = useState(1)
+  const OSU_PAGE_SIZE = 100
 
   const handleFiles = (event) => {
     setFiles(Array.from(event.target.files || []))
@@ -187,6 +189,16 @@ function Upload() {
     
     return matchesSearch && matchesDuplicateFilter
   })
+
+  // Reset to page 1 when filters change
+  const totalFilteredPages = Math.ceil(filteredBeatmaps.length / OSU_PAGE_SIZE)
+  const safeOsuPage = Math.min(osuPage, totalFilteredPages) || 1
+  
+  // Paginate filtered results
+  const paginatedBeatmaps = filteredBeatmaps.slice(
+    (safeOsuPage - 1) * OSU_PAGE_SIZE,
+    safeOsuPage * OSU_PAGE_SIZE
+  )
 
   const selectedCount = osuBeatmaps.filter(b => b.selected).length
   const duplicateCount = osuBeatmaps.filter(b => b.hasDuplicate).length
@@ -730,10 +742,13 @@ function Upload() {
                       type="text"
                       placeholder="Filter by title, tags, source..."
                       value={osuSearchFilter}
-                      onChange={(e) => setOsuSearchFilter(e.target.value)}
+                      onChange={(e) => {
+                        setOsuSearchFilter(e.target.value)
+                        setOsuPage(1) // Reset to page 1 when search changes
+                      }}
                     />
                     {osuSearchFilter && (
-                      <button onClick={() => setOsuSearchFilter('')}>
+                      <button onClick={() => { setOsuSearchFilter(''); setOsuPage(1); }}>
                         <X size={14} />
                       </button>
                     )}
@@ -743,7 +758,10 @@ function Upload() {
                     <input
                       type="checkbox"
                       checked={showDuplicatesOnly}
-                      onChange={(e) => setShowDuplicatesOnly(e.target.checked)}
+                      onChange={(e) => {
+                        setShowDuplicatesOnly(e.target.checked)
+                        setOsuPage(1) // Reset to page 1 when filter changes
+                      }}
                     />
                     <span>Show duplicates only</span>
                   </label>
@@ -791,7 +809,7 @@ function Upload() {
               </div>
 
               <div className="osu-grid">
-                {filteredBeatmaps.map((beatmap) => (
+                {paginatedBeatmaps.map((beatmap) => (
                   <div
                     key={beatmap.id}
                     className={`osu-card ${beatmap.selected ? 'osu-card--selected' : ''} ${beatmap.hasDuplicate ? 'osu-card--duplicate' : ''}`}
@@ -799,13 +817,11 @@ function Upload() {
                   >
                     <div className="osu-card__thumb">
                       <img src={beatmap.thumbnail} alt={beatmap.displayTitle} loading="lazy" />
-                      <div className="osu-card__overlay">
-                        {beatmap.selected ? (
+                      {beatmap.selected && (
+                        <div className="osu-card__check">
                           <Check size={24} />
-                        ) : (
-                          <span className="osu-card__select-hint">Click to select</span>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       {beatmap.hasDuplicate && (
                         <div className="osu-card__duplicate-badge">
                           <AlertTriangle size={12} />
@@ -837,6 +853,43 @@ function Upload() {
                   </div>
                 ))}
               </div>
+
+              {/* Pagination */}
+              {totalFilteredPages > 1 && (
+                <div className="osu-pagination">
+                  <button 
+                    className="btn-small"
+                    disabled={safeOsuPage <= 1}
+                    onClick={() => setOsuPage(1)}
+                  >
+                    First
+                  </button>
+                  <button 
+                    className="btn-small"
+                    disabled={safeOsuPage <= 1}
+                    onClick={() => setOsuPage(p => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </button>
+                  <span className="osu-pagination__info">
+                    Page {safeOsuPage} of {totalFilteredPages} ({filteredBeatmaps.length} results)
+                  </span>
+                  <button 
+                    className="btn-small"
+                    disabled={safeOsuPage >= totalFilteredPages}
+                    onClick={() => setOsuPage(p => Math.min(totalFilteredPages, p + 1))}
+                  >
+                    Next
+                  </button>
+                  <button 
+                    className="btn-small"
+                    disabled={safeOsuPage >= totalFilteredPages}
+                    onClick={() => setOsuPage(totalFilteredPages)}
+                  >
+                    Last
+                  </button>
+                </div>
+              )}
 
               {filteredBeatmaps.length === 0 && (
                 <div className="osu-empty">

@@ -2,6 +2,20 @@ const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
 
+// Supported image extensions that Sharp can process
+const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.tiff', '.avif'];
+
+/**
+ * Check if a filename has a supported image extension
+ * @param {string} filename - The filename to check
+ * @returns {boolean} - True if supported image format
+ */
+function isSupportedImageFormat(filename) {
+  if (!filename) return false;
+  const ext = path.extname(filename).toLowerCase();
+  return SUPPORTED_IMAGE_EXTENSIONS.includes(ext);
+}
+
 /**
  * Parse a single .osu file and extract metadata and background filename
  * @param {string} osuFilePath - Path to the .osu file
@@ -111,8 +125,13 @@ async function scanBeatmapFolder(beatmapFolder) {
     const osuFilePath = path.join(beatmapFolder, osuFile);
     const metadata = await parseOsuFile(osuFilePath);
 
-    // Check if background file exists
+    // Check if background file exists and is a supported image format
     if (!metadata.backgroundFilename) {
+      return null;
+    }
+
+    // Skip unsupported formats (videos, bmp, etc.)
+    if (!isSupportedImageFormat(metadata.backgroundFilename)) {
       return null;
     }
 

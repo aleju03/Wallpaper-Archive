@@ -903,8 +903,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: var(--spacing-lg);
-  max-height: 600px;
-  overflow-y: auto;
   padding: var(--spacing-xs);
 }
 
@@ -966,6 +964,7 @@
   background: rgba(0, 0, 0, 0.4);
   opacity: 0;
   transition: opacity var(--transition-fast);
+  pointer-events: none;
 }
 
 .osu-card:hover .osu-card__overlay {
@@ -979,6 +978,22 @@
 
 .osu-card__overlay svg {
   color: var(--color-accent-green);
+}
+
+/* Persistent checkmark for selected cards */
+.osu-card__check {
+  position: absolute;
+  bottom: var(--spacing-sm);
+  left: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(46, 204, 113, 0.9);
+  border-radius: 50%;
+  color: var(--color-bg-primary);
+  pointer-events: none;
 }
 
 .osu-card__select-hint {
@@ -1063,4 +1078,26 @@
   padding: var(--spacing-3xl);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+/* osu! Pagination */
+.osu-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) 0;
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--spacing-lg);
+}
+
+.osu-pagination__info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  padding: 0 var(--spacing-lg);
+}
+
+.osu-pagination .btn-small:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
