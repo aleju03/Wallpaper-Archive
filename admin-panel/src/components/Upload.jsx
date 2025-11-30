@@ -25,6 +25,7 @@ function Upload() {
 
   // osu! specific state
   const [osuPath, setOsuPath] = useState('C:\\Users\\aleji\\AppData\\Local\\osu!\\Songs')
+  const [osuMaxScan, setOsuMaxScan] = useState('') // empty = no limit
   const [osuBeatmaps, setOsuBeatmaps] = useState([])
   const [osuScanning, setOsuScanning] = useState(false)
   const [osuImporting, setOsuImporting] = useState(false)
@@ -74,6 +75,9 @@ function Upload() {
 
     // Build URL with query params and admin key
     const params = new URLSearchParams({ songsPath: osuPath })
+    if (osuMaxScan && parseInt(osuMaxScan) > 0) {
+      params.set('maxFiles', osuMaxScan)
+    }
     const adminKey = import.meta.env.VITE_ADMIN_API_KEY || ''
     const url = `${API_BASE}/api/osu/scan?${params}&adminKey=${encodeURIComponent(adminKey)}`
 
@@ -664,6 +668,21 @@ function Upload() {
                   placeholder="osu"
                   value={provider}
                   onChange={(e) => setProvider(e.target.value)}
+                />
+              </div>
+
+              <div className="input-group input-group--small">
+                <label className="input-label">
+                  <Hash size={12} />
+                  Max Files
+                </label>
+                <input
+                  type="number"
+                  className="input-field"
+                  placeholder="No limit"
+                  min="1"
+                  value={osuMaxScan}
+                  onChange={(e) => setOsuMaxScan(e.target.value)}
                 />
               </div>
             </div>

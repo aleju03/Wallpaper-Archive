@@ -345,7 +345,8 @@ async function registerAdminRoutes(fastify, db) {
 
   // Admin: osu! scan - scan Songs directory and return beatmap list with SSE progress
   fastify.get('/api/osu/scan', { onRequest: [adminAuthHook] }, async (request, reply) => {
-    const { songsPath } = request.query || {};
+    const { songsPath, maxFiles } = request.query || {};
+    const maxFilesLimit = maxFiles ? parseInt(maxFiles) : null;
     
     if (!songsPath) {
       reply.code(400);
@@ -380,7 +381,7 @@ async function registerAdminRoutes(fastify, db) {
       // Phase 1: Scan directories
       sendEvent('progress', { phase: 'scanning', message: 'Scanning osu! Songs directory...', percent: 0 });
       
-      const beatmaps = await scanOsuSongsDirectory(songsPath, (progress) => {
+      let beatmaps = await scanOsuSongsDirectory(songsPath, (progress) => {
         sendEvent('progress', { 
           phase: 'scanning', 
           message: `Scanning folders: ${progress.current}/${progress.total}`,
@@ -389,7 +390,13 @@ async function registerAdminRoutes(fastify, db) {
         });
       });
 
-      sendEvent('progress', { phase: 'hashing', message: `Found ${beatmaps.length} beatmaps. Loading existing hashes...`, percent: 30 });
+      // Apply max files limit if specified
+      if (maxFilesLimit && maxFilesLimit > 0 && beatmaps.length > maxFilesLimit) {
+        beatmaps = beatmaps.slice(0, maxFilesLimit);
+        sendEvent('progress', { phase: 'hashing', message: `Limited to ${maxFilesLimit} beatmaps. Loading existing hashes...`, percent: 30 });
+      } else {
+        sendEvent('progress', { phase: 'hashing', message: `Found ${beatmaps.length} beatmaps. Loading existing hashes...`, percent: 30 });
+      }
 
       // Get existing wallpapers with hashes for duplicate detection
       const existingWallpapers = await db.getAllWallpapersWithHashes();

@@ -135,6 +135,10 @@
   grid-column: 1 / -1;
 }
 
+.input-group--small {
+  max-width: 120px;
+}
+
 .input-label {
   display: flex;
   align-items: center;
