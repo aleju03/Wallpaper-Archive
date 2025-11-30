@@ -35,6 +35,8 @@ function Upload() {
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
   const [osuScanProgress, setOsuScanProgress] = useState(null) // { phase, message, percent }
   const [osuPage, setOsuPage] = useState(1)
+  const [excludedMappers, setExcludedMappers] = useState([]) // List of mapper names to exclude
+  const [mapperInput, setMapperInput] = useState('') // Input field for adding mappers
   const OSU_PAGE_SIZE = 100
 
   const handleFiles = (event) => {
@@ -132,7 +134,11 @@ function Upload() {
   }, [])
 
   const selectAllBeatmaps = () => {
-    setOsuBeatmaps(prev => prev.map(b => ({ ...b, selected: true })))
+    setOsuBeatmaps(prev => prev.map(b => {
+      const creator = (b.metadata?.creator || '').toLowerCase()
+      const isExcluded = excludedMappers.includes(creator)
+      return { ...b, selected: !isExcluded }
+    }))
   }
 
   const deselectAllBeatmaps = () => {
@@ -140,8 +146,50 @@ function Upload() {
   }
 
   const selectNonDuplicates = () => {
-    setOsuBeatmaps(prev => prev.map(b => ({ ...b, selected: !b.hasDuplicate })))
+    setOsuBeatmaps(prev => prev.map(b => {
+      const creator = (b.metadata?.creator || '').toLowerCase()
+      const isExcluded = excludedMappers.includes(creator)
+      return { ...b, selected: !b.hasDuplicate && !isExcluded }
+    }))
   }
+
+  const addExcludedMapper = (mapperName) => {
+    if (!mapperName.trim()) return
+    const name = mapperName.trim().toLowerCase()
+    if (excludedMappers.includes(name)) return
+    
+    setExcludedMappers(prev => [...prev, name])
+    // Deselect all beatmaps from this mapper
+    setOsuBeatmaps(prev => prev.map(b => {
+      const creator = (b.metadata?.creator || '').toLowerCase()
+      if (creator === name) {
+        return { ...b, selected: false }
+      }
+      return b
+    }))
+    setMapperInput('')
+  }
+
+  const removeExcludedMapper = (mapperName) => {
+    setExcludedMappers(prev => prev.filter(m => m !== mapperName))
+  }
+
+  // Get unique mappers from current beatmaps for autocomplete
+  const uniqueMappers = useMemo(() => {
+    const mappers = new Map()
+    osuBeatmaps.forEach(b => {
+      const creator = b.metadata?.creator
+      if (creator) {
+        const key = creator.toLowerCase()
+        if (!mappers.has(key)) {
+          mappers.set(key, { name: creator, count: 0, selectedCount: 0 })
+        }
+        mappers.get(key).count++
+        if (b.selected) mappers.get(key).selectedCount++
+      }
+    })
+    return Array.from(mappers.values()).sort((a, b) => b.count - a.count)
+  }, [osuBeatmaps])
 
   const handleOsuImport = async () => {
     const selectedBeatmaps = osuBeatmaps.filter(b => b.selected)
@@ -198,9 +246,13 @@ function Upload() {
     }
   }
 
-  // Filter beatmaps based on search and duplicate filter
+  // Filter beatmaps based on search, duplicate filter, and excluded mappers
   const filteredBeatmaps = useMemo(() => {
     return osuBeatmaps.filter(b => {
+      // Hide beatmaps from excluded mappers
+      const creator = (b.metadata?.creator || '').toLowerCase()
+      if (excludedMappers.includes(creator)) return false
+      
       const matchesSearch = !osuSearchFilter || 
         b.displayTitle.toLowerCase().includes(osuSearchFilter.toLowerCase()) ||
         (b.metadata.tags || []).some(t => t.toLowerCase().includes(osuSearchFilter.toLowerCase())) ||
@@ -210,7 +262,7 @@ function Upload() {
       
       return matchesSearch && matchesDuplicateFilter
     })
-  }, [osuBeatmaps, osuSearchFilter, showDuplicatesOnly])
+  }, [osuBeatmaps, osuSearchFilter, showDuplicatesOnly, excludedMappers])
 
   // Pagination calculation
   const totalFilteredPages = Math.ceil(filteredBeatmaps.length / OSU_PAGE_SIZE)
@@ -847,6 +899,45 @@ function Upload() {
                 </button>
               </div>
 
+              {/* Mapper exclusion */}
+              <div className="osu-mapper-exclude">
+                <div className="osu-mapper-exclude__input">
+                  <input
+                    type="text"
+                    placeholder="Exclude mapper (e.g. Davteezy)..."
+                    value={mapperInput}
+                    onChange={(e) => setMapperInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        addExcludedMapper(mapperInput)
+                      }
+                    }}
+                    list="mapper-suggestions"
+                  />
+                  <datalist id="mapper-suggestions">
+                    {uniqueMappers.slice(0, 20).map(m => (
+                      <option key={m.name} value={m.name}>{m.name} ({m.count} maps)</option>
+                    ))}
+                  </datalist>
+                  <button onClick={() => addExcludedMapper(mapperInput)} disabled={!mapperInput.trim()}>
+                    Exclude
+                  </button>
+                </div>
+                {excludedMappers.length > 0 && (
+                  <div className="osu-mapper-exclude__list">
+                    <span className="osu-mapper-exclude__label">Excluded:</span>
+                    {excludedMappers.map(mapper => (
+                      <span key={mapper} className="osu-mapper-tag">
+                        {mapper}
+                        <button onClick={() => removeExcludedMapper(mapper)}>
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="osu-grid" key={`grid-${showDuplicatesOnly}-${osuSearchFilter}-${safeOsuPage}`}>
                 {paginatedBeatmaps.map((beatmap) => (
                   <div
@@ -865,6 +956,12 @@ function Upload() {
                         <div className="osu-card__duplicate-badge">
                           <AlertTriangle size={12} />
                           <span>Duplicate</span>
+                        </div>
+                      )}
+                      {beatmap.hasDuplicate !== true && beatmap.cleanFilename?.includes('_') && beatmap.cleanFilename?.match(/_[a-f0-9]{4}$/) && (
+                        <div className="osu-card__duplicate-badge osu-card__duplicate-badge--warning">
+                          <AlertTriangle size={12} />
+                          <span>Similar Name</span>
                         </div>
                       )}
                     </div>
