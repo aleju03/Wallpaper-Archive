@@ -23,6 +23,30 @@
   flex-direction: column;
   border-right: 1px solid var(--color-border);
   flex-shrink: 0;
+  transition: width var(--transition-normal);
+  position: relative;
+}
+
+.sidebar.collapsed {
+  width: 72px;
+}
+
+.sidebar.collapsed .sidebar-header h1,
+.sidebar.collapsed .sidebar-header p {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-logo img {
+  margin: 0 auto;
+}
+
+.sidebar.collapsed .nav-item span {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: var(--spacing-md);
 }
 
 .sidebar-header {
@@ -88,6 +112,31 @@
   color: var(--color-text-primary);
   background: var(--color-bg-elevated);
   border-left: 2px solid var(--color-text-primary);
+}
+
+/* ==========================================================================
+   Sidebar Toggle Button
+   ========================================================================== */
+
+.sidebar-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  margin-top: auto;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  font-family: inherit;
+}
+
+.sidebar-toggle:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
 }
 
 /* ==========================================================================

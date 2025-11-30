@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BarChart3, Images, Database, Copy, UploadCloud, Swords } from 'lucide-react'
+import { BarChart3, Images, Database, Copy, UploadCloud, Swords, Menu } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import Gallery from './components/Gallery'
 import Statistics from './components/Statistics'
@@ -10,6 +10,7 @@ import './styles/index.css'
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const navigation = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -41,7 +42,7 @@ function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img src="/logo.svg" alt="Logo" />
@@ -49,7 +50,7 @@ function App() {
           </div>
           <p>Admin Panel</p>
         </div>
-        
+
         <nav className="sidebar-nav">
           {navigation.map((item) => {
             const Icon = item.icon
@@ -58,6 +59,7 @@ function App() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                title={sidebarCollapsed ? item.name : ''}
               >
                 <Icon size={20} />
                 <span>{item.name}</span>
@@ -65,6 +67,14 @@ function App() {
             )
           })}
         </nav>
+
+        <button
+          className="sidebar-toggle"
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <Menu size={20} />
+        </button>
       </aside>
 
       <main className="main-content">
