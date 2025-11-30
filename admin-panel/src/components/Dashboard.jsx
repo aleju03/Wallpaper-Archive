@@ -217,7 +217,7 @@ function ImagePreviewModal({ wallpaper, onClose, onDelete }) {
   )
 }
 
-function DownloadsModal({ onClose, onPreview }) {
+function DownloadsModal({ onClose, onPreview, totalDownloads }) {
   const [wallpapers, setWallpapers] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -250,45 +250,91 @@ function DownloadsModal({ onClose, onPreview }) {
     if (e.target === e.currentTarget) onClose()
   }
 
+  const topDownloads = wallpapers.slice(0, 3).reduce((sum, w) => sum + (w.download_count || 0), 0)
+  const maxDownloads = wallpapers.length > 0 ? wallpapers[0].download_count : 1
+
   return (
     <div className="preview-modal-overlay" onClick={handleOverlayClick}>
-      <div className="preview-modal preview-modal--wide">
-        <div className="preview-modal__header">
-          <span className="preview-modal__title">most downloaded wallpapers</span>
-          <button className="preview-modal__close" onClick={onClose}>
-            <X size={16} />
+      <div className="downloads-modal">
+        <div className="downloads-modal__header">
+          <div className="downloads-modal__header-content">
+            <h2 className="downloads-modal__title">Download Statistics</h2>
+            <p className="downloads-modal__subtitle">Most popular wallpapers by download count</p>
+          </div>
+          <button className="downloads-modal__close" onClick={onClose}>
+            <X size={18} />
           </button>
+        </div>
+
+        <div className="downloads-modal__stats">
+          <div className="downloads-modal__stat">
+            <span className="downloads-modal__stat-value">{totalDownloads?.toLocaleString() || 0}</span>
+            <span className="downloads-modal__stat-label">Total Downloads</span>
+          </div>
+          <div className="downloads-modal__stat">
+            <span className="downloads-modal__stat-value">{wallpapers.length}</span>
+            <span className="downloads-modal__stat-label">Downloaded Wallpapers</span>
+          </div>
+          <div className="downloads-modal__stat">
+            <span className="downloads-modal__stat-value">{topDownloads}</span>
+            <span className="downloads-modal__stat-label">Top 3 Combined</span>
+          </div>
         </div>
         
         <div className="downloads-modal__body">
           {loading ? (
-            <div className="downloads-modal__loading">Loading...</div>
+            <div className="downloads-modal__loading">
+              <div className="downloads-modal__spinner" />
+              <span>Loading download data...</span>
+            </div>
           ) : wallpapers.length === 0 ? (
-            <div className="downloads-modal__empty">No downloads yet</div>
+            <div className="downloads-modal__empty">
+              <Download size={32} />
+              <span>No downloads recorded yet</span>
+            </div>
           ) : (
             <div className="downloads-modal__list">
-              {wallpapers.map((wallpaper) => (
-                <div key={wallpaper.id} className="downloads-modal__item" onClick={() => onPreview(wallpaper)}>
-                  <img 
-                    src={wallpaper.thumbnail_url} 
-                    alt={wallpaper.filename}
-                    className="downloads-modal__thumb"
-                    loading="lazy"
-                  />
-                  <div className="downloads-modal__info">
-                    <span className="downloads-modal__name" title={wallpaper.filename}>
-                      {wallpaper.filename}
-                    </span>
-                    <span className="downloads-modal__meta">
-                      {wallpaper.dimensions} · {wallpaper.provider}
-                    </span>
+              {wallpapers.map((wallpaper, index) => {
+                const percentage = Math.round((wallpaper.download_count / maxDownloads) * 100)
+                const isTop3 = index < 3
+                return (
+                  <div 
+                    key={wallpaper.id} 
+                    className={`downloads-modal__item ${isTop3 ? 'downloads-modal__item--top' : ''}`}
+                    onClick={() => onPreview(wallpaper)}
+                  >
+                    <div className={`downloads-modal__rank ${isTop3 ? `downloads-modal__rank--${index + 1}` : ''}`}>
+                      {index + 1}
+                    </div>
+                    <img 
+                      src={wallpaper.thumbnail_url} 
+                      alt={wallpaper.filename}
+                      className="downloads-modal__thumb"
+                      loading="lazy"
+                    />
+                    <div className="downloads-modal__info">
+                      <span className="downloads-modal__name" title={wallpaper.filename}>
+                        {wallpaper.filename}
+                      </span>
+                      <div className="downloads-modal__meta-row">
+                        <span className="downloads-modal__meta">
+                          {wallpaper.dimensions} · {wallpaper.provider}
+                        </span>
+                        <div className="downloads-modal__bar">
+                          <div 
+                            className="downloads-modal__bar-fill" 
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="downloads-modal__count">
+                      <Download size={14} />
+                      <span>{wallpaper.download_count}</span>
+                    </div>
                   </div>
-                  <div className="downloads-modal__count">
-                    <Download size={14} />
-                    <span>{wallpaper.download_count}</span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -481,6 +527,7 @@ function Dashboard() {
             setShowDownloadsModal(false)
             setPreviewWallpaper(wallpaper)
           }}
+          totalDownloads={stats?.total_downloads}
         />
       )}
     </div>
