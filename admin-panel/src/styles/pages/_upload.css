@@ -625,4 +625,345 @@
   .upload__actions {
     grid-template-columns: 1fr;
   }
+
+  .osu-preview__header {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .osu-preview__stats {
+    flex-wrap: wrap;
+  }
+
+  .osu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+/* ==========================================================================
+   osu! Import Styles
+   ========================================================================== */
+
+.btn-scan {
+  margin-top: var(--spacing-lg);
+  width: fit-content;
+}
+
+.osu-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+  animation: slideDown 0.3s ease;
+}
+
+.osu-preview__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-xl);
+}
+
+.osu-preview__stats {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+}
+
+.osu-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.osu-stat strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.osu-stat--selected {
+  color: var(--color-accent-green);
+}
+
+.osu-stat--selected strong {
+  color: var(--color-accent-green);
+}
+
+.osu-stat--duplicate {
+  color: var(--color-accent-yellow);
+}
+
+.osu-stat--duplicate strong {
+  color: var(--color-accent-yellow);
+}
+
+.osu-preview__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.osu-search {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  transition: border-color var(--transition-fast);
+}
+
+.osu-search:focus-within {
+  border-color: var(--color-text-muted);
+}
+
+.osu-search svg {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.osu-search input {
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  width: 200px;
+  outline: none;
+}
+
+.osu-search input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.osu-search button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.osu-search button:hover {
+  color: var(--color-text-primary);
+}
+
+.osu-checkbox-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.osu-checkbox-filter input {
+  accent-color: var(--color-accent-yellow);
+  width: 14px;
+  height: 14px;
+}
+
+.osu-preview__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-small:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.btn-small--accent {
+  border-color: var(--color-accent-blue);
+  color: var(--color-accent-blue);
+}
+
+.btn-small--accent:hover {
+  background: var(--color-accent-blue);
+  color: var(--color-bg-primary);
+}
+
+.osu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  max-height: 600px;
+  overflow-y: auto;
+  padding: var(--spacing-xs);
+}
+
+.osu-card {
+  position: relative;
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.osu-card:hover {
+  border-color: var(--color-text-muted);
+}
+
+.osu-card--selected {
+  border-color: var(--color-accent-green);
+}
+
+.osu-card--selected:hover {
+  border-color: var(--color-accent-green);
+}
+
+.osu-card--duplicate {
+  border-color: var(--color-accent-yellow);
+  opacity: 0.8;
+}
+
+.osu-card--duplicate.osu-card--selected {
+  border-color: var(--color-accent-yellow);
+  opacity: 1;
+}
+
+.osu-card__thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+}
+
+.osu-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: all var(--transition-normal);
+}
+
+.osu-card:hover .osu-card__thumb img {
+  transform: scale(1.02);
+}
+
+.osu-card__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.osu-card:hover .osu-card__overlay {
+  opacity: 1;
+}
+
+.osu-card--selected .osu-card__overlay {
+  opacity: 1;
+  background: rgba(46, 204, 113, 0.3);
+}
+
+.osu-card__overlay svg {
+  color: var(--color-accent-green);
+}
+
+.osu-card__select-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.osu-card__duplicate-badge {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--color-accent-yellow);
+  color: var(--color-accent-yellow);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.osu-card__info {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.osu-card__title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.osu-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.osu-card__source {
+  color: var(--color-accent-blue);
+}
+
+.osu-card__dimensions {
+  font-family: var(--font-family-mono);
+}
+
+.osu-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xxs);
+  margin-top: var(--spacing-xs);
+}
+
+.osu-tag {
+  padding: 2px var(--spacing-xs);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.osu-tag--more {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.osu-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-3xl);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }

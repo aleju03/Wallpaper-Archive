@@ -1,4 +1,5 @@
 const path = require('path');
+const fsPromises = require('fs/promises');
 const sharp = require('sharp');
 const config = require('../config');
 const { adminAuthHook } = require('../middleware/auth');
@@ -12,8 +13,9 @@ const {
   fetchJson,
   fetchBuffer
 } = require('../utils/helpers');
-const { generatePerceptualHash, findDuplicateGroups } = require('../utils/image-hash');
+const { generatePerceptualHash, findDuplicateGroups, findSimilarImages } = require('../utils/image-hash');
 const { uploadToStorage, deleteFromR2, getKeyFromUrl, getImageBuffer } = require('../services/storage');
+const { scanOsuSongsDirectory, formatTagsForDb, generateDisplayTitle } = require('../utils/osu-parser');
 
 /**
  * Register admin routes
@@ -335,6 +337,206 @@ async function registerAdminRoutes(fastify, db) {
       }
 
       return { success: true, deleted: wallpaper.id, removedFromStorage: deleteFile === 'true' && config.R2_ENABLED };
+    } catch (error) {
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Admin: osu! scan - scan Songs directory and return beatmap list
+  fastify.post('/api/osu/scan', { onRequest: [adminAuthHook] }, async (request, reply) => {
+    try {
+      const { songsPath } = request.body || {};
+      
+      if (!songsPath) {
+        reply.code(400);
+        return { success: false, error: 'Songs path is required' };
+      }
+
+      // Verify the path exists
+      try {
+        const stats = await fsPromises.stat(songsPath);
+        if (!stats.isDirectory()) {
+          reply.code(400);
+          return { success: false, error: 'Path is not a directory' };
+        }
+      } catch (err) {
+        reply.code(400);
+        return { success: false, error: 'Directory not found or not accessible' };
+      }
+
+      // Scan the osu! Songs directory
+      const beatmaps = await scanOsuSongsDirectory(songsPath);
+
+      // Get existing wallpapers with hashes for duplicate detection
+      const existingWallpapers = await db.getAllWallpapersWithHashes();
+      
+      // Process each beatmap to generate preview data and check for duplicates
+      const processedBeatmaps = [];
+      
+      for (const beatmap of beatmaps) {
+        try {
+          // Read the background image
+          const buffer = await fsPromises.readFile(beatmap.backgroundPath);
+          
+          // Generate perceptual hash
+          const hash = await generatePerceptualHash(buffer);
+          
+          // Check for similar existing images
+          const similar = findSimilarImages(hash, existingWallpapers, 10);
+          const hasDuplicate = similar.length > 0;
+          
+          // Get image dimensions
+          const metadata = await sharp(buffer).metadata();
+          const dimensions = metadata.width && metadata.height 
+            ? `${metadata.width}x${metadata.height}` 
+            : null;
+
+          // Generate a small base64 thumbnail for preview
+          const thumbBuffer = await sharp(buffer)
+            .resize({ width: 300, height: 200, fit: 'cover' })
+            .jpeg({ quality: 70 })
+            .toBuffer();
+          
+          const thumbBase64 = `data:image/jpeg;base64,${thumbBuffer.toString('base64')}`;
+
+          processedBeatmaps.push({
+            id: beatmap.metadata.beatmapSetId || beatmap.folderName,
+            folderName: beatmap.folderName,
+            folderPath: beatmap.folderPath,
+            backgroundPath: beatmap.backgroundPath,
+            backgroundFilename: beatmap.backgroundFilename,
+            fileSize: beatmap.fileSize,
+            dimensions,
+            perceptualHash: hash,
+            thumbnail: thumbBase64,
+            metadata: beatmap.metadata,
+            displayTitle: generateDisplayTitle(beatmap.metadata),
+            hasDuplicate,
+            duplicateOf: hasDuplicate ? similar[0] : null,
+            selected: !hasDuplicate // Pre-deselect duplicates
+          });
+        } catch (err) {
+          console.error(`Error processing beatmap ${beatmap.folderName}:`, err.message);
+        }
+      }
+
+      // Sort by title
+      processedBeatmaps.sort((a, b) => a.displayTitle.localeCompare(b.displayTitle));
+
+      return {
+        success: true,
+        total: processedBeatmaps.length,
+        withDuplicates: processedBeatmaps.filter(b => b.hasDuplicate).length,
+        beatmaps: processedBeatmaps
+      };
+    } catch (error) {
+      reply.code(500);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Admin: osu! import - import selected beatmaps
+  fastify.post('/api/osu/import', { onRequest: [adminAuthHook] }, async (request, reply) => {
+    try {
+      const { beatmaps, provider = 'osu' } = request.body || {};
+      
+      if (!beatmaps || !Array.isArray(beatmaps) || beatmaps.length === 0) {
+        reply.code(400);
+        return { success: false, error: 'No beatmaps provided for import' };
+      }
+
+      const providerSlug = toSafeSlug(provider);
+      const results = { imported: [], skipped: [], failed: [] };
+
+      for (const beatmap of beatmaps) {
+        try {
+          // Skip if not selected
+          if (!beatmap.selected) {
+            results.skipped.push({ 
+              displayTitle: beatmap.displayTitle, 
+              reason: 'not selected' 
+            });
+            continue;
+          }
+
+          // Read the image file
+          const buffer = await fsPromises.readFile(beatmap.backgroundPath);
+          
+          // Get metadata
+          const meta = await sharp(buffer).metadata();
+          const dimensions = meta.width && meta.height ? `${meta.width}x${meta.height}` : null;
+          const fileSize = buffer.length;
+          const hash = beatmap.perceptualHash || await generatePerceptualHash(buffer);
+
+          // Generate unique filename
+          const ext = path.extname(beatmap.backgroundFilename) || '.jpg';
+          const safeTitle = sanitizeFilename(beatmap.displayTitle).slice(0, 80);
+          const timestamp = Date.now();
+          const uniqueName = `${timestamp}-${safeTitle}${ext}`;
+
+          // Upload paths
+          const imageKey = `images/${providerSlug}/${uniqueName}`;
+          const thumbKey = `thumbnails/${providerSlug}/${path.basename(uniqueName, ext)}.jpg`;
+
+          // Upload original image
+          const downloadUrl = await uploadToStorage(
+            imageKey, 
+            buffer, 
+            meta.format ? `image/${meta.format}` : 'application/octet-stream', 
+            false
+          );
+
+          // Generate and upload thumbnail
+          const thumbBuffer = await sharp(buffer)
+            .resize({ width: 900, height: 900, fit: 'inside' })
+            .jpeg({ quality: 82 })
+            .toBuffer();
+          const thumbUrl = await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
+
+          // Format tags
+          const tags = formatTagsForDb(beatmap.metadata);
+
+          // Create database record
+          const record = {
+            filename: uniqueName,
+            provider: provider,
+            folder: beatmap.metadata.source || null,
+            file_size: fileSize,
+            dimensions,
+            download_url: downloadUrl,
+            local_path: config.STORAGE_MODE === 'local' ? path.join('downloads', uniqueName) : null,
+            tags,
+            perceptual_hash: hash
+          };
+
+          const insertedId = await db.insertWallpaper(record);
+          
+          results.imported.push({
+            id: insertedId,
+            displayTitle: beatmap.displayTitle,
+            filename: uniqueName,
+            download_url: downloadUrl,
+            thumbnail_url: thumbUrl
+          });
+        } catch (error) {
+          results.failed.push({ 
+            displayTitle: beatmap.displayTitle, 
+            error: error.message 
+          });
+        }
+      }
+
+      return { 
+        success: true, 
+        ...results,
+        summary: {
+          total: beatmaps.length,
+          imported: results.imported.length,
+          skipped: results.skipped.length,
+          failed: results.failed.length
+        }
+      };
     } catch (error) {
       reply.code(500);
       return { success: false, error: error.message };

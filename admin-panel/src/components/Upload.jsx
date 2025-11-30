@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import axios from 'axios'
-import { UploadCloud, CheckCircle, AlertCircle, Hash, Shield, Image as ImageIcon, FolderOpen, Tag, Github } from 'lucide-react'
+import { UploadCloud, CheckCircle, AlertCircle, Hash, Image as ImageIcon, FolderOpen, Tag, Github, Music, Search, X, Check, AlertTriangle } from 'lucide-react'
 import { API_BASE, resolveAssetUrl, getAdminHeaders } from '../config'
 import { useAdminData } from '../context/useAdminData'
 
@@ -22,6 +22,16 @@ function Upload() {
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef(null)
   const { fetchStats, fetchProviders } = useAdminData()
+
+  // osu! specific state
+  const [osuPath, setOsuPath] = useState('C:\\Users\\aleji\\AppData\\Local\\osu!\\Songs')
+  const [osuBeatmaps, setOsuBeatmaps] = useState([])
+  const [osuScanning, setOsuScanning] = useState(false)
+  const [osuImporting, setOsuImporting] = useState(false)
+  const [osuError, setOsuError] = useState(null)
+  const [osuResult, setOsuResult] = useState(null)
+  const [osuSearchFilter, setOsuSearchFilter] = useState('')
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
 
   const handleFiles = (event) => {
     setFiles(Array.from(event.target.files || []))
@@ -45,6 +55,107 @@ function Upload() {
     )
     setFiles(droppedFiles)
   }
+
+  // osu! functions
+  const handleOsuScan = async () => {
+    if (!osuPath) {
+      setOsuError('Please enter the path to your osu! Songs folder')
+      return
+    }
+
+    setOsuScanning(true)
+    setOsuError(null)
+    setOsuBeatmaps([])
+    setOsuResult(null)
+
+    try {
+      const response = await axios.post(`${API_BASE}/api/osu/scan`, {
+        songsPath: osuPath
+      }, { headers: getAdminHeaders() })
+
+      if (response.data.success) {
+        setOsuBeatmaps(response.data.beatmaps)
+      } else {
+        setOsuError(response.data.error || 'Scan failed')
+      }
+    } catch (err) {
+      setOsuError(err.response?.data?.error || 'Failed to scan osu! directory')
+    } finally {
+      setOsuScanning(false)
+    }
+  }
+
+  const toggleBeatmapSelection = useCallback((beatmapId) => {
+    setOsuBeatmaps(prev => prev.map(b => 
+      b.id === beatmapId ? { ...b, selected: !b.selected } : b
+    ))
+  }, [])
+
+  const selectAllBeatmaps = () => {
+    setOsuBeatmaps(prev => prev.map(b => ({ ...b, selected: true })))
+  }
+
+  const deselectAllBeatmaps = () => {
+    setOsuBeatmaps(prev => prev.map(b => ({ ...b, selected: false })))
+  }
+
+  const selectNonDuplicates = () => {
+    setOsuBeatmaps(prev => prev.map(b => ({ ...b, selected: !b.hasDuplicate })))
+  }
+
+  const handleOsuImport = async () => {
+    const selectedBeatmaps = osuBeatmaps.filter(b => b.selected)
+    if (selectedBeatmaps.length === 0) {
+      setOsuError('No beatmaps selected for import')
+      return
+    }
+
+    setOsuImporting(true)
+    setOsuError(null)
+    setOsuResult(null)
+
+    try {
+      const response = await axios.post(`${API_BASE}/api/osu/import`, {
+        beatmaps: selectedBeatmaps,
+        provider: provider || 'osu'
+      }, { headers: getAdminHeaders() })
+
+      if (response.data.success) {
+        setOsuResult(response.data)
+        // Remove imported beatmaps from the list
+        const importedIds = new Set(response.data.imported.map(i => 
+          osuBeatmaps.find(b => b.displayTitle === i.displayTitle)?.id
+        ).filter(Boolean))
+        setOsuBeatmaps(prev => prev.filter(b => !importedIds.has(b.id)))
+        
+        await Promise.all([
+          fetchStats(true),
+          fetchProviders(true)
+        ])
+      } else {
+        setOsuError(response.data.error || 'Import failed')
+      }
+    } catch (err) {
+      setOsuError(err.response?.data?.error || 'Failed to import beatmaps')
+    } finally {
+      setOsuImporting(false)
+    }
+  }
+
+  // Filter beatmaps based on search and duplicate filter
+  const filteredBeatmaps = osuBeatmaps.filter(b => {
+    const matchesSearch = !osuSearchFilter || 
+      b.displayTitle.toLowerCase().includes(osuSearchFilter.toLowerCase()) ||
+      (b.metadata.tags || []).some(t => t.toLowerCase().includes(osuSearchFilter.toLowerCase())) ||
+      (b.metadata.source || '').toLowerCase().includes(osuSearchFilter.toLowerCase())
+    
+    const matchesDuplicateFilter = !showDuplicatesOnly || b.hasDuplicate
+    
+    return matchesSearch && matchesDuplicateFilter
+  })
+
+  const selectedCount = osuBeatmaps.filter(b => b.selected).length
+  const duplicateCount = osuBeatmaps.filter(b => b.hasDuplicate).length
 
   const handleUpload = async () => {
     if (!files.length) {
@@ -107,6 +218,13 @@ function Upload() {
           >
             <Github size={14} />
             <span>GitHub Import</span>
+          </button>
+          <button
+            className={`mode-tab ${mode === 'osu' ? 'mode-tab--active' : ''}`}
+            onClick={() => setMode('osu')}
+          >
+            <Music size={14} />
+            <span>osu! Import</span>
           </button>
         </div>
       </div>
@@ -444,6 +562,211 @@ function Upload() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === 'osu' && (
+        <div className="upload__content">
+          <div className="upload__section">
+            <h3 className="section-label">osu! Songs Directory</h3>
+            <div className="input-row">
+              <div className="input-group input-group--wide">
+                <label className="input-label">
+                  <FolderOpen size={12} />
+                  Songs Path
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="C:\Users\...\AppData\Local\osu!\Songs"
+                  value={osuPath}
+                  onChange={(e) => setOsuPath(e.target.value)}
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">
+                  <Tag size={12} />
+                  Provider Name
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="osu"
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button
+              className="btn-secondary btn-scan"
+              disabled={!osuPath || osuScanning}
+              onClick={handleOsuScan}
+            >
+              {osuScanning ? (
+                <>
+                  <div className="spinner" />
+                  <span>Scanning beatmaps...</span>
+                </>
+              ) : (
+                <>
+                  <Search size={14} />
+                  <span>Scan Directory</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {osuError && (
+            <div className="alert alert--error">
+              <AlertCircle size={14} />
+              <span>{osuError}</span>
+            </div>
+          )}
+
+          {osuResult && (
+            <div className="alert alert--success">
+              <CheckCircle size={14} />
+              <span>
+                Imported {osuResult.summary.imported} beatmaps
+                {osuResult.summary.skipped > 0 && `, skipped ${osuResult.summary.skipped}`}
+                {osuResult.summary.failed > 0 && `, ${osuResult.summary.failed} failed`}
+              </span>
+            </div>
+          )}
+
+          {osuBeatmaps.length > 0 && (
+            <div className="osu-preview">
+              <div className="osu-preview__header">
+                <div className="osu-preview__stats">
+                  <span className="osu-stat">
+                    <strong>{osuBeatmaps.length}</strong> beatmaps found
+                  </span>
+                  <span className="osu-stat osu-stat--selected">
+                    <Check size={12} />
+                    <strong>{selectedCount}</strong> selected
+                  </span>
+                  {duplicateCount > 0 && (
+                    <span className="osu-stat osu-stat--duplicate">
+                      <AlertTriangle size={12} />
+                      <strong>{duplicateCount}</strong> potential duplicates
+                    </span>
+                  )}
+                </div>
+
+                <div className="osu-preview__controls">
+                  <div className="osu-search">
+                    <Search size={14} />
+                    <input
+                      type="text"
+                      placeholder="Filter by title, tags, source..."
+                      value={osuSearchFilter}
+                      onChange={(e) => setOsuSearchFilter(e.target.value)}
+                    />
+                    {osuSearchFilter && (
+                      <button onClick={() => setOsuSearchFilter('')}>
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  <label className="osu-checkbox-filter">
+                    <input
+                      type="checkbox"
+                      checked={showDuplicatesOnly}
+                      onChange={(e) => setShowDuplicatesOnly(e.target.checked)}
+                    />
+                    <span>Show duplicates only</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="osu-preview__actions">
+                <button className="btn-small" onClick={selectAllBeatmaps}>
+                  Select All
+                </button>
+                <button className="btn-small" onClick={deselectAllBeatmaps}>
+                  Deselect All
+                </button>
+                <button className="btn-small btn-small--accent" onClick={selectNonDuplicates}>
+                  Select Non-Duplicates
+                </button>
+              </div>
+
+              <div className="osu-grid">
+                {filteredBeatmaps.map((beatmap) => (
+                  <div
+                    key={beatmap.id}
+                    className={`osu-card ${beatmap.selected ? 'osu-card--selected' : ''} ${beatmap.hasDuplicate ? 'osu-card--duplicate' : ''}`}
+                    onClick={() => toggleBeatmapSelection(beatmap.id)}
+                  >
+                    <div className="osu-card__thumb">
+                      <img src={beatmap.thumbnail} alt={beatmap.displayTitle} loading="lazy" />
+                      <div className="osu-card__overlay">
+                        {beatmap.selected ? (
+                          <Check size={24} />
+                        ) : (
+                          <span className="osu-card__select-hint">Click to select</span>
+                        )}
+                      </div>
+                      {beatmap.hasDuplicate && (
+                        <div className="osu-card__duplicate-badge">
+                          <AlertTriangle size={12} />
+                          <span>Duplicate</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="osu-card__info">
+                      <div className="osu-card__title" title={beatmap.displayTitle}>
+                        {beatmap.displayTitle}
+                      </div>
+                      <div className="osu-card__meta">
+                        {beatmap.metadata.source && (
+                          <span className="osu-card__source">{beatmap.metadata.source}</span>
+                        )}
+                        <span className="osu-card__dimensions">{beatmap.dimensions}</span>
+                      </div>
+                      {beatmap.metadata.tags && beatmap.metadata.tags.length > 0 && (
+                        <div className="osu-card__tags">
+                          {beatmap.metadata.tags.slice(0, 3).map((tag, i) => (
+                            <span key={i} className="osu-tag">{tag}</span>
+                          ))}
+                          {beatmap.metadata.tags.length > 3 && (
+                            <span className="osu-tag osu-tag--more">+{beatmap.metadata.tags.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {filteredBeatmaps.length === 0 && (
+                <div className="osu-empty">
+                  <p>No beatmaps match your filter</p>
+                </div>
+              )}
+
+              <button
+                className="btn-upload"
+                disabled={osuImporting || selectedCount === 0}
+                onClick={handleOsuImport}
+              >
+                {osuImporting ? (
+                  <>
+                    <div className="spinner" />
+                    <span>Importing...</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={14} />
+                    <span>Import {selectedCount} beatmap{selectedCount !== 1 ? 's' : ''}</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>
