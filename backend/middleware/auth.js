@@ -1,13 +1,13 @@
 const { ADMIN_API_KEY } = require('../config');
 
 /**
- * Admin authentication check
- * @returns {boolean} - True if authenticated, false otherwise
+ * Admin authentication hook for Fastify
+ * Throws an error to stop request processing if unauthorized
  */
-const requireAdminKey = (request, reply) => {
+const adminAuthHook = async (request, reply) => {
   if (!ADMIN_API_KEY) {
-    reply.code(500).send({ success: false, error: 'Admin key not configured' });
-    return false;
+    reply.code(500);
+    throw new Error('Admin key not configured');
   }
   const authHeader = request.headers['authorization'];
   const keyFromHeader = authHeader && authHeader.toLowerCase().startsWith('bearer ') 
@@ -15,22 +15,11 @@ const requireAdminKey = (request, reply) => {
     : null;
   const key = keyFromHeader || request.headers['x-admin-key'];
   if (key !== ADMIN_API_KEY) {
-    reply.code(401).send({ success: false, error: 'Unauthorized' });
-    return false;
-  }
-  return true;
-};
-
-/**
- * Admin authentication hook for Fastify
- */
-const adminAuthHook = async (request, reply) => {
-  if (!requireAdminKey(request, reply)) {
-    return reply;
+    reply.code(401);
+    throw new Error('Unauthorized');
   }
 };
 
 module.exports = {
-  requireAdminKey,
   adminAuthHook
 };

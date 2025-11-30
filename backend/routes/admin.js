@@ -1,7 +1,7 @@
 const path = require('path');
 const sharp = require('sharp');
 const config = require('../config');
-const { adminAuthHook, requireAdminKey } = require('../middleware/auth');
+const { adminAuthHook } = require('../middleware/auth');
 const { 
   sanitizeFilename, 
   streamToBuffer, 
@@ -24,8 +24,6 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: upload new wallpapers
   fastify.post('/api/upload', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
-      if (!requireAdminKey(request, reply)) return;
-
       const parts = request.parts();
       const formFields = {
         provider: null,
@@ -118,7 +116,6 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: GitHub import preview
   fastify.post('/api/import/repo/preview', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
-      if (!requireAdminKey(request, reply)) return;
       const { repoUrl, branch, limit = 10 } = request.body || {};
       const parsed = parseRepoUrl(repoUrl || '');
       if (!parsed) {
@@ -170,7 +167,6 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: GitHub import
   fastify.post('/api/import/repo/import', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
-      if (!requireAdminKey(request, reply)) return;
       const { repoUrl, branch, provider, folderStrategy = 'top-level' } = request.body || {};
       const parsed = parseRepoUrl(repoUrl || '');
       if (!parsed) {
@@ -253,7 +249,6 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: duplicate detection status
   fastify.get('/api/duplicates/status', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
-      if (!requireAdminKey(request, reply)) return;
       const status = await db.getHashStatus();
       setCache(reply, 60);
       return { success: true, status };
@@ -266,7 +261,6 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: get duplicates
   fastify.get('/api/duplicates', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
-      if (!requireAdminKey(request, reply)) return;
       const threshold = Math.max(1, Math.min(parseInt(request.query.threshold) || 10, 64));
       const wallpapers = await db.getAllWallpapersWithHashes();
       const duplicateGroups = findDuplicateGroups(wallpapers, threshold).map(group => 
@@ -294,7 +288,6 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: generate hashes for wallpapers without them
   fastify.post('/api/duplicates/generate-hashes', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
-      if (!requireAdminKey(request, reply)) return;
       const missing = await db.getAllWallpapersWithoutHashes();
       let updated = 0;
       const failed = [];
@@ -320,8 +313,6 @@ async function registerAdminRoutes(fastify, db) {
   // Admin: delete wallpaper
   fastify.delete('/api/wallpapers/:id', { onRequest: [adminAuthHook] }, async (request, reply) => {
     try {
-      if (!requireAdminKey(request, reply)) return;
-
       const { deleteFile } = request.query;
       const wallpaper = await db.getWallpaperById(request.params.id);
 

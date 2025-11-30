@@ -1,4 +1,8 @@
+const { adminAuthHook } = require('./auth');
+const { createRateLimiter, getClientId } = require('./rate-limiter');
+
 module.exports = {
-  ...require('./auth'),
-  ...require('./rate-limiter')
+  adminAuthHook,
+  createRateLimiter,
+  getClientId
 };

@@ -2,7 +2,7 @@ const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
 const config = require('../config');
-const { setCache, buildThumbnailUrl, formatBytes } = require('../utils/helpers');
+const { setCache, buildThumbnailUrl, sanitizeFilename, guessMime } = require('../utils/helpers');
 
 /**
  * Register public routes

@@ -3,6 +3,16 @@ const { RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX, RATE_LIMIT_DRIVER } = require('../
 // Simple in-memory rate limiter
 const rateBuckets = new Map();
 
+// Periodically clean up expired buckets (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) {
+    if (now > bucket.reset) {
+      rateBuckets.delete(key);
+    }
+  }
+}, 5 * 60 * 1000).unref();
+
 /**
  * Get client identifier for rate limiting
  */
