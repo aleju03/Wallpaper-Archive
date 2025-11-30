@@ -39,9 +39,12 @@ export function AdminDataProvider({ children }) {
       const providerNames = providerData.map(p => typeof p === 'string' ? p : p.name)
       setProviders(providerNames)
       setProviderMeta(providerData)
-      setFolders(response.data.folders || [])
+      // Extract folder names from folder objects
+      const folderData = response.data.folders || []
+      const folderNames = folderData.map(f => typeof f === 'string' ? f : f.name)
+      setFolders(folderNames)
       setErrors((prev) => ({ ...prev, providers: null }))
-      return { providers: providerData, folders: response.data.folders || [] }
+      return { providers: providerData, folders: folderNames }
     } catch (error) {
       setErrors((prev) => ({ ...prev, providers: 'Failed to load providers' }))
       throw error

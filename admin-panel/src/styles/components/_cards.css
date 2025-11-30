@@ -217,26 +217,14 @@
    Provider Status Item
    ========================================================================== */
 
-.provider-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg) 0;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.provider-item:last-child {
-  border-bottom: none;
-}
-
 .provider-item__name {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-xxs);
 }
 
 .provider-item__status {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   color: var(--color-text-disabled);
 }
 

@@ -2,8 +2,6 @@ node_modules
 downloads
 thumbnails
 wallpapers.db
-CLAUDE.md
-GEMINI.md
+*.md
 .env
 .vercel
-AGENTS.md

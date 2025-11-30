@@ -5,12 +5,115 @@
    ========================================================================== */
 
 .dashboard {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-xl);
 }
 
-.recent-activity {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+/* Top row: stats + quick actions */
+.dashboard-top {
+  display: flex;
   gap: var(--spacing-xl);
+  align-items: stretch;
+}
+
+.dashboard-top .stats-grid {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* Quick actions inline with stats */
+.quick-actions-inline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  justify-content: center;
+}
+
+.quick-actions-inline .btn {
+  white-space: nowrap;
+}
+
+/* Provider Status section */
+.provider-status-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+}
+
+.provider-status-section h3 {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--letter-spacing-wide);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* Provider list - horizontal scrollable */
+.provider-list {
+  display: flex;
+  gap: var(--spacing-lg);
+  overflow-x: auto;
+  padding: var(--spacing-xs) 0;
+  flex: 1;
+}
+
+.provider-list::-webkit-scrollbar {
+  height: 4px;
+}
+
+.provider-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.provider-chip__name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.provider-chip__count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.provider-chip__status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.provider-chip__status--active { background: #2ecc71; }
+.provider-chip__status--recent { background: #f1c40f; }
+.provider-chip__status--stale { background: #e74c3c; }
+
+@media (max-width: 900px) {
+  .dashboard-top {
+    flex-direction: column;
+  }
+  
+  .quick-actions-inline {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+  
+  .provider-status-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .provider-list {
+    width: 100%;
+  }
 }

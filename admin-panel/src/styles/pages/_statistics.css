@@ -12,6 +12,19 @@
 
 .statistics .stats-grid {
   margin-bottom: 0;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1400px) {
+  .statistics .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .statistics .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card--scrollable {
@@ -57,15 +70,24 @@
    Collection Summary
    ========================================================================== */
 
+.statistics > .stat-card:last-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statistics > .stat-card:last-child h3 {
+  margin: 0;
+}
+
 .collection-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-3xl);
-  margin-top: var(--spacing-xl);
 }
 
 .summary-item {
-  text-align: center;
+  text-align: right;
 }
 
 .summary-item__value {
