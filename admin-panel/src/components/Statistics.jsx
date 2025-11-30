@@ -1,4 +1,3 @@
-import { BarChart3, FolderOpen, Monitor, HardDrive } from "lucide-react";
 import { useEffect } from "react";
 import { useAdminData } from "../context/useAdminData";
 
@@ -8,27 +7,6 @@ function Statistics() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
-
-  const StatRow = ({ label, count, maxCount, color }) => {
-    const percentage = Math.round((count / maxCount) * 100);
-
-    return (
-      <div className="stat-row">
-        <div className="stat-row__header">
-          <span className="stat-row__label" title={label}>
-            {label}
-          </span>
-          <span className="stat-row__count">{count.toLocaleString()}</span>
-        </div>
-        <div className="stat-row__bar-bg">
-          <div
-            className={`stat-bar stat-bar--${color}`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
-    );
-  };
 
   if (statsLoading && !stats) {
     return <div className="loading">Loading statistics...</div>;
@@ -44,7 +22,7 @@ function Statistics() {
   }));
 
   const folderStats = (stats?.folder_breakdown || [])
-    .slice(0, 12)
+    .slice(0, 8)
     .map((item) => ({
       folder: item.folder,
       count: item.count,
@@ -52,7 +30,7 @@ function Statistics() {
 
   const resolutionStats = Object.entries(stats?.dimensions || {})
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 10)
+    .slice(0, 6)
     .map(([resolution, count]) => ({ resolution, count }));
 
   const buckets = stats?.file_size_buckets || {};
@@ -62,120 +40,105 @@ function Statistics() {
     { range: "5-10MB", count: buckets.between_5_10mb || 0 },
     { range: "> 10MB", count: buckets.over_10mb || 0 },
   ];
-  const maxFileSize = Math.max(1, ...fileSizeStats.map((s) => s.count));
+
   const topProviderCount = providerStats[0]?.count || 1;
   const topFolderCount = folderStats[0]?.count || 1;
   const topResolutionCount = resolutionStats[0]?.count || 1;
+  const maxFileSize = Math.max(1, ...fileSizeStats.map((s) => s.count));
+
+  const StatBar = ({ value, max, color }) => {
+    const pct = Math.round((value / max) * 100);
+    return (
+      <div className="stat-bar-track">
+        <div className={`stat-bar-fill stat-bar-fill--${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    );
+  };
 
   return (
     <div className="statistics">
-      {/* Summary Stats */}
-      <div className="stat-card summary-card">
-        <h3>Collection Summary</h3>
-        <div className="collection-summary">
-          <div className="summary-item">
-            <div className="summary-item__value summary-item__value--blue">
-              {(stats?.total_wallpapers || 0).toLocaleString()}
-            </div>
-            <div className="summary-item__label">Total Wallpapers</div>
-          </div>
-          
-          <div className="summary-item">
-            <div className="summary-item__value summary-item__value--green">
-              {stats?.providers || 0}
-            </div>
-            <div className="summary-item__label">Providers</div>
-          </div>
-          
-          <div className="summary-item">
-            <div className="summary-item__value summary-item__value--red">
-              {stats?.folders || 0}
-            </div>
-            <div className="summary-item__label">Folders</div>
-          </div>
-          
-          <div className="summary-item">
-            <div className="summary-item__value summary-item__value--orange">
-              {((stats?.storage_size || 0) / (1000 * 1000 * 1000)).toFixed(1)}GB
-            </div>
-            <div className="summary-item__label">Storage</div>
-          </div>
+      {/* Summary Row */}
+      <div className="stats-summary">
+        <div className="stats-summary__item">
+          <span className="stats-summary__value stats-summary__value--blue">
+            {(stats?.total_wallpapers || 0).toLocaleString()}
+          </span>
+          <span className="stats-summary__label">Wallpapers</span>
+        </div>
+        <div className="stats-summary__item">
+          <span className="stats-summary__value stats-summary__value--green">
+            {stats?.providers || 0}
+          </span>
+          <span className="stats-summary__label">Providers</span>
+        </div>
+        <div className="stats-summary__item">
+          <span className="stats-summary__value stats-summary__value--red">
+            {stats?.folders || 0}
+          </span>
+          <span className="stats-summary__label">Folders</span>
+        </div>
+        <div className="stats-summary__item">
+          <span className="stats-summary__value stats-summary__value--orange">
+            {((stats?.storage_size || 0) / (1000 * 1000 * 1000)).toFixed(1)}GB
+          </span>
+          <span className="stats-summary__label">Storage</span>
         </div>
       </div>
 
-      <div className="stats-grid">
-        {/* Provider Distribution */}
-        <div className="stat-card stat-card--scrollable">
-          <h3>
-            <BarChart3 size={14} />
-            Wallpapers by Provider
-          </h3>
-          <div>
+      {/* Main Stats Table */}
+      <div className="stats-table">
+        {/* Providers Column */}
+        <div className="stats-column">
+          <h3 className="stats-column__title">Providers</h3>
+          <div className="stats-list">
             {providerStats.map(({ provider, count }) => (
-              <StatRow 
-                key={provider}
-                label={provider}
-                count={count}
-                maxCount={topProviderCount}
-                color="blue"
-              />
+              <div key={provider} className="stats-list__row">
+                <span className="stats-list__label">{provider}</span>
+                <StatBar value={count} max={topProviderCount} color="blue" />
+                <span className="stats-list__value">{count.toLocaleString()}</span>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Top Folders */}
-        <div className="stat-card stat-card--scrollable">
-          <h3>
-            <FolderOpen size={14} />
-            Top Categories
-          </h3>
-          <div>
+        {/* Categories Column */}
+        <div className="stats-column">
+          <h3 className="stats-column__title">Top Categories</h3>
+          <div className="stats-list">
             {folderStats.map(({ folder, count }) => (
-              <StatRow 
-                key={folder}
-                label={folder}
-                count={count}
-                maxCount={topFolderCount}
-                color="green"
-              />
+              <div key={folder} className="stats-list__row">
+                <span className="stats-list__label">{folder}</span>
+                <StatBar value={count} max={topFolderCount} color="green" />
+                <span className="stats-list__value">{count.toLocaleString()}</span>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Resolution Distribution */}
-        <div className="stat-card stat-card--scrollable">
-          <h3>
-            <Monitor size={14} />
-            Common Resolutions
-          </h3>
-          <div>
+        {/* Resolutions Column */}
+        <div className="stats-column">
+          <h3 className="stats-column__title">Resolutions</h3>
+          <div className="stats-list">
             {resolutionStats.map(({ resolution, count }) => (
-              <StatRow 
-                key={resolution}
-                label={resolution}
-                count={count}
-                maxCount={topResolutionCount}
-                color="red"
-              />
+              <div key={resolution} className="stats-list__row">
+                <span className="stats-list__label">{resolution}</span>
+                <StatBar value={count} max={topResolutionCount} color="red" />
+                <span className="stats-list__value">{count.toLocaleString()}</span>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* File Size Distribution */}
-        <div className="stat-card">
-          <h3>
-            <HardDrive size={14} />
-            File Size Distribution
-          </h3>
-          <div>
+        {/* File Sizes Column */}
+        <div className="stats-column">
+          <h3 className="stats-column__title">File Sizes</h3>
+          <div className="stats-list">
             {fileSizeStats.map(({ range, count }) => (
-              <StatRow 
-                key={range}
-                label={range}
-                count={count}
-                maxCount={maxFileSize}
-                color="orange"
-              />
+              <div key={range} className="stats-list__row">
+                <span className="stats-list__label">{range}</span>
+                <StatBar value={count} max={maxFileSize} color="orange" />
+                <span className="stats-list__value">{count.toLocaleString()}</span>
+              </div>
             ))}
           </div>
         </div>

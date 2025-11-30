@@ -1,7 +1,7 @@
 /* ==========================================================================
    Statistics Page Styles
    
-   Statistics charts and data visualization.
+   Compact, information-dense statistics layout.
    ========================================================================== */
 
 .statistics {
@@ -10,24 +10,20 @@
   gap: var(--spacing-xl);
 }
 
-.statistics .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-xl);
-}
+/* ==========================================================================
+   Summary Row - Horizontal stats bar
+   ========================================================================== */
 
-/* Override base stat-card styles for statistics page */
-.statistics .stat-card {
+.stats-summary {
   display: flex;
-  flex-direction: column;
-  padding: var(--spacing-xl);
+  gap: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
-  border-radius: 0;
   position: relative;
 }
 
-.statistics .stat-card::before {
+.stats-summary::before {
   content: '';
   position: absolute;
   top: 0;
@@ -37,172 +33,130 @@
   background: var(--color-text-primary);
 }
 
-.statistics .stat-card h3 {
+.stats-summary__item {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+  align-items: baseline;
+  gap: var(--spacing-sm);
+}
+
+.stats-summary__value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.stats-summary__value--blue { color: var(--color-accent-blue); }
+.stats-summary__value--green { color: var(--color-accent-green); }
+.stats-summary__value--red { color: var(--color-accent-red); }
+.stats-summary__value--orange { color: var(--color-accent-orange); }
+
+.stats-summary__label {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  margin-bottom: var(--spacing-lg);
   text-transform: uppercase;
-  font-weight: var(--font-weight-normal);
   letter-spacing: var(--letter-spacing-wide);
 }
 
-.statistics .stat-card h3 svg {
-  opacity: 0.6;
-}
-
-.summary-card {
-  border: none;
-  background: transparent;
-  padding: 0;
-}
-
-.summary-card::before {
-  display: none;
-}
-
-.summary-card h3 {
-  display: none;
-}
-
-.stat-card--scrollable {
-  max-height: 500px;
-  overflow-y: auto;
-}
-
 /* ==========================================================================
-   Stat Row (Bar chart style)
+   Stats Table - 4 column layout
    ========================================================================== */
 
-.stat-row {
-  padding: var(--spacing-lg) 0;
+.stats-table {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+}
+
+.stats-column {
+  background: var(--color-bg-primary);
+  padding: var(--spacing-lg);
+}
+
+.stats-column__title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  font-weight: var(--font-weight-normal);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.stat-row:first-of-type {
-  padding-top: 0;
-}
+/* ==========================================================================
+   Stats List - Rows within each column
+   ========================================================================== */
 
-.stat-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.stat-row__header {
+.stats-list {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: var(--spacing-sm);
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
-.stat-row__label {
+.stats-list__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-sm) var(--spacing-md);
+  align-items: center;
+}
+
+.stats-list__label {
   font-size: var(--font-size-base);
   color: var(--color-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  grid-column: 1;
 }
 
-.stat-row__count {
-  font-size: var(--font-size-md);
+.stats-list__value {
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
-  margin-left: var(--spacing-md);
-  flex-shrink: 0;
+  text-align: right;
+  grid-column: 2;
+  grid-row: 1;
 }
 
-.stat-row__bar-bg {
-  width: 100%;
-  height: 4px;
-  background-color: var(--color-border-subtle);
+/* ==========================================================================
+   Stat Bar - Inline progress bars
+   ========================================================================== */
+
+.stat-bar-track {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: var(--color-bg-tertiary);
   overflow: hidden;
 }
 
-.stat-bar {
+.stat-bar-fill {
   height: 100%;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.4s ease-out;
 }
 
-.stat-bar--blue { background-color: var(--color-accent-blue); }
-.stat-bar--green { background-color: var(--color-accent-green); }
-.stat-bar--red { background-color: var(--color-accent-red); }
-.stat-bar--orange { background-color: var(--color-accent-orange); }
-
-/* ==========================================================================
-   Collection Summary
-   ========================================================================== */
-
-.collection-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-xl);
-}
-
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  padding: var(--spacing-xl);
-  background: var(--color-bg-primary);
-  border: 1px solid var(--color-border);
-  position: relative;
-  transition: border-color var(--transition-fast);
-}
-
-.summary-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--color-text-primary);
-}
-
-.summary-item:hover {
-  border-color: var(--color-border-hover);
-}
-
-.summary-item__value {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  line-height: 1.1;
-  margin-bottom: var(--spacing-sm);
-}
-
-.summary-item__value--blue { color: var(--color-accent-blue); }
-.summary-item__value--green { color: var(--color-accent-green); }
-.summary-item__value--red { color: var(--color-accent-red); }
-.summary-item__value--orange { color: var(--color-accent-orange); }
-
-.summary-item__label {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-  font-weight: var(--font-weight-normal);
-}
+.stat-bar-fill--blue { background-color: var(--color-accent-blue); }
+.stat-bar-fill--green { background-color: var(--color-accent-green); }
+.stat-bar-fill--red { background-color: var(--color-accent-red); }
+.stat-bar-fill--orange { background-color: var(--color-accent-orange); }
 
 /* ==========================================================================
    Responsive
    ========================================================================== */
 
 @media (max-width: 1200px) {
-  .collection-summary {
+  .stats-table {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 1024px) {
-  .statistics .stats-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 768px) {
-  .collection-summary {
+  .stats-summary {
+    flex-wrap: wrap;
+  }
+  
+  .stats-table {
     grid-template-columns: 1fr;
   }
 }
