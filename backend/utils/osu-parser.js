@@ -184,22 +184,34 @@ async function scanOsuSongsDirectory(songsPath, progressCallback = null) {
     const folders = await fsPromises.readdir(songsPath, { withFileTypes: true });
     const beatmapFolders = folders.filter(f => f.isDirectory());
     const total = beatmapFolders.length;
-
-    for (let i = 0; i < beatmapFolders.length; i++) {
-      const folder = beatmapFolders[i];
-      const folderPath = path.join(songsPath, folder.name);
+    
+    // Process folders in parallel batches of 50 for speed
+    const BATCH_SIZE = 50;
+    
+    for (let i = 0; i < beatmapFolders.length; i += BATCH_SIZE) {
+      const batch = beatmapFolders.slice(i, i + BATCH_SIZE);
       
-      const beatmapInfo = await scanBeatmapFolder(folderPath);
-      if (beatmapInfo) {
-        beatmaps.push(beatmapInfo);
+      const batchResults = await Promise.all(
+        batch.map(folder => {
+          const folderPath = path.join(songsPath, folder.name);
+          return scanBeatmapFolder(folderPath);
+        })
+      );
+      
+      // Add valid results
+      for (const result of batchResults) {
+        if (result) {
+          beatmaps.push(result);
+        }
       }
 
-      if (progressCallback && i % 50 === 0) {
+      if (progressCallback) {
+        const processed = Math.min(i + BATCH_SIZE, total);
         progressCallback({
-          current: i + 1,
+          current: processed,
           total,
           found: beatmaps.length,
-          percentage: Math.round(((i + 1) / total) * 100)
+          percentage: Math.round((processed / total) * 100)
         });
       }
     }

@@ -396,50 +396,37 @@ async function registerAdminRoutes(fastify, db) {
       
       sendEvent('progress', { phase: 'processing', message: 'Processing beatmaps...', percent: 35 });
 
-      // Process each beatmap to generate preview data and check for duplicates
+      // Process beatmaps in parallel batches for speed
       const processedBeatmaps = [];
       const total = beatmaps.length;
+      const BATCH_SIZE = 20; // Process 20 at a time for good balance of speed vs memory
       
-      for (let i = 0; i < beatmaps.length; i++) {
-        const beatmap = beatmaps[i];
+      const processSingleBeatmap = async (beatmap) => {
         try {
-          // Send progress every 10 beatmaps or on first/last
-          if (i % 10 === 0 || i === total - 1) {
-            const percent = 35 + Math.round((i / total) * 60); // 35-95%
-            sendEvent('progress', { 
-              phase: 'processing', 
-              message: `Processing: ${i + 1}/${total} - ${beatmap.metadata?.title || beatmap.folderName}`,
-              percent,
-              processed: i + 1,
-              total
-            });
-          }
-
           // Read the background image
           const buffer = await fsPromises.readFile(beatmap.backgroundPath);
           
-          // Generate perceptual hash
-          const hash = await generatePerceptualHash(buffer);
+          // Run hash, metadata, and thumbnail generation in parallel
+          const [hash, sharpMeta, thumbBuffer] = await Promise.all([
+            generatePerceptualHash(buffer),
+            sharp(buffer).metadata(),
+            sharp(buffer)
+              .resize({ width: 300, height: 200, fit: 'cover' })
+              .jpeg({ quality: 70 })
+              .toBuffer()
+          ]);
           
           // Check for similar existing images
           const similar = findSimilarImages(hash, existingWallpapers, 10);
           const hasDuplicate = similar.length > 0;
           
-          // Get image dimensions
-          const metadata = await sharp(buffer).metadata();
-          const dimensions = metadata.width && metadata.height 
-            ? `${metadata.width}x${metadata.height}` 
+          const dimensions = sharpMeta.width && sharpMeta.height 
+            ? `${sharpMeta.width}x${sharpMeta.height}` 
             : null;
 
-          // Generate a small base64 thumbnail for preview
-          const thumbBuffer = await sharp(buffer)
-            .resize({ width: 300, height: 200, fit: 'cover' })
-            .jpeg({ quality: 70 })
-            .toBuffer();
-          
           const thumbBase64 = `data:image/jpeg;base64,${thumbBuffer.toString('base64')}`;
 
-          processedBeatmaps.push({
+          return {
             id: beatmap.metadata.beatmapSetId || beatmap.folderName,
             folderName: beatmap.folderName,
             folderPath: beatmap.folderPath,
@@ -454,10 +441,35 @@ async function registerAdminRoutes(fastify, db) {
             hasDuplicate,
             duplicateOf: hasDuplicate ? similar[0] : null,
             selected: !hasDuplicate // Pre-deselect duplicates
-          });
+          };
         } catch (err) {
           console.error(`Error processing beatmap ${beatmap.folderName}:`, err.message);
+          return null;
         }
+      };
+
+      // Process in batches
+      for (let i = 0; i < beatmaps.length; i += BATCH_SIZE) {
+        const batch = beatmaps.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(batch.map(processSingleBeatmap));
+        
+        // Add successful results
+        for (const result of batchResults) {
+          if (result) {
+            processedBeatmaps.push(result);
+          }
+        }
+        
+        // Send progress update after each batch
+        const processed = Math.min(i + BATCH_SIZE, total);
+        const percent = 35 + Math.round((processed / total) * 60); // 35-95%
+        sendEvent('progress', { 
+          phase: 'processing', 
+          message: `Processing: ${processed}/${total}`,
+          percent,
+          processed,
+          total
+        });
       }
 
       // Sort by title
