@@ -58,6 +58,7 @@
   align-items: center;
   justify-content: center;
   transition: color 0.2s ease;
+  line-height: 0;
 }
 
 .search-clear-btn:hover {

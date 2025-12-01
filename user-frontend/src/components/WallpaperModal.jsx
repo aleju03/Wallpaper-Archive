@@ -381,7 +381,7 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
             })()}            <div className="download-section">
               <button className="download-btn" onClick={handleShare}>
                 <Share2 size={16} />
-                share link
+                {shareStatus || 'share link'}
               </button>
               <button className="download-btn fullscreen-btn" onClick={handleViewFullscreen}>
                 <Maximize2 size={16} />
@@ -391,7 +391,6 @@ function WallpaperModal({ wallpaper, onClose, onPrev, onNext, hasPrev, hasNext }
                 <Download size={16} />
                 direct download
               </button>
-              {shareStatus && <div className="share-status">{shareStatus}</div>}
             </div>
           </div>
         </div>

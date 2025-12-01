@@ -233,10 +233,21 @@ function Gallery() {
     const url = wallpaper.image_url || wallpaper.download_url
     try {
       await navigator.clipboard.writeText(url)
-      setStatusMessage({ type: 'success', text: 'R2 URL copied to clipboard' })
+      setStatusMessage({ type: 'success', text: 'R2 image URL copied to clipboard' })
     } catch (err) {
       console.error('Failed to copy URL:', err)
       setStatusMessage({ type: 'error', text: 'Failed to copy URL' })
+    }
+  }
+
+  const copyR2ThumbnailUrl = async (wallpaper) => {
+    const url = wallpaper.thumbnail_url
+    try {
+      await navigator.clipboard.writeText(url)
+      setStatusMessage({ type: 'success', text: 'R2 thumbnail URL copied to clipboard' })
+    } catch (err) {
+      console.error('Failed to copy thumbnail URL:', err)
+      setStatusMessage({ type: 'error', text: 'Failed to copy thumbnail URL' })
     }
   }
 
@@ -541,7 +552,7 @@ function Gallery() {
             }}
           >
             <Trash2 size={14} />
-            Delete File & Database Entry
+            Delete
           </button>
           <button
             className="context-menu-item"
@@ -551,7 +562,17 @@ function Gallery() {
             }}
           >
             <Copy size={14} />
-            Copy R2 URL
+            Copy R2 Img URL
+          </button>
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              copyR2ThumbnailUrl(contextMenu.wallpaper)
+              setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
+            }}
+          >
+            <Copy size={14} />
+            Copy R2 Thumbnail URL
           </button>
         </div>
       )}
