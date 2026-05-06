@@ -40,6 +40,10 @@ const destination = {
 const CHECKPOINT_PATH = process.env.MIGRATION_CHECKPOINT_PATH || path.join(process.cwd(), '.migration-r2-to-b2.json');
 const CONCURRENCY = Math.max(1, Math.min(parseInt(process.env.MIGRATION_CONCURRENCY || '8', 10), 25));
 const SYNC_DESTINATION_CHECKPOINT = process.env.MIGRATION_SYNC_DESTINATION_CHECKPOINT !== 'false';
+const EXCLUDED_PREFIXES = (process.env.MIGRATION_EXCLUDED_PREFIXES || 'random-bs/')
+  .split(',')
+  .map(prefix => prefix.trim())
+  .filter(Boolean);
 
 if (!source.endpoint) {
   throw new Error('Missing R2_ENDPOINT or R2_ACCOUNT_ID');
@@ -85,6 +89,8 @@ const saveCheckpoint = (copiedKeys) => {
   }, null, 2));
 };
 
+const isExcludedKey = (key = '') => EXCLUDED_PREFIXES.some(prefix => key.startsWith(prefix));
+
 const syncCheckpointFromDestination = async (copiedKeys) => {
   if (!SYNC_DESTINATION_CHECKPOINT) return 0;
 
@@ -98,7 +104,7 @@ const syncCheckpointFromDestination = async (copiedKeys) => {
     }));
 
     for (const object of response.Contents || []) {
-      if (object.Key && !copiedKeys.has(object.Key)) {
+      if (object.Key && !isExcludedKey(object.Key) && !copiedKeys.has(object.Key)) {
         copiedKeys.add(object.Key);
         added += 1;
       }
@@ -117,6 +123,7 @@ const syncCheckpointFromDestination = async (copiedKeys) => {
 const copyObject = async (object, copiedKeys) => {
   const key = object.Key;
   if (!key) return { status: 'skipped' };
+  if (isExcludedKey(key)) return { status: 'excluded', key, bytes: 0 };
   if (copiedKeys.has(key)) {
     return { status: 'checkpoint', key, bytes: 0 };
   }
@@ -163,6 +170,7 @@ const migrateObjects = async () => {
   let continuationToken = null;
   let copied = 0;
   let skippedByCheckpoint = 0;
+  let excluded = 0;
   let failed = 0;
   let bytes = 0;
   const failures = [];
@@ -192,6 +200,7 @@ const migrateObjects = async () => {
     for (const result of results) {
       if (result.status === 'copied') copied += 1;
       if (result.status === 'checkpoint') skippedByCheckpoint += 1;
+      if (result.status === 'excluded') excluded += 1;
       if (result.status === 'failed') {
         failed += 1;
         failures.push(result);
@@ -203,7 +212,7 @@ const migrateObjects = async () => {
     continuationToken = response.IsTruncated ? response.NextContinuationToken : null;
   } while (continuationToken);
 
-  return { copied, skippedByCheckpoint, syncedFromDestination, failed, failures, bytes };
+  return { copied, skippedByCheckpoint, syncedFromDestination, excluded, failed, failures, bytes };
 };
 
 const keyFromUrl = (urlStr) => {
@@ -253,6 +262,7 @@ const main = async () => {
   console.log(`Objects added to checkpoint from Backblaze: ${objectResult.syncedFromDestination}`);
   console.log(`Objects copied: ${objectResult.copied}`);
   console.log(`Objects skipped by checkpoint: ${objectResult.skippedByCheckpoint}`);
+  console.log(`Objects excluded: ${objectResult.excluded}`);
   console.log(`Objects failed: ${objectResult.failed}`);
   console.log(`Bytes processed: ${objectResult.bytes}`);
   console.log(dbResult.skipped ? 'Database URL rewrite skipped' : `Database URLs updated: ${dbResult.updated}`);

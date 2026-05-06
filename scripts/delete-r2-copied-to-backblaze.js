@@ -43,6 +43,10 @@ if (!destination.accessKeyId || !destination.secretAccessKey) {
 
 const DRY_RUN = process.env.CONFIRM_DELETE_R2_COPIED !== 'true';
 const PREFIX = process.env.DELETE_R2_COPIED_PREFIX || '';
+const EXCLUDED_PREFIXES = (process.env.DELETE_R2_EXCLUDED_PREFIXES || 'random-bs/')
+  .split(',')
+  .map(prefix => prefix.trim())
+  .filter(Boolean);
 
 const r2 = new S3Client({
   region: source.region,
@@ -83,6 +87,8 @@ const listKeys = async (client, bucket) => {
   return keys;
 };
 
+const isExcludedKey = (key = '') => EXCLUDED_PREFIXES.some(prefix => key.startsWith(prefix));
+
 const chunk = (items, size) => {
   const chunks = [];
   for (let i = 0; i < items.length; i += size) {
@@ -101,11 +107,14 @@ const main = async () => {
     listKeys(b2, destination.bucket)
   ]);
 
-  const copiedKeys = Array.from(r2Keys).filter(key => b2Keys.has(key)).sort();
-  const missingInBackblaze = Array.from(r2Keys).filter(key => !b2Keys.has(key)).sort();
+  const excludedR2Keys = Array.from(r2Keys).filter(isExcludedKey).sort();
+  const eligibleR2Keys = Array.from(r2Keys).filter(key => !isExcludedKey(key));
+  const copiedKeys = eligibleR2Keys.filter(key => b2Keys.has(key)).sort();
+  const missingInBackblaze = eligibleR2Keys.filter(key => !b2Keys.has(key)).sort();
 
   console.log(`R2 objects scanned: ${r2Keys.size}`);
   console.log(`Backblaze objects scanned: ${b2Keys.size}`);
+  console.log(`R2 objects excluded from cleanup: ${excludedR2Keys.length}`);
   console.log(`R2 objects safe to delete: ${copiedKeys.length}`);
   console.log(`R2 objects not found in Backblaze: ${missingInBackblaze.length}`);
 
