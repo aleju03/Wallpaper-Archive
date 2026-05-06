@@ -3,7 +3,7 @@ const fsPromises = require('fs/promises');
 const path = require('path');
 const config = require('../config');
 const { setCache, sanitizeFilename, guessMime } = require('../utils/helpers');
-const { getObjectFromStorage } = require('../services/storage');
+const { fetchRemoteObject, getObjectFromStorage } = require('../services/storage');
 
 /**
  * Register public routes
@@ -18,9 +18,10 @@ async function registerPublicRoutes(fastify, db) {
     .join('/');
 
   const serveAsset = async (request, reply, type) => {
+    const requestedPath = request.params['*'] || request.params.file || '';
+    const safePath = sanitizeStoragePath(requestedPath);
+
     try {
-      const requestedPath = request.params['*'] || request.params.file || '';
-      const safePath = sanitizeStoragePath(requestedPath);
       if (!safePath) {
         reply.code(404);
         return { success: false, error: 'File not found' };
@@ -44,9 +45,62 @@ async function registerPublicRoutes(fastify, db) {
       reply.header('Cache-Control', 'public, max-age=86400');
       return reply.send(fs.createReadStream(filePath));
     } catch (error) {
-      reply.code(404);
-      return { success: false, error: `${type === 'thumbnails' ? 'Thumbnail' : 'Image'} not found` };
+      try {
+        const wallpaper = await findWallpaperForAsset(type, safePath);
+        if (!wallpaper?.download_url) throw error;
+
+        const remoteUrl = type === 'images'
+          ? wallpaper.download_url
+          : wallpaper.download_url
+            .replace('/images/', '/thumbnails/')
+            .replace(/\.[^/.]+$/, '.jpg');
+        const object = await fetchRemoteObject(remoteUrl);
+
+        reply.header('Content-Type', object.contentType || guessMime(safePath));
+        if (object.contentLength) {
+          reply.header('Content-Length', object.contentLength);
+        }
+        reply.header('Cache-Control', 'public, max-age=86400');
+        return reply.send(object.body);
+      } catch (fallbackError) {
+        reply.code(404);
+        return { success: false, error: `${type === 'thumbnails' ? 'Thumbnail' : 'Image'} not found` };
+      }
     }
+  };
+
+  const findWallpaperForAsset = async (type, safePath) => {
+    const filename = path.basename(safePath);
+    if (!filename || !db?.getWallpapers) return null;
+
+    const imageFilename = type === 'thumbnails'
+      ? filename.replace(/\.jpg$/i, '')
+      : filename;
+    const candidates = await db.getWallpapers({
+      search: imageFilename,
+      limit: 25,
+      offset: 0
+    });
+
+    return candidates.find((wallpaper) => {
+      const downloadPath = (() => {
+        try {
+          return new URL(wallpaper.download_url).pathname.replace(/^\//, '');
+        } catch {
+          return wallpaper.download_url || '';
+        }
+      })();
+
+      if (type === 'images') {
+        return downloadPath.endsWith(`/${safePath}`) || wallpaper.filename === filename;
+      }
+
+      const thumbPath = downloadPath
+        .replace(/^images\//, 'thumbnails/')
+        .replace(/\/images\//, '/thumbnails/')
+        .replace(/\.[^/.]+$/, '.jpg');
+      return thumbPath.endsWith(`/${safePath}`);
+    }) || null;
   };
 
   fastify.get('/images/:file', async (request, reply) => serveAsset(request, reply, 'images'));

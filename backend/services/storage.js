@@ -171,6 +171,19 @@ const getObjectFromStorage = async (key) => {
   };
 };
 
+const fetchRemoteObject = async (urlStr) => {
+  const res = await fetch(urlStr);
+  if (!res.ok) {
+    throw new Error(`Remote fetch failed ${res.status} ${res.statusText}`);
+  }
+
+  return {
+    body: Buffer.from(await res.arrayBuffer()),
+    contentType: res.headers.get('content-type'),
+    contentLength: res.headers.get('content-length')
+  };
+};
+
 const streamToBuffer = async (stream) => {
   const chunks = [];
   for await (const chunk of stream) {
@@ -249,5 +262,6 @@ module.exports = {
   deleteFromStorage,
   uploadToStorage,
   getObjectFromStorage,
+  fetchRemoteObject,
   getImageBuffer
 };
