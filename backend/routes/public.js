@@ -2,7 +2,8 @@ const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
 const config = require('../config');
-const { setCache, buildThumbnailUrl, sanitizeFilename, guessMime } = require('../utils/helpers');
+const { setCache, sanitizeFilename, guessMime } = require('../utils/helpers');
+const { getObjectFromStorage } = require('../services/storage');
 
 /**
  * Register public routes
@@ -10,36 +11,49 @@ const { setCache, buildThumbnailUrl, sanitizeFilename, guessMime } = require('..
  * @param {Object} db - Database instance
  */
 async function registerPublicRoutes(fastify, db) {
-  // Local file serving (for local storage mode)
-  fastify.get('/images/:file', async (request, reply) => {
-    try {
-      const safeName = sanitizeFilename(request.params.file);
-      const filePath = path.join(config.LOCAL_DOWNLOADS_DIR, safeName);
-      await fsPromises.access(filePath);
-      const stream = fs.createReadStream(filePath);
-      reply.header('Content-Type', guessMime(filePath));
-      reply.header('Cache-Control', 'public, max-age=86400');
-      return reply.send(stream);
-    } catch (error) {
-      reply.code(404);
-      return { success: false, error: 'Image not found' };
-    }
-  });
+  const sanitizeStoragePath = (value = '') => value
+    .split('/')
+    .map(segment => sanitizeFilename(segment))
+    .filter(Boolean)
+    .join('/');
 
-  fastify.get('/thumbnails/:file', async (request, reply) => {
+  const serveAsset = async (request, reply, type) => {
     try {
-      const safeName = sanitizeFilename(request.params.file);
-      const filePath = path.join(config.LOCAL_THUMBNAILS_DIR, safeName);
+      const requestedPath = request.params['*'] || request.params.file || '';
+      const safePath = sanitizeStoragePath(requestedPath);
+      if (!safePath) {
+        reply.code(404);
+        return { success: false, error: 'File not found' };
+      }
+
+      if (config.B2_ENABLED) {
+        const key = `${type}/${safePath}`;
+        const object = await getObjectFromStorage(key);
+        reply.header('Content-Type', object.contentType || guessMime(safePath));
+        if (object.contentLength) {
+          reply.header('Content-Length', object.contentLength);
+        }
+        reply.header('Cache-Control', 'public, max-age=86400');
+        return reply.send(object.body);
+      }
+
+      const targetDir = type === 'thumbnails' ? config.LOCAL_THUMBNAILS_DIR : config.LOCAL_DOWNLOADS_DIR;
+      const filePath = path.join(targetDir, path.basename(safePath));
       await fsPromises.access(filePath);
-      const stream = fs.createReadStream(filePath);
       reply.header('Content-Type', guessMime(filePath));
       reply.header('Cache-Control', 'public, max-age=86400');
-      return reply.send(stream);
+      return reply.send(fs.createReadStream(filePath));
     } catch (error) {
       reply.code(404);
-      return { success: false, error: 'Thumbnail not found' };
+      return { success: false, error: `${type === 'thumbnails' ? 'Thumbnail' : 'Image'} not found` };
     }
-  });
+  };
+
+  fastify.get('/images/:file', async (request, reply) => serveAsset(request, reply, 'images'));
+  fastify.get('/images/*', async (request, reply) => serveAsset(request, reply, 'images'));
+
+  fastify.get('/thumbnails/:file', async (request, reply) => serveAsset(request, reply, 'thumbnails'));
+  fastify.get('/thumbnails/*', async (request, reply) => serveAsset(request, reply, 'thumbnails'));
 
   fastify.get('/', async (request, reply) => {
     return { 

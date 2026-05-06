@@ -915,13 +915,13 @@ function Upload() {
                 {estimatedTotalWithThumbs > 8 * 1024 * 1024 * 1024 && (
                   <div className="osu-storage-warning">
                     <AlertTriangle size={14} />
-                    <span>Warning: This exceeds 8GB - close to R2 free tier limit (10GB)!</span>
+                    <span>Warning: This exceeds 8GB of selected storage.</span>
                   </div>
                 )}
                 {estimatedTotalWithThumbs > 10 * 1024 * 1024 * 1024 && (
                   <div className="osu-storage-danger">
                     <AlertCircle size={14} />
-                    <span>DANGER: This exceeds the 10GB R2 free tier limit!</span>
+                    <span>DANGER: This exceeds 10GB of selected storage.</span>
                   </div>
                 )}
               </div>

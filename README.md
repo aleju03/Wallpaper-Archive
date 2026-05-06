@@ -23,11 +23,11 @@ The backend handles the heavy lifting like thumbnail generation, duplicate detec
 
 ## Architecture
 
-Local build runs three things: a Node/Fastify backend deployed on Vercel, and two React/Vite frontends (Admin and User). Uses Turso for the database and Cloudflare R2 for image storage.
+Local build runs three things: a Node/Fastify backend deployed on Vercel, and two React/Vite frontends (Admin and User). Uses Turso for the database and Backblaze B2 for image storage.
 
 ## Branches
 
-- `main` - Production version deployed to Vercel (Turso + Cloudflare R2)
+- `main` - Production version deployed to Vercel (Turso + Backblaze B2)
 - `local-version` - Self-hosted variant (local SQLite + local file storage)
 
 ## Local Development

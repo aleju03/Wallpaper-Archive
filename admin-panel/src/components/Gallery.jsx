@@ -229,22 +229,22 @@ function Gallery() {
     })
   }
 
-  const copyR2Url = async (wallpaper) => {
+  const copyImageUrl = async (wallpaper) => {
     const url = wallpaper.image_url || wallpaper.download_url
     try {
       await navigator.clipboard.writeText(url)
-      setStatusMessage({ type: 'success', text: 'R2 image URL copied to clipboard' })
+      setStatusMessage({ type: 'success', text: 'Image URL copied to clipboard' })
     } catch (err) {
       console.error('Failed to copy URL:', err)
       setStatusMessage({ type: 'error', text: 'Failed to copy URL' })
     }
   }
 
-  const copyR2ThumbnailUrl = async (wallpaper) => {
+  const copyThumbnailUrl = async (wallpaper) => {
     const url = wallpaper.thumbnail_url
     try {
       await navigator.clipboard.writeText(url)
-      setStatusMessage({ type: 'success', text: 'R2 thumbnail URL copied to clipboard' })
+      setStatusMessage({ type: 'success', text: 'Thumbnail URL copied to clipboard' })
     } catch (err) {
       console.error('Failed to copy thumbnail URL:', err)
       setStatusMessage({ type: 'error', text: 'Failed to copy thumbnail URL' })
@@ -557,22 +557,22 @@ function Gallery() {
           <button
             className="context-menu-item"
             onClick={() => {
-              copyR2Url(contextMenu.wallpaper)
+              copyImageUrl(contextMenu.wallpaper)
               setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
             }}
           >
             <Copy size={14} />
-            Copy R2 Img URL
+            Copy Image URL
           </button>
           <button
             className="context-menu-item"
             onClick={() => {
-              copyR2ThumbnailUrl(contextMenu.wallpaper)
+              copyThumbnailUrl(contextMenu.wallpaper)
               setContextMenu({ show: false, x: 0, y: 0, wallpaper: null })
             }}
           >
             <Copy size={14} />
-            Copy R2 Thumbnail URL
+            Copy Thumbnail URL
           </button>
         </div>
       )}

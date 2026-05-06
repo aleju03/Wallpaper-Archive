@@ -1,4 +1,5 @@
-const { setCache, buildThumbnailUrl, normalizePagination } = require('../utils/helpers');
+const { setCache, normalizePagination } = require('../utils/helpers');
+const { buildClientImageUrl, buildClientThumbnailUrl } = require('../services/storage');
 
 /**
  * Register arena routes
@@ -36,8 +37,8 @@ async function registerArenaRoutes(fastify, db) {
       // Add image and thumbnail URLs  
       const wallpapersWithUrls = wallpapers.map(wallpaper => ({
         ...wallpaper,
-        image_url: wallpaper.download_url,
-        thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
+        image_url: buildClientImageUrl(wallpaper),
+        thumbnail_url: buildClientThumbnailUrl(wallpaper)
       }));
 
       return {
@@ -111,8 +112,8 @@ async function registerArenaRoutes(fastify, db) {
       // Add image and thumbnail URLs
       const leaderboardWithUrls = leaderboard.map(wallpaper => ({
         ...wallpaper,
-        image_url: wallpaper.download_url,
-        thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
+        image_url: buildClientImageUrl(wallpaper),
+        thumbnail_url: buildClientThumbnailUrl(wallpaper)
       }));
 
       setCache(reply, 120);
@@ -137,8 +138,8 @@ async function registerArenaRoutes(fastify, db) {
       // Add thumbnail URLs
       const historyWithUrls = history.map(battle => ({
         ...battle,
-        winner_thumbnail_url: buildThumbnailUrl(battle.winner_download_url),
-        loser_thumbnail_url: buildThumbnailUrl(battle.loser_download_url)
+        winner_thumbnail_url: buildClientThumbnailUrl({ download_url: battle.winner_download_url }),
+        loser_thumbnail_url: buildClientThumbnailUrl({ download_url: battle.loser_download_url })
       }));
 
       return {
@@ -159,7 +160,8 @@ async function registerArenaRoutes(fastify, db) {
       // Add thumbnail URLs to wallpapers in stats
       const addThumbnails = (wallpapers) => wallpapers.map(w => ({
         ...w,
-        thumbnail_url: buildThumbnailUrl(w.download_url)
+        image_url: buildClientImageUrl(w),
+        thumbnail_url: buildClientThumbnailUrl(w)
       }));
 
       return {

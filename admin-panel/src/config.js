@@ -12,7 +12,7 @@ export const getCurrentHost = () => window.location.hostname
 // Helper function to check if running locally
 export const isLocalhost = () => window.location.hostname === 'localhost' 
 
-// Normalize asset URLs so both absolute (R2) and relative (local) paths work
+// Normalize asset URLs so both absolute and API-relative asset paths work
 export const resolveAssetUrl = (url) => {
   if (!url) return ''
   return /^https?:\/\//i.test(url) || url.startsWith('//')

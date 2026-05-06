@@ -1,41 +1,41 @@
-const { S3Client, DeleteObjectCommand, PutObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, GetObjectCommand, PutObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const fsPromises = require('fs/promises');
 const path = require('path');
 const config = require('../config');
 const { ensureDir } = require('../utils/helpers');
 
-// Initialize R2 client if enabled
-const r2Client = config.R2_ENABLED ? new S3Client({
-  region: 'auto',
-  endpoint: config.R2_ENDPOINT,
+// Initialize Backblaze B2 S3-compatible client if enabled
+const storageClient = config.B2_ENABLED ? new S3Client({
+  region: config.B2_REGION,
+  endpoint: config.B2_ENDPOINT,
   credentials: {
-    accessKeyId: config.R2_ACCESS_KEY_ID,
-    secretAccessKey: config.R2_SECRET_ACCESS_KEY
+    accessKeyId: config.B2_KEY_ID,
+    secretAccessKey: config.B2_APPLICATION_KEY
   }
 }) : null;
 
 /**
- * Build R2 URL for a given key
+ * Build storage URL for a given key
  * Uses public URL if configured, otherwise falls back to S3 endpoint
  */
-const buildR2Url = (key) => {
-  if (config.R2_PUBLIC_URL) {
-    // Use the public URL (custom domain or pub-xxx.r2.dev)
-    return `${config.R2_PUBLIC_URL.replace(/\/$/, '')}/${key}`;
+const buildStorageUrl = (key) => {
+  if (config.B2_PUBLIC_URL) {
+    return `${config.B2_PUBLIC_URL.replace(/\/$/, '')}/${key}`;
   }
-  // Fallback to S3 endpoint (requires auth - not ideal for public access)
-  return `${config.R2_ENDPOINT}/${config.R2_BUCKET_NAME}/${key}`;
+  return `${config.B2_ENDPOINT.replace(/\/$/, '')}/${config.B2_BUCKET_NAME}/${key}`;
 };
 
 /**
  * Get key from URL string
  */
 const getKeyFromUrl = (urlStr) => {
+  if (!urlStr) return null;
+
   try {
-    const url = new URL(urlStr);
+    const url = new URL(urlStr, 'http://storage.local');
     const key = url.pathname.replace(/^\//, '');
-    if (config.R2_BUCKET_NAME && key.startsWith(`${config.R2_BUCKET_NAME}/`)) {
-      return key.slice(config.R2_BUCKET_NAME.length + 1);
+    if (config.B2_BUCKET_NAME && key.startsWith(`${config.B2_BUCKET_NAME}/`)) {
+      return key.slice(config.B2_BUCKET_NAME.length + 1);
     }
     return key;
   } catch {
@@ -44,10 +44,47 @@ const getKeyFromUrl = (urlStr) => {
 };
 
 /**
- * Calculate actual R2 bucket size (images + thumbnails)
+ * Build an app-served URL so private storage can stay private.
  */
-const getR2BucketSize = async () => {
-  if (!config.R2_ENABLED || !r2Client) return null;
+const buildClientAssetUrl = (storageUrl, fallbackFilename, type = 'images') => {
+  const key = getKeyFromUrl(storageUrl);
+  if (key) {
+    if (key.startsWith('images/') || key.startsWith('thumbnails/')) {
+      return `/${key}`;
+    }
+    return `/${type}/${key}`;
+  }
+  return fallbackFilename ? `/${type}/${fallbackFilename}` : storageUrl;
+};
+
+const buildClientImageUrl = (wallpaper) => buildClientAssetUrl(wallpaper?.download_url, wallpaper?.filename, 'images');
+
+const buildClientThumbnailUrl = (wallpaper) => {
+  const imageKey = getKeyFromUrl(wallpaper?.download_url);
+  if (imageKey) {
+    let thumbKey = imageKey.includes('/images/')
+      ? imageKey.replace('/images/', '/thumbnails/')
+      : imageKey.replace(/^images\//, 'thumbnails/');
+
+    if (!thumbKey.startsWith('thumbnails/')) {
+      thumbKey = `thumbnails/${thumbKey}`;
+    }
+
+    thumbKey = thumbKey.match(/\.[^/.]+$/)
+      ? thumbKey.replace(/\.[^/.]+$/, '.jpg')
+      : `${thumbKey}.jpg`;
+
+    return `/${thumbKey}`;
+  }
+
+  return wallpaper?.filename ? `/thumbnails/${path.basename(wallpaper.filename, path.extname(wallpaper.filename))}.jpg` : null;
+};
+
+/**
+ * Calculate actual storage bucket size (images + thumbnails)
+ */
+const getStorageBucketSize = async () => {
+  if (!config.B2_ENABLED || !storageClient) return null;
   
   try {
     let totalSize = 0;
@@ -56,11 +93,11 @@ const getR2BucketSize = async () => {
     
     do {
       const command = new ListObjectsV2Command({
-        Bucket: config.R2_BUCKET_NAME,
+        Bucket: config.B2_BUCKET_NAME,
         ContinuationToken: continuationToken
       });
       
-      const response = await r2Client.send(command);
+      const response = await storageClient.send(command);
       
       if (response.Contents) {
         for (const obj of response.Contents) {
@@ -79,35 +116,35 @@ const getR2BucketSize = async () => {
 };
 
 /**
- * Delete objects from R2
+ * Delete objects from storage
  */
-const deleteFromR2 = async (keys = [], logger = console) => {
-  if (!config.R2_ENABLED || !r2Client) return;
+const deleteFromStorage = async (keys = [], logger = console) => {
+  if (!config.B2_ENABLED || !storageClient) return;
   const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
   for (const key of uniqueKeys) {
     try {
-      await r2Client.send(new DeleteObjectCommand({
-        Bucket: config.R2_BUCKET_NAME,
+      await storageClient.send(new DeleteObjectCommand({
+        Bucket: config.B2_BUCKET_NAME,
         Key: key
       }));
     } catch (error) {
-      logger.warn({ err: error, key }, 'Failed to delete object from R2');
+      logger.warn({ err: error, key }, 'Failed to delete object from storage');
     }
   }
 };
 
 /**
- * Upload file to storage (R2 or local)
+ * Upload file to storage (Backblaze B2 or local)
  */
 const uploadToStorage = async (key, buffer, contentType = 'application/octet-stream', isThumbnail = false) => {
-  if (config.R2_ENABLED && r2Client) {
-    await r2Client.send(new PutObjectCommand({
-      Bucket: config.R2_BUCKET_NAME,
+  if (config.B2_ENABLED && storageClient) {
+    await storageClient.send(new PutObjectCommand({
+      Bucket: config.B2_BUCKET_NAME,
       Key: key,
       Body: buffer,
       ContentType: contentType
     }));
-    return buildR2Url(key);
+    return buildStorageUrl(key);
   }
 
   // Local fallback storage
@@ -117,6 +154,29 @@ const uploadToStorage = async (key, buffer, contentType = 'application/octet-str
   const targetPath = path.join(targetDir, filename);
   await fsPromises.writeFile(targetPath, buffer);
   return `/${isThumbnail ? 'thumbnails' : 'images'}/${filename}`;
+};
+
+const getObjectFromStorage = async (key) => {
+  if (!config.B2_ENABLED || !storageClient) return null;
+
+  const response = await storageClient.send(new GetObjectCommand({
+    Bucket: config.B2_BUCKET_NAME,
+    Key: key
+  }));
+
+  return {
+    body: response.Body,
+    contentType: response.ContentType,
+    contentLength: response.ContentLength
+  };
+};
+
+const streamToBuffer = async (stream) => {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
 };
 
 /**
@@ -147,6 +207,12 @@ const getImageBuffer = async (wallpaperOrUrl, logger = console) => {
     }
   }
 
+  const key = getKeyFromUrl(target?.download_url);
+  if (key && config.B2_ENABLED && storageClient) {
+    const object = await getObjectFromStorage(key);
+    return streamToBuffer(object.body);
+  }
+
   // Fallback to remote download
   const urlStr = target?.download_url;
   if (!urlStr) {
@@ -173,11 +239,15 @@ const getImageBuffer = async (wallpaperOrUrl, logger = console) => {
 };
 
 module.exports = {
-  r2Client,
-  buildR2Url,
+  storageClient,
+  buildStorageUrl,
+  buildClientAssetUrl,
+  buildClientImageUrl,
+  buildClientThumbnailUrl,
   getKeyFromUrl,
-  getR2BucketSize,
-  deleteFromR2,
+  getStorageBucketSize,
+  deleteFromStorage,
   uploadToStorage,
+  getObjectFromStorage,
   getImageBuffer
 };

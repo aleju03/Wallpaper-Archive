@@ -80,7 +80,7 @@ function Duplicates() {
       <div className="duplicates-disabled">
         <h3>Duplicates disabled</h3>
         <p>
-          Duplicate detection relies on local file access and heavy hashing. It is turned off in the serverless/Turso + R2 setup.
+          Duplicate detection relies on local file access and heavy hashing. It is turned off in the serverless/cloud-storage setup.
           To use it, run the admin panel against a local backend with files and set VITE_ENABLE_DUPLICATES=true.
         </p>
       </div>

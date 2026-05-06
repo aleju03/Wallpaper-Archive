@@ -14,7 +14,7 @@ const {
   fetchBuffer
 } = require('../utils/helpers');
 const { generatePerceptualHash, findDuplicateGroups, findSimilarImages } = require('../utils/image-hash');
-const { uploadToStorage, deleteFromR2, getKeyFromUrl, getImageBuffer } = require('../services/storage');
+const { uploadToStorage, deleteFromStorage, getKeyFromUrl, getImageBuffer, buildClientImageUrl, buildClientThumbnailUrl } = require('../services/storage');
 const { scanOsuSongsDirectory, formatTagsForDb, generateDisplayTitle, generateCleanFilename } = require('../utils/osu-parser');
 
 /**
@@ -77,7 +77,7 @@ async function registerAdminRoutes(fastify, db) {
             .resize({ width: 900, height: 900, fit: 'inside' })
             .jpeg({ quality: 82 })
             .toBuffer();
-          const thumbUrl = await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
+          await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
 
           const record = {
             filename: baseName,
@@ -95,8 +95,8 @@ async function registerAdminRoutes(fastify, db) {
           uploaded.push({
             id: insertedId,
             filename: baseName,
-            download_url: downloadUrl,
-            thumbnail_url: thumbUrl,
+            download_url: `/${imageKey}`,
+            thumbnail_url: `/${thumbKey}`,
             perceptual_hash: hash
           });
         } catch (error) {
@@ -214,7 +214,7 @@ async function registerAdminRoutes(fastify, db) {
 
           const downloadUrl = await uploadToStorage(imageKey, buffer, meta.format ? `image/${meta.format}` : 'application/octet-stream', false);
           const thumbBuffer = await sharp(buffer).resize({ width: 900, height: 900, fit: 'inside' }).jpeg({ quality: 82 }).toBuffer();
-          const thumbUrl = await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
+          await uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true);
 
           const record = {
             filename,
@@ -233,8 +233,8 @@ async function registerAdminRoutes(fastify, db) {
             id: insertedId,
             filename,
             folder: finalFolder,
-            download_url: downloadUrl,
-            thumbnail_url: thumbUrl
+            download_url: `/${imageKey}`,
+            thumbnail_url: `/${thumbKey}`
           });
         } catch (error) {
           results.failed.push({ filename: file.path, error: error.message });
@@ -268,8 +268,8 @@ async function registerAdminRoutes(fastify, db) {
       const duplicateGroups = findDuplicateGroups(wallpapers, threshold).map(group => 
         group.map(w => ({
           ...w,
-          image_url: w.download_url,
-          thumbnail_url: buildThumbnailUrl(w.download_url)
+          image_url: buildClientImageUrl(w),
+          thumbnail_url: buildClientThumbnailUrl(w)
         }))
       );
 
@@ -327,7 +327,7 @@ async function registerAdminRoutes(fastify, db) {
         const mainKey = getKeyFromUrl(wallpaper.download_url);
         const thumbUrl = buildThumbnailUrl(wallpaper.download_url);
         const thumbKey = thumbUrl ? getKeyFromUrl(thumbUrl) : null;
-        await deleteFromR2([mainKey, thumbKey], fastify.log);
+        await deleteFromStorage([mainKey, thumbKey], fastify.log);
       }
 
       const deleted = await db.deleteWallpaper(wallpaper.id);
@@ -336,7 +336,7 @@ async function registerAdminRoutes(fastify, db) {
         return { success: false, error: 'Failed to delete wallpaper' };
       }
 
-      return { success: true, deleted: wallpaper.id, removedFromStorage: deleteFile === 'true' && config.R2_ENABLED };
+      return { success: true, deleted: wallpaper.id, removedFromStorage: deleteFile === 'true' && config.B2_ENABLED };
     } catch (error) {
       reply.code(500);
       return { success: false, error: error.message };
@@ -353,7 +353,7 @@ async function registerAdminRoutes(fastify, db) {
         return { success: false, error: 'No wallpaper IDs provided' };
       }
 
-      // Get all wallpapers first to get their URLs for R2 deletion
+      // Get all wallpapers first to get their URLs for storage deletion
       const wallpapers = await Promise.all(ids.map(id => db.getWallpaperById(id)));
       const validWallpapers = wallpapers.filter(Boolean);
       
@@ -362,8 +362,8 @@ async function registerAdminRoutes(fastify, db) {
         return { success: false, error: 'No valid wallpapers found' };
       }
 
-      // Delete from R2 if requested
-      if (deleteFiles && config.R2_ENABLED) {
+      // Delete from storage if requested
+      if (deleteFiles && config.B2_ENABLED) {
         const keysToDelete = [];
         for (const w of validWallpapers) {
           const mainKey = getKeyFromUrl(w.download_url);
@@ -372,7 +372,7 @@ async function registerAdminRoutes(fastify, db) {
           if (mainKey) keysToDelete.push(mainKey);
           if (thumbKey) keysToDelete.push(thumbKey);
         }
-        await deleteFromR2(keysToDelete, fastify.log);
+        await deleteFromStorage(keysToDelete, fastify.log);
       }
 
       // Delete from database in one query
@@ -383,7 +383,7 @@ async function registerAdminRoutes(fastify, db) {
         success: true, 
         deleted: deletedCount,
         requested: ids.length,
-        removedFromStorage: deleteFiles && config.R2_ENABLED
+        removedFromStorage: deleteFiles && config.B2_ENABLED
       };
     } catch (error) {
       console.error('Batch delete error:', error);
@@ -413,8 +413,8 @@ async function registerAdminRoutes(fastify, db) {
 
       console.log(`Found ${wallpapers.length} wallpapers to delete`);
 
-      // Delete from R2 if requested
-      if (deleteFiles && config.R2_ENABLED) {
+      // Delete from storage if requested
+      if (deleteFiles && config.B2_ENABLED) {
         const keysToDelete = [];
         for (const w of wallpapers) {
           const mainKey = getKeyFromUrl(w.download_url);
@@ -423,8 +423,8 @@ async function registerAdminRoutes(fastify, db) {
           if (mainKey) keysToDelete.push(mainKey);
           if (thumbKey) keysToDelete.push(thumbKey);
         }
-        console.log(`Deleting ${keysToDelete.length} files from R2`);
-        await deleteFromR2(keysToDelete, fastify.log);
+        console.log(`Deleting ${keysToDelete.length} files from storage`);
+        await deleteFromStorage(keysToDelete, fastify.log);
       }
 
       // Delete from database
@@ -437,7 +437,7 @@ async function registerAdminRoutes(fastify, db) {
         success: true, 
         deleted: deletedCount,
         provider,
-        removedFromStorage: deleteFiles && config.R2_ENABLED
+        removedFromStorage: deleteFiles && config.B2_ENABLED
       };
     } catch (error) {
       console.error('Delete by provider error:', error);
@@ -715,7 +715,7 @@ async function registerAdminRoutes(fastify, db) {
       // Track used filenames to handle duplicates (only add suffix when needed)
       const usedFilenames = new Set();
 
-      // Process in parallel batches of 5 for optimal speed without overwhelming R2
+      // Process in parallel batches of 5 for optimal speed without overwhelming storage
       const BATCH_SIZE = 5;
       
       const processBeatmap = async (beatmap, index) => {
@@ -752,7 +752,7 @@ async function registerAdminRoutes(fastify, db) {
             .toBuffer();
 
           // Upload both in parallel
-          const [downloadUrl, thumbUrl] = await Promise.all([
+          const [downloadUrl] = await Promise.all([
             uploadToStorage(imageKey, buffer, meta.format ? `image/${meta.format}` : 'application/octet-stream', false),
             uploadToStorage(thumbKey, thumbBuffer, 'image/jpeg', true)
           ]);
@@ -781,8 +781,8 @@ async function registerAdminRoutes(fastify, db) {
               id: Number(insertedId), // Convert BigInt to Number for JSON serialization
               displayTitle: beatmap.displayTitle,
               filename: uniqueName,
-              download_url: downloadUrl,
-              thumbnail_url: thumbUrl
+              download_url: `/${imageKey}`,
+              thumbnail_url: `/${thumbKey}`
             }
           };
         } catch (error) {

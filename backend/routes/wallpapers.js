@@ -1,4 +1,5 @@
-const { setCache, buildThumbnailUrl, normalizePagination } = require('../utils/helpers');
+const { setCache, normalizePagination, guessMime } = require('../utils/helpers');
+const { buildClientImageUrl, buildClientThumbnailUrl, getImageBuffer } = require('../services/storage');
 
 /**
  * Register wallpaper routes
@@ -20,8 +21,8 @@ async function registerWallpaperRoutes(fastify, db) {
         success: true,
         wallpapers: wallpapers.map(w => ({
           ...w,
-          image_url: w.download_url,
-          thumbnail_url: buildThumbnailUrl(w.download_url)
+          image_url: buildClientImageUrl(w),
+          thumbnail_url: buildClientThumbnailUrl(w)
         }))
       };
     } catch (error) {
@@ -44,8 +45,8 @@ async function registerWallpaperRoutes(fastify, db) {
         success: true,
         wallpapers: wallpapers.map(w => ({
           ...w,
-          image_url: w.download_url,
-          thumbnail_url: buildThumbnailUrl(w.download_url)
+          image_url: buildClientImageUrl(w),
+          thumbnail_url: buildClientThumbnailUrl(w)
         }))
       };
     } catch (error) {
@@ -88,8 +89,8 @@ async function registerWallpaperRoutes(fastify, db) {
         wallpapers: wallpapers.map(w => ({
           ...w,
           filename: w.filename,
-          image_url: w.download_url,
-          thumbnail_url: buildThumbnailUrl(w.download_url)
+          image_url: buildClientImageUrl(w),
+          thumbnail_url: buildClientThumbnailUrl(w)
         })),
         total: total,
         page: currentPage,
@@ -121,8 +122,8 @@ async function registerWallpaperRoutes(fastify, db) {
         success: true,
         wallpaper: {
           ...wallpaper,
-          image_url: wallpaper.download_url,
-          thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
+          image_url: buildClientImageUrl(wallpaper),
+          thumbnail_url: buildClientThumbnailUrl(wallpaper)
         }
       };
     } catch (error) {
@@ -146,8 +147,8 @@ async function registerWallpaperRoutes(fastify, db) {
         success: true,
         wallpaper: {
           ...wallpaper,
-          image_url: wallpaper.download_url,
-          thumbnail_url: buildThumbnailUrl(wallpaper.download_url)
+          image_url: buildClientImageUrl(wallpaper),
+          thumbnail_url: buildClientThumbnailUrl(wallpaper)
         }
       };
     } catch (error) {
@@ -173,45 +174,14 @@ async function registerWallpaperRoutes(fastify, db) {
         fastify.log.warn({ err, id }, 'Failed to increment download count');
       }
 
-      const imageUrl = wallpaper.download_url;
       const filename = wallpaper.filename;
+      const buffer = await getImageBuffer(wallpaper, fastify.log);
 
-      // Use https/http module for more reliable fetching
-      const https = require('https');
-      const http = require('http');
-      const url = new URL(imageUrl);
-      const client = url.protocol === 'https:' ? https : http;
-
-      return new Promise((resolve, reject) => {
-        client.get(imageUrl, (response) => {
-          if (response.statusCode !== 200) {
-            reply.code(502);
-            resolve({ success: false, error: 'Failed to fetch image from source' });
-            return;
-          }
-
-          const chunks = [];
-          response.on('data', (chunk) => chunks.push(chunk));
-          response.on('end', () => {
-            const buffer = Buffer.concat(chunks);
-            const contentType = response.headers['content-type'] || 'application/octet-stream';
-
-            reply.header('Content-Type', contentType);
-            reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-            reply.header('Content-Length', buffer.length);
-            reply.header('Cache-Control', 'public, max-age=86400');
-            
-            resolve(reply.send(buffer));
-          });
-          response.on('error', (err) => {
-            reply.code(500);
-            resolve({ success: false, error: 'Download stream failed' });
-          });
-        }).on('error', (err) => {
-          reply.code(500);
-          resolve({ success: false, error: 'Download request failed' });
-        });
-      });
+      reply.header('Content-Type', guessMime(filename));
+      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      reply.header('Content-Length', buffer.length);
+      reply.header('Cache-Control', 'public, max-age=86400');
+      return reply.send(buffer);
     } catch (error) {
       reply.code(500);
       return { success: false, error: 'Download failed' };

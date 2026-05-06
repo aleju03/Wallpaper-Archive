@@ -425,7 +425,7 @@ function Dashboard() {
               <div className="stat-card">
                 <h3>Storage Size</h3>
                 <div className="value">{((stats?.storage_size || 0) / (1000 * 1000 * 1000)).toFixed(2)}GB</div>
-                <div className="change">R2 bucket total</div>
+                <div className="change">Storage total</div>
               </div>
 
               <div className="stat-card stat-card--clickable" onClick={() => setShowDownloadsModal(true)}>

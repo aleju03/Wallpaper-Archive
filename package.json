@@ -11,6 +11,8 @@
     "dev:frontend": "concurrently \"npm run dev:admin\" \"npm run dev:user\"",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:admin\" \"npm run dev:user\"",
     "dev:admin-only": "concurrently \"npm run dev:backend\" \"npm run dev:admin\"",
+    "migrate:r2-to-b2": "node scripts/migrate-r2-to-backblaze.js",
+    "cleanup:r2-copied": "node scripts/delete-r2-copied-to-backblaze.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
