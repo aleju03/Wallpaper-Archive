@@ -5,3 +5,4 @@ wallpapers.db
 *.md
 .env
 .vercel
+.migration-r2-to-b2.json
