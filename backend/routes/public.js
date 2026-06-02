@@ -2,7 +2,7 @@ const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
 const config = require('../config');
-const { setCache, sanitizeFilename, guessMime } = require('../utils/helpers');
+const { setCache, guessMime } = require('../utils/helpers');
 const { fetchRemoteObject, getObjectFromStorage } = require('../services/storage');
 
 /**
@@ -11,15 +11,26 @@ const { fetchRemoteObject, getObjectFromStorage } = require('../services/storage
  * @param {Object} db - Database instance
  */
 async function registerPublicRoutes(fastify, db) {
-  const sanitizeStoragePath = (value = '') => value
-    .split('/')
-    .map(segment => sanitizeFilename(segment))
-    .filter(Boolean)
-    .join('/');
+  const normalizeStoragePath = (value = '') => {
+    let decoded;
+    try {
+      decoded = decodeURIComponent(value);
+    } catch {
+      return null;
+    }
+
+    const normalized = decoded.replace(/\\/g, '/');
+    const parts = normalized.split('/').filter(Boolean);
+    if (parts.some(part => part === '.' || part === '..')) {
+      return null;
+    }
+
+    return parts.join('/');
+  };
 
   const serveAsset = async (request, reply, type) => {
     const requestedPath = request.params['*'] || request.params.file || '';
-    const safePath = sanitizeStoragePath(requestedPath);
+    const safePath = normalizeStoragePath(requestedPath);
 
     try {
       if (!safePath) {
@@ -85,7 +96,7 @@ async function registerPublicRoutes(fastify, db) {
     return candidates.find((wallpaper) => {
       const downloadPath = (() => {
         try {
-          return new URL(wallpaper.download_url).pathname.replace(/^\//, '');
+          return decodeURIComponent(new URL(wallpaper.download_url).pathname.replace(/^\//, ''));
         } catch {
           return wallpaper.download_url || '';
         }

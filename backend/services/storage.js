@@ -33,7 +33,7 @@ const getKeyFromUrl = (urlStr) => {
 
   try {
     const url = new URL(urlStr, 'http://storage.local');
-    const key = url.pathname.replace(/^\//, '');
+    const key = decodeURIComponent(url.pathname.replace(/^\//, ''));
     if (config.B2_BUCKET_NAME && key.startsWith(`${config.B2_BUCKET_NAME}/`)) {
       return key.slice(config.B2_BUCKET_NAME.length + 1);
     }

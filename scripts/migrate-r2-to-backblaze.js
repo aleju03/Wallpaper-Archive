@@ -218,7 +218,7 @@ const migrateObjects = async () => {
 const keyFromUrl = (urlStr) => {
   try {
     const url = new URL(urlStr);
-    const key = url.pathname.replace(/^\//, '');
+    const key = decodeURIComponent(url.pathname.replace(/^\//, ''));
     return key.startsWith(`${source.bucket}/`) ? key.slice(source.bucket.length + 1) : key;
   } catch {
     return null;
