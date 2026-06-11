@@ -75,13 +75,13 @@ function Upload() {
     setOsuResult(null)
     setOsuScanProgress({ phase: 'connecting', message: 'Connecting...', percent: 0 })
 
-    // Build URL with query params and admin key
+    // EventSource cannot send headers, so pass the JWT through the supported query param.
     const params = new URLSearchParams({ songsPath: osuPath })
     if (osuMaxScan && parseInt(osuMaxScan) > 0) {
       params.set('maxFiles', osuMaxScan)
     }
-    const adminKey = import.meta.env.VITE_ADMIN_API_KEY || ''
-    const url = `${API_BASE}/api/osu/scan?${params}&adminKey=${encodeURIComponent(adminKey)}`
+    const token = localStorage.getItem('admin_token') || ''
+    const url = `${API_BASE}/api/osu/scan?${params}&token=${encodeURIComponent(token)}`
 
     const eventSource = new EventSource(url)
 

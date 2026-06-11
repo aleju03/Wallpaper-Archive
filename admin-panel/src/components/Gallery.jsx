@@ -147,8 +147,11 @@ function Gallery() {
         setStatusMessage({ type: 'info', text: `Deleting ${wallpaper.filename}...` })
         
         try {
-          const url = `${API_BASE}/api/wallpapers/${wallpaper.id}${deleteFile ? '?deleteFile=true' : ''}`
-          const response = await axios.delete(url, { headers: getAdminHeaders() })
+          const response = await axios.post(
+            `${API_BASE}/api/wallpapers/batch-delete`,
+            { ids: [wallpaper.id], deleteFiles: deleteFile },
+            { headers: getAdminHeaders() }
+          )
           
           if (response.data.success) {
             // Remove from local state immediately

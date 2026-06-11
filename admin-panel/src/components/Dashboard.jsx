@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Trash2, X, Download, Maximize2, Minimize2 } from 'lucide-react'
 import { useAdminData } from '../context/useAdminData'
-import { API_BASE } from '../config'
-
-const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY || ''
+import { API_BASE, getAdminHeaders, resolveAssetUrl } from '../config'
 
 function StatCardSkeleton() {
   return (
@@ -148,7 +146,7 @@ function ImagePreviewModal({ wallpaper, onClose, onDelete }) {
   if (!wallpaper) return null
 
   if (showFullscreen) {
-    return <FullscreenViewer imageUrl={wallpaper.image_url} onClose={() => setShowFullscreen(false)} />
+    return <FullscreenViewer imageUrl={resolveAssetUrl(wallpaper.image_url || wallpaper.download_url)} onClose={() => setShowFullscreen(false)} />
   }
 
   const handleOverlayClick = (e) => {
@@ -164,6 +162,9 @@ function ImagePreviewModal({ wallpaper, onClose, onDelete }) {
     document.body.removeChild(link)
   }
 
+  const imageUrl = resolveAssetUrl(wallpaper.image_url || wallpaper.download_url)
+  const thumbnailUrl = resolveAssetUrl(wallpaper.thumbnail_url)
+
   return (
     <div className="preview-modal-overlay" onClick={handleOverlayClick}>
       <div className="preview-modal">
@@ -178,11 +179,16 @@ function ImagePreviewModal({ wallpaper, onClose, onDelete }) {
           <div className="preview-modal__image-container">
             {!imageLoaded && <div className="preview-modal__skeleton" />}
             <img
-              src={wallpaper.image_url}
+              src={imageUrl}
               alt={wallpaper.filename}
               className={`preview-modal__image ${imageLoaded ? 'loaded' : ''}`}
               onLoad={() => setImageLoaded(true)}
-              onError={(e) => { e.target.src = wallpaper.thumbnail_url }}
+              onError={(e) => {
+                if (!e.currentTarget.dataset.fallbackTried && thumbnailUrl) {
+                  e.currentTarget.dataset.fallbackTried = 'true'
+                  e.currentTarget.src = thumbnailUrl
+                }
+              }}
             />
           </div>
           
@@ -306,8 +312,8 @@ function DownloadsModal({ onClose, onPreview, totalDownloads }) {
                     <div className={`downloads-modal__rank ${isTop3 ? `downloads-modal__rank--${index + 1}` : ''}`}>
                       {index + 1}
                     </div>
-                    <img 
-                      src={wallpaper.thumbnail_url} 
+                    <img
+                      src={resolveAssetUrl(wallpaper.thumbnail_url)}
                       alt={wallpaper.filename}
                       className="downloads-modal__thumb"
                       loading="lazy"
@@ -374,8 +380,11 @@ function Dashboard() {
     
     setDeleting(id)
     try {
-      await axios.delete(`${API_BASE}/api/wallpapers/${id}?deleteFile=true`, {
-        headers: { 'X-Admin-Key': ADMIN_API_KEY }
+      await axios.post(`${API_BASE}/api/wallpapers/batch-delete`, {
+        ids: [id],
+        deleteFiles: true
+      }, {
+        headers: getAdminHeaders()
       })
       setLargestWallpapers(prev => prev.filter(w => w.id !== id))
       fetchStats(true) // Refresh stats after delete
@@ -475,8 +484,8 @@ function Dashboard() {
           ) : (
             largestWallpapers.map((wallpaper) => (
               <div key={wallpaper.id} className="largest-item">
-                <img 
-                  src={wallpaper.thumbnail_url} 
+                <img
+                  src={resolveAssetUrl(wallpaper.thumbnail_url)}
                   alt={wallpaper.filename}
                   className="largest-item__thumb"
                   loading="lazy"

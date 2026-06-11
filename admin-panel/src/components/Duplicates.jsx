@@ -115,8 +115,8 @@ function Duplicates() {
           const enhancedGroups = data.duplicateGroups?.map(group => 
             group.map(wallpaper => ({
               ...wallpaper,
-              image_url: `/images/${path.basename(wallpaper.local_path)}`,
-              thumbnail_url: `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path) || '')}.jpg`
+              image_url: wallpaper.image_url || wallpaper.download_url || (wallpaper.local_path ? `/images/${path.basename(wallpaper.local_path)}` : ''),
+              thumbnail_url: wallpaper.thumbnail_url || (wallpaper.local_path ? `/thumbnails/${path.basename(wallpaper.local_path, path.extname(wallpaper.local_path) || '')}.jpg` : '')
             }))
           ) || []
           
@@ -179,6 +179,9 @@ function Duplicates() {
             folder: wallpaper.folder,
             file_size: wallpaper.file_size,
             dimensions: wallpaper.dimensions,
+            download_url: wallpaper.download_url,
+            image_url: wallpaper.image_url,
+            thumbnail_url: wallpaper.thumbnail_url,
             local_path: wallpaper.local_path,
             similarity_distance: wallpaper.similarity_distance,
             similarity_percentage: wallpaper.similarity_percentage
@@ -279,33 +282,45 @@ function Duplicates() {
     setConfirmModal({ show: false, title: '', message: '', onConfirm: null, confirmText: 'Delete', isDangerous: true })
   }
 
+  const removeDeletedWallpapers = (deletedIds) => {
+    const deletedIdSet = new Set(deletedIds)
+    const updatedAllGroups = allDuplicateGroups.map(group =>
+      group.filter(wallpaper => !deletedIdSet.has(wallpaper.id))
+    ).filter(group => group.length > 1)
+
+    const updatedFilteredGroups = duplicateGroups.map(group =>
+      group.filter(wallpaper => !deletedIdSet.has(wallpaper.id))
+    ).filter(group => group.length > 1)
+
+    setAllDuplicateGroups(updatedAllGroups)
+    setDuplicateGroups(updatedFilteredGroups)
+
+    setSelectedWallpapers(prev => {
+      const newSelected = new Set(prev)
+      deletedIds.forEach(id => newSelected.delete(id))
+      return newSelected
+    })
+
+    saveCacheData({ duplicateGroups: updatedAllGroups })
+  }
+
   const deleteWallpaper = async (id, deleteFile = false) => {
     const action = deleteFile ? 'delete the file and database entry' : 'delete from database'
     const title = deleteFile ? 'Delete File & Database Entry' : 'Delete from Database'
-    
+
     showConfirmModal(
       title,
       `Are you sure you want to ${action}? This action cannot be undone.`,
       async () => {
         try {
-          const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
-          const response = await axios.delete(url, { headers: getAdminHeaders() })
-          
+          const response = await axios.post(
+            `${API_BASE}/api/wallpapers/batch-delete`,
+            { ids: [id], deleteFiles: deleteFile },
+            { headers: getAdminHeaders() }
+          )
+
           if (response.data.success) {
-            // Remove the deleted wallpaper from both all groups and filtered groups
-            const updatedAllGroups = allDuplicateGroups.map(group => 
-              group.filter(wallpaper => wallpaper.id !== id)
-            ).filter(group => group.length > 1) // Remove groups with only one item
-            
-            const updatedFilteredGroups = duplicateGroups.map(group => 
-              group.filter(wallpaper => wallpaper.id !== id)
-            ).filter(group => group.length > 1)
-            
-            setAllDuplicateGroups(updatedAllGroups)
-            setDuplicateGroups(updatedFilteredGroups)
-            
-            // Update cache with new data
-            saveCacheData({ duplicateGroups: updatedAllGroups })
+            removeDeletedWallpapers([id])
           } else {
             console.error('Failed to delete wallpaper:', response.data.error)
           }
@@ -316,34 +331,17 @@ function Duplicates() {
       }
     )
   }
-  
+
   const deleteWallpaperNoConfirm = async (id, deleteFile = false) => {
     try {
-      const url = `${API_BASE}/api/wallpapers/${id}${deleteFile ? '?deleteFile=true' : ''}`
-      const response = await axios.delete(url, { headers: getAdminHeaders() })
-      
+      const response = await axios.post(
+        `${API_BASE}/api/wallpapers/batch-delete`,
+        { ids: [id], deleteFiles: deleteFile },
+        { headers: getAdminHeaders() }
+      )
+
       if (response.data.success) {
-        // Remove the deleted wallpaper from both all groups and filtered groups
-        const updatedAllGroups = allDuplicateGroups.map(group => 
-          group.filter(wallpaper => wallpaper.id !== id)
-        ).filter(group => group.length > 1) // Remove groups with only one item
-        
-        const updatedFilteredGroups = duplicateGroups.map(group => 
-          group.filter(wallpaper => wallpaper.id !== id)
-        ).filter(group => group.length > 1)
-        
-        setAllDuplicateGroups(updatedAllGroups)
-        setDuplicateGroups(updatedFilteredGroups)
-        
-        // Remove from selected items
-        setSelectedWallpapers(prev => {
-          const newSelected = new Set(prev)
-          newSelected.delete(id)
-          return newSelected
-        })
-        
-        // Update cache with new data
-        saveCacheData({ duplicateGroups: updatedAllGroups })
+        removeDeletedWallpapers([id])
       } else {
         console.error('Failed to delete wallpaper:', response.data.error)
       }
@@ -351,16 +349,26 @@ function Duplicates() {
       console.error('Error deleting wallpaper:', err.message)
     }
   }
-  
+
   const bulkDeleteWallpapers = async (deleteFiles = false) => {
     const selectedIds = Array.from(selectedWallpapers)
     if (selectedIds.length === 0) return
-    
-    const deletePromises = selectedIds.map(id => deleteWallpaperNoConfirm(id, deleteFiles))
-    await Promise.all(deletePromises)
-    
-    // Clear selection after bulk delete
-    setSelectedWallpapers(new Set())
+
+    try {
+      const response = await axios.post(
+        `${API_BASE}/api/wallpapers/batch-delete`,
+        { ids: selectedIds, deleteFiles },
+        { headers: getAdminHeaders() }
+      )
+
+      if (response.data.success) {
+        removeDeletedWallpapers(selectedIds)
+      } else {
+        console.error('Failed to bulk delete wallpapers:', response.data.error)
+      }
+    } catch (err) {
+      console.error('Error bulk deleting wallpapers:', err.message)
+    }
   }
   
   const toggleWallpaperSelection = (id) => {

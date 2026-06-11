@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Trophy, TrendingUp, TrendingDown, AlertTriangle, Swords, RefreshCw, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import axios from 'axios'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || ''
+import { API_BASE, resolveAssetUrl } from '../config'
 
 const api = axios.create({
-  baseURL: API_BASE,
-  headers: { 'X-Admin-Key': ADMIN_KEY }
+  baseURL: API_BASE
 })
 
 function ArenaStats() {
@@ -73,12 +70,6 @@ function ArenaStats() {
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffHours < 24) return `${diffHours}h ago`
     return `${diffDays}d ago`
-  }
-
-  const resolveAssetUrl = (url) => {
-    if (!url) return ''
-    if (url.startsWith('http')) return url
-    return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`
   }
 
   if (loading) {
