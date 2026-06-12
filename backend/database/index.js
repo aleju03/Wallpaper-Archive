@@ -215,7 +215,7 @@ class Database {
       args.push(filters.aspect);
     }
 
-    sql += ' ORDER BY created_at DESC';
+    sql += " ORDER BY CASE WHEN lower(provider) IN ('osu', 'osu!') THEN 1 ELSE 0 END, created_at DESC";
 
     if (filters.limit) {
       sql += ' LIMIT ?';
